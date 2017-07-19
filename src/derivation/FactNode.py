@@ -8,13 +8,13 @@
 # standard python packages
 import inspect, os, sys
 
-packagePath1  = os.path.abspath( __file__ + "/.." )
-sys.path.append( packagePath1 )
-from Node import Node
+if not os.path.abspath( __file__ + "/.." ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/.." ) )
+if not os.path.abspath( __file__ + "/../.." ) in sys.path :
+  sys.path.append( packagePath2 )
 
-packagePath2  = os.path.abspath( __file__ + "/../.." )
-sys.path.append( packagePath2 )
 from utils import tools
+from Node import Node
 
 # **************************************** #
 

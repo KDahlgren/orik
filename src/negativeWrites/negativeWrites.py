@@ -10,9 +10,10 @@ import sympy
 
 # ------------------------------------------------------ #
 # import sibling packages HERE!!!
-sys.path.append( __file__ + "/../.." )
+if not os.path.abspath( __file__ + "/../.." ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
 
-import Rule
+from dedt  import Rule
 from utils import clockTools, tools, dumpers
 # ------------------------------------------------------ #
 
@@ -30,6 +31,8 @@ def negativeWrites( cursor ) :
 
   if NEGATIVEWRITES_DEBUG :
     print " ... running negative writes ..."
+
+  return None
 
   setNegativeRules(   cursor )
 

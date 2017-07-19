@@ -14,8 +14,8 @@ import GoalNode, RuleNode, FactNode, provTools
 
 # ------------------------------------------------------ #
 
-packagePath1  = os.path.abspath( __file__ + "/../.." )
-sys.path.append( packagePath1 )
+if not os.path.abspath( __file__ + "/../.." ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
 
 from utils import tools
 

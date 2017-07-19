@@ -18,8 +18,8 @@ import inspect, os, sqlite3, sys, time
 
 import Core
 
-packagePath  = os.path.abspath( __file__ + "/../.." )
-sys.path.append( packagePath )
+if not os.path.abspath( __file__ + "/../.." ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
 
 from utils        import parseCommandLineInput, tools
 

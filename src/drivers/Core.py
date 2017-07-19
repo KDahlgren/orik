@@ -15,7 +15,8 @@ import ast, inspect, itertools, os, sqlite3, string, sys, time
 
 # ------------------------------------------------------ #
 # import sibling packages HERE!!!
-sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+if not os.path.abspath( __file__ + "/../.." ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
 
 from dedt           import dedt, dedalusParser
 from derivation     import ProvTree

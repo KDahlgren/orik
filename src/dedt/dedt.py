@@ -25,20 +25,24 @@ import inspect, os, string, sqlite3, sys
 
 # ------------------------------------------------------ #
 # import sibling packages HERE!!!
-sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+if not os.path.abspath( __file__ + "/../.." ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+if not os.path.abspath( __file__ + "/../translators" ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../translators" ) )
+if not os.path.abspath( __file__ + "/../../negativeWrites" ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../../negativeWrites" ) )
 
-from utils import dumpers, extractors, tools, parseCommandLineInput
+from utils          import dumpers, extractors, tools, parseCommandLineInput
+from translators    import c4_translator, dumpers_c4
 from negativeWrites import negativeWrites
+
 import clockRelation
 import dedalusParser
 import dedalusRewriter
 import provenanceRewriter
 import Fact, Rule
 
-packagePath2  = os.path.abspath( __file__ + "/translators" )
-sys.path.append( packagePath2 )
 
-from translators import c4_translator, dumpers_c4, pydatalog_translator
 # ------------------------------------------------------ #
 
 #############
@@ -229,7 +233,7 @@ def rewrite( ruleMeta, cursor ) :
   dedalusRewriter.rewriteDedalus( cursor )
 
   # negative writes
-  #negativeWrites.negativeWrites( cursor )
+  negativeWrites( cursor )
 
   # add provenance rules
   provenanceRewriter.rewriteProvenance( ruleMeta, cursor )

@@ -9,8 +9,8 @@ import inspect, os, sys
 
 # ------------------------------------------------------ #
 # import sibling packages HERE!!!
-packagePath  = os.path.abspath( __file__ + "/../.." )
-sys.path.append( packagePath )
+if not os.path.abspath( __file__ + "/../.." ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
 
 from utils import tools
 # ------------------------------------------------------ #
