@@ -1,0 +1,164 @@
+//original EDB
+//node("a","a")@1 ;
+node("a","b")@1 ;
+node("a","c")@1 ;
+node("b","a")@1 ;
+node("b","b")@1 ;
+node("b","c")@1 ;
+node("c","a")@1 ;
+node("c","b")@1 ;
+node("c","c")@1 ;
+bcast("a","hello")@1 ;
+
+//EDB dm complement
+not_node_dm_log( "couldbeshit", "couldbeshit")@1 ;
+//not_node_dm_log("a","b")@1 ;
+//not_node_dm_log("a","c")@1 ;
+//not_node_dm_log("b","a")@1 ;
+//not_node_dm_log("b","b")@1 ;
+//not_node_dm_log("b","c")@1 ;
+//not_node_dm_log("c","a")@1 ;
+//not_node_dm_log("c","b")@1 ;
+//not_node_dm_log("c","c")@1 ;
+not_node_dm_log(X,Y)@next :- not_node_dm_log(X,Y) ;
+
+//EDB dm complement
+//not_bcast_dm_log( "couldbeshit", "nothello")@1 ;
+not_bcast_dm_log( "a", "hello", 2 ) ;
+not_bcast_dm_log( "a", "hello", 3 ) ;
+not_bcast_dm_log( "a", "hello", 4 ) ;
+not_bcast_dm_log( "a", "hello", 5 ) ;
+not_bcast_dm_log( "b", "hello", 1 ) ;
+not_bcast_dm_log( "b", "hello", 2 ) ;
+not_bcast_dm_log( "b", "hello", 3 ) ;
+not_bcast_dm_log( "b", "hello", 4 ) ;
+not_bcast_dm_log( "b", "hello", 5 ) ;
+not_bcast_dm_log( "c", "hello", 1 ) ;
+not_bcast_dm_log( "c", "hello", 2 ) ;
+not_bcast_dm_log( "c", "hello", 3 ) ;
+not_bcast_dm_log( "c", "hello", 4 ) ;
+not_bcast_dm_log( "c", "hello", 5 ) ;
+//not_bcast_dm_log(X,Y)@next :- not_bcast_dm_log(X,Y) ;
+
+//IDB dm complement
+not_node_dm_missing_log( "couldbeshit", "couldbeshit")@1 ;
+//not_node_dm_missing_log("a","b")@1 ;
+//not_node_dm_missing_log("a","c")@1 ;
+//not_node_dm_missing_log("b","a")@1 ;
+//not_node_dm_missing_log("b","b")@1 ;
+//not_node_dm_missing_log("b","c")@1 ;
+//not_node_dm_missing_log("c","a")@1 ;
+//not_node_dm_missing_log("c","b")@1 ;
+//not_node_dm_missing_log("c","c")@1 ;
+not_node_dm_missing_log(X,Y)@next :- not_node_dm_missing_log(X,Y) ;
+
+//EDB regular rule complement
+not_bcast_pre( "a", "hello", 2 ) ;
+not_bcast_pre( "a", "hello", 3 ) ;
+not_bcast_pre( "a", "hello", 4 ) ;
+not_bcast_pre( "a", "hello", 5 ) ;
+not_bcast_pre( "b", "hello", 1 ) ;
+not_bcast_pre( "b", "hello", 2 ) ;
+not_bcast_pre( "b", "hello", 3 ) ;
+not_bcast_pre( "b", "hello", 4 ) ;
+not_bcast_pre( "b", "hello", 5 ) ;
+not_bcast_pre( "c", "hello", 1 ) ;
+not_bcast_pre( "c", "hello", 2 ) ;
+not_bcast_pre( "c", "hello", 3 ) ;
+not_bcast_pre( "c", "hello", 4 ) ;
+not_bcast_pre( "c", "hello", 5 ) ;
+
+//dm filler triggers
+dm_missing_log_dom_x( "couldbeshit")@1 ;
+dm_missing_log_dom_a( "couldbeshit")@1 ;
+dm_missing_log_dom_pl( "couldbeshit")@1 ;
+//dm_missing_log_dom_x("a")@1 ;
+//dm_missing_log_dom_x("b")@1 ;
+//dm_missing_log_dom_x("c")@1 ;
+//dm_missing_log_dom_a("a")@1 ;
+//dm_missing_log_dom_a("b")@1 ;
+//dm_missing_log_dom_a("c")@1 ;
+//dm_missing_log_dom_pl("a")@1 ;
+//dm_missing_log_dom_pl("b")@1 ;
+//dm_missing_log_dom_pl("c")@1 ;
+dm_missing_log_dom_x(X)@next :- dm_missing_log_dom_x(X) ;
+dm_missing_log_dom_a(X)@next :- dm_missing_log_dom_a(X) ;
+dm_missing_log_dom_pl(X)@next :- dm_missing_log_dom_pl(X) ;
+
+//dm filler triggers
+dm_missing_log_dom_node( "couldbeshit")@1 ;
+dm_missing_log_dom_node1( "couldbeshit")@1 ;
+dm_missing_log_dom_node2( "couldbeshit")@1 ;
+dm_missing_log_dom_pload( "couldbeshit")@1 ;
+//dm_log_dom_node("a")@1 ;
+//dm_log_dom_node("b")@1 ;
+//dm_log_dom_node("c")@1 ;
+//dm_log_dom_node1("a")@1 ;
+//dm_log_dom_node1("b")@1 ;
+//dm_log_dom_node1("c")@1 ;
+//dm_log_dom_node2("a")@1 ;
+//dm_log_dom_node2("b")@1 ;
+//dm_log_dom_node2("c")@1 ;
+//dm_log_dom_pload("a")@1 ;
+//dm_log_dom_pload("b")@1 ;
+//dm_log_dom_pload("c")@1 ;
+dm_log_dom_node(X)@next :- dm_log_dom_node(X) ;
+dm_log_dom_node1(X)@next :- dm_log_dom_node1(X) ;
+dm_log_dom_node2(X)@next :- dm_log_dom_node2(X) ;
+dm_log_dom_pload(X)@next :- dm_log_dom_pload(X) ;
+
+//original rules
+node(Node,Neighbor)@next :- node(Node,Neighbor) ;
+log(Node,Pload)@next :- log(Node,Pload) ;
+log(Node2,Pload)@async :- bcast(Node1,Pload),node(Node1,Node2) ;
+log(Node,Pload) :- bcast(Node,Pload) ;
+missing_log(A,Pl) :- log(X,Pl),node(X,A), not_log(A,Pl) ;
+pre(X,Pl) :- log(X,Pl), not_bcast_pre(X,Pl)@1 ;
+post(X,Pl) :- log(X,Pl), not_missing_log(V,Pl) ; // V is for 'var' b/c not handling wildcards correctly?
+
+//missing_log demorgans
+dm_missing_log(A,Pl,X) :-  log(A,Pl),dm_missing_log_dom_x(X) ;
+dm_missing_log(A,Pl,X) :-  not_log(X,Pl),dm_missing_log_dom_a(A) ;
+dm_missing_log(A,Pl,X) :-  not_node_dm_missing_log(X,A),dm_missing_log_dom_pl(Pl) ;
+not_missing_log(A,Pl) :- dm_missing_log(A,Pl,X);
+
+//log demorgans
+//dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node1,Pload), not_bcast_dm_log(Node,Pload), not_log(Node,Pload),dm_log_dom_node2(Node2) ;
+//dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node1,Pload), not_bcast_dm_log(Node,Pload), dm_log_dom_node2(Node2) ;
+//dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node1,Pload), not_log(Node,Pload), dm_log_dom_node2(Node2) ;
+//dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node1,Pload), dm_log_dom_node(Node), dm_log_dom_node2(Node2) ;
+//dm_log(Node1,Pload,Node,Node2) :-  not_node_dm_log(Node1,Node2), not_bcast_dm_log(Node,Pload), not_log(Node,Pload) ;
+//dm_log(Node1,Pload,Node,Node2) :-  not_node_dm_log(Node1,Node2), not_bcast_dm_log(Node,Pload) ;
+//dm_log(Node1,Pload,Node,Node2) :-  not_node_dm_log(Node1,Node2), not_log(Node,Pload), ;
+//dm_log(Node1,Pload,Node,Node2) :-  not_node_dm_log(Node1,Node2), dm_log_dom_node(Node), dm_log_dom_pload(Pload) ;
+//dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node,Pload), not_log(Node,Pload),dm_log_dom_node1(Node1), dm_log_dom_node2(Node2) ;
+//dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node,Pload),dm_log_dom_node1(Node1), dm_log_dom_node2(Node2) ;
+//dm_log(Node1,Pload,Node,Node2) :-  not_log(Node,Pload),dm_log_dom_node1(Node1), dm_log_dom_node2(Node2) ;
+//not_log(Node,Pload) :- dm_log(Node1,Pload,Node,Node2);
+
+dm_missing_log_dom_x("thisisastr")@1 ;
+dm_missing_log_dom_a("thisisastr")@1 ;
+dm_missing_log_dom_pl("thisisastr")@1 ;
+dm_missing_log_dom_x(X)@next :- dm_missing_log_dom_x(X) ;
+dm_missing_log_dom_a(X)@next :- dm_missing_log_dom_a(X) ;
+dm_missing_log_dom_pl(X)@next :- dm_missing_log_dom_pl(X) ;
+dm_log_dom_node("thisisastr")@1 ;
+dm_log_dom_node1("thisisastr")@1 ;
+dm_log_dom_node2("thisisastr")@1 ;
+dm_log_dom_pload("thisisastr")@1 ;
+dm_log_dom_node(X)@next :- dm_log_dom_node(X) ;
+dm_log_dom_node1(X)@next :- dm_log_dom_node1(X) ;
+dm_log_dom_node2(X)@next :- dm_log_dom_node2(X) ;
+dm_log_dom_pload(X)@next :- dm_log_dom_pload(X) ;
+dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node1,Pload), not_bcast_dm_log(Node,Pload), not_log(Node,Pload),dm_log_dom_node2(Node2),Node2=="thisisastr" ;
+dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node1,Pload), not_bcast_dm_log(Node,Pload), dm_log_dom_node2(Node2),Node2=="thisisastr" ;
+dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node1,Pload), not_log(Node,Pload), dm_log_dom_node2(Node2),Node2=="thisisastr" ;
+dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node1,Pload), dm_log_dom_node(Node), dm_log_dom_node2(Node2),Node=="thisisastr",Node2=="thisisastr" ;
+dm_log(Node1,Pload,Node,Node2) :-  not_node_log(Node1,Node2), not_bcast_dm_log(Node,Pload), not_log(Node,Pload) ;
+dm_log(Node1,Pload,Node,Node2) :-  not_node_log(Node1,Node2), not_bcast_dm_log(Node,Pload) ;
+dm_log(Node1,Pload,Node,Node2) :-  not_node_log(Node1,Node2), not_log(Node,Pload), ;
+dm_log(Node1,Pload,Node,Node2) :-  not_node_log(Node1,Node2), dm_log_dom_node(Node), dm_log_dom_pload(Pload), Node=="thisisastr", Pload=="thisisastr" ;
+dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node,Pload), not_log(Node,Pload),dm_log_dom_node1(Node1), dm_log_dom_node2(Node2), Node1=="thisisastr",Node2=="thisisastr" ;
+dm_log(Node1,Pload,Node,Node2) :-  not_bcast_dm_log(Node,Pload),dm_log_dom_node1(Node1), dm_log_dom_node2(Node2), Node1=="thisisastr",Node2=="thisisastr" ;
+dm_log(Node1,Pload,Node,Node2) :-  not_log(Node,Pload),dm_log_dom_node1(Node1), dm_log_dom_node2(Node2), Node1=="thisisastr",Node2=="thisisastr" ; ;
+not_log(Node,Pload) :- dm_log(Node1,Pload,Node,Node2);
