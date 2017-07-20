@@ -106,6 +106,14 @@ def getConfig( section, option, dataType ) :
 def getID() :
   return "".join( random.choice('abcdefghijklmnopqrstuvwxyz') for i in range(16) )
 
+####################
+#  GET ID UPPER 4  #
+####################
+# input nothing
+# output random 4 char upper case alphanumeric id
+def getID_4() :
+  return "".join( random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ') for i in range(4) )
+
 #########################
 #  GET RANDOM ATT NAME  #
 #########################

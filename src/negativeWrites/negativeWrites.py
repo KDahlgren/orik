@@ -32,9 +32,7 @@ def negativeWrites( cursor ) :
   if NEGATIVEWRITES_DEBUG :
     print " ... running negative writes ..."
 
-  return None
-
-  setNegativeRules(   cursor )
+  setNegativeRules( cursor )
 
   # dump to test
   if NEGATIVEWRITES_DEBUG :
@@ -56,7 +54,7 @@ def setNegativeRules( cursor ) :
   # ------------------------------------------------- #
   # get all negated subgoals
 
-  # get all subgoals with additional arguments
+  # get all rules and subgoals with negation info (argName)
   cursor.execute( "SELECT Rule.rid, Subgoals.sid, subgoalName, argName FROM Rule, Subgoals, SubgoalAddArgs WHERE Rule.rid==Subgoals.rid AND Rule.rid== SubgoalAddArgs.rid AND Subgoals.sid== SubgoalAddArgs.sid" )
   data = cursor.fetchall()
   data = tools.toAscii_multiList( data )
@@ -88,13 +86,13 @@ def setNegativeRules( cursor ) :
   # generate additional new rules per negated subgoal 
   # rules via DeMorgan's Law
 
-  dm_Rules_all = doDeMorgans( negatedRulesMap, cursor )
+  doDeMorgans( negatedRulesMap, cursor )
 
   # ------------------------------------------------- #
   # replace negated subgoal names in original rules 
   # with positive subgoals prefixed with 'not_'
 
-  replaceNegSubgoals( cursor )
+  #replaceNegSubgoals( cursor )
 
   # ------------------------------------------------- #
 
@@ -365,40 +363,73 @@ def setNewRules( ruleNameToNegFmlaStr_simplified_map, predToID_perRule_map, curs
   if NEGATIVEWRITES_DEBUG :
     print " ... running set new rules ..."
 
-  # each negated rule spawns 1 or more new rules, depending upon number of disjuncts
-  # each clause corresponds to a new rule
+  # -------------------------------------------------------------------- #
+  # each negated rule spawns 1 or more new rules, depending upon number of disjuncts.
+  # each clause corresponds to a new rule.
   for ruleName in ruleNameToNegFmlaStr_simplified_map :
-
+ 
+    # -------------------------------------------------------------------- #
     # only add new rules for negated IDBs
     if not ruleNameToNegFmlaStr_simplified_map[ ruleName ] :
       continue
 
-    newName     = "dm_" + ruleName
-    newGoalAtts = [] # populate with all variables appearing in all subgoals
-    newRIDs     = []
+    # -------------------------------------------------------------------- #
+    # initialize local data collection structures
+    newName       = "not_" + ruleName
+    newGoalAtts   = [] # populate with a uniform set of variables and propogate the set among all DM rules.
+    newRIDs       = [] # list of the rids for the new DM rules.
+    goalAttMapper = {} # maintain a consistent set of goal attribute strings across all DM rules.
 
-    # get clauses for this rule
+    # -------------------------------------------------------------------- #
+    # populate goal attribute mapper with uniform attribute strings.
+
+    # get an rid for this rule
+    cursor.execute( "SELECT rid FROM Rule WHERE goalName='" + ruleName + "'" )
+    ridList   = cursor.fetchall()
+    ridList   = tools.toAscii_list( ridList )
+    pickedRID = ridList[0]
+
+    # get attribute list
+    cursor.execute( "SELECT attID,attName FROM GoalAtt WHERE rid='" + pickedRID + "'" )
+    origAttList = cursor.fetchall()
+    origAttList = tools.toAscii_multiList( origAttList )
+
+    # fill goalAttMapper with attID : uniform string
+    for att in origAttList :
+      attID = att[0]
+      goalAttMapper[ attID ] = "A" + str( attID )
+
+    # -------------------------------------------------------------------- #
+    # get all clauses for this rule
     negated_simplified_fmla_str = str( ruleNameToNegFmlaStr_simplified_map[ ruleName ] )
     negated_simplified_fmla_str = negated_simplified_fmla_str.translate( None, string.whitespace)
     negated_simplified_fmla_str = negated_simplified_fmla_str.replace( "(", "" )
     negated_simplified_fmla_str = negated_simplified_fmla_str.replace( ")", "" )
     clauses                     = negated_simplified_fmla_str.split( "|" )
 
-    # get pred ID mapping for this rule
+    # -------------------------------------------------------------------- #
+    # get predicate (subgoal) ID mapping for this rule
     predMap = predToID_perRule_map[ ruleName ]
 
-    # spawn one new dm_ rule per clause
+    # -------------------------------------------------------------------- #
+    # spawn one new not_ rule per clause
     for c in clauses :
+
+      # register id for new rule
       newRID = tools.getID()
       newRIDs.append( newRID )
+
+      # grab the list of literals
       literalList = c.split( "&" )
+
+      # iterate over literal list to construct the string representation
       for literal in literalList :
         if "~" in literal :
           predicate = literal.replace( "~", "" )
-          addArg = "notin"
+          addArg    = "notin"
         else :
           predicate = literal
-          addArg = None
+          addArg    = None
 
         predData  = predMap[ predicate ]
         rid       = predData[0]
@@ -406,11 +437,12 @@ def setNewRules( ruleNameToNegFmlaStr_simplified_map, predToID_perRule_map, curs
         sid       = predData[1][1]
 
         #print "orig rule: " + dumpers.reconstructRule( rid, cursor )
-        origRule = Rule.Rule( rid, cursor )
-        origRule_typeMap = origRule.getAllAttTypes()
+        origRule             = Rule.Rule( rid, cursor )
+        origRule_typeMap     = origRule.getAllAttTypes()
+        origRule_goalAttList = origRule.getGoalAttList()
 
         # -------------------------------------------- #
-        # reconstruct subgoal
+        # get subgoal info
 
         # get name and time arg
         cursor.execute( "SELECT subgoalName,subgoalTimeArg FROM Subgoals WHERE rid='" + rid + "' AND sid='" + sid + "'"  )
@@ -423,15 +455,6 @@ def setNewRules( ruleNameToNegFmlaStr_simplified_map, predToID_perRule_map, curs
         cursor.execute( "SELECT attID,attName,attType FROM SubgoalAtt WHERE rid='" + rid + "' AND sid='" + sid + "'" )
         subgoalAtts = cursor.fetchall()
         subgoalAtts = tools.toAscii_multiList( subgoalAtts )
-
-        #print "------------------------"
-        #print "c = " + str( c ) + ", literal = " + str( literal )
-        #print "subgoalAtts = " + str( subgoalAtts )
-        # get subgoal additional arguments
-        #cursor.execute( "SELECT argName FROM SubgoalAddArgs WHERE rid='" + rid + "' AND sid='" + sid + "'" )
-        #addArg = cursor.fetchone()
-        #if addArg :
-        #  addArg = tools.toAscii_str( addArg )
 
         # -------------------------------------------- #
         # save subgoal with the rid of the new rule
@@ -449,25 +472,45 @@ def setNewRules( ruleNameToNegFmlaStr_simplified_map, predToID_perRule_map, curs
           attType      = att[2]
           goalAttNames = [ x[0] for x in newGoalAtts ]
 
-          #print "+++"
-          #print "att         = " + str( att )
-          #print "newGoalAtts = " + str( newGoalAtts )
+          # ----------------------------------------------------- #
+          # check if atts appear in goal atts
+          # if so, get the corresponding attID from goal att list
 
+          goalAttID = None
+          if attName in origRule_goalAttList :
+            goalAttID = origRule_goalAttList.index( attName )
+
+          # ----------------------------------------------------- #
           if attName == "_" :
             pass
 
           if not attType == "UNDEFINEDTYPE" and not attName in goalAttNames :
-            newGoalAtts.append( [ attName, attType ] )
+            newGoalAtts.append( [ goalAttID, attName, attType ] )
 
           elif not attName in goalAttNames :
             if not attType == "UNDEFINEDTYPE" :
-              newGoalAtts.append( [ attName, attType ] )
+              newGoalAtts.append( [ goalAttID, attName, attType ] )
             else :
               attType = origRule_typeMap[ attName ]
-              newGoalAtts.append( [ attName, attType ] )
+              newGoalAtts.append( [ goalAttID, attName, attType ] )
 
-          #print "Inserting (" + newRID + "," + newSID + "," + str(attID) + "," + attName + "," + attType + ")" 
+          # replace with uniform goal att str, if applicable
+          if not goalAttID == None :
+            attName = goalAttMapper[ goalAttID ]
+
+          # insert
           cursor.execute( "INSERT INTO SubgoalAtt VALUES ('" + newRID + "','" + newSID + "','" + str( attID ) + "','" + attName + "','" + attType + "')" )
+          print "completed insert"
+          print "--------------------"
+          print "c = " + str( c )
+          print "origRule : " + dumpers.reconstructRule( rid, cursor )
+          print "subgoalName = " + subgoalName
+          print "subgoalTimeArg = " + subgoalTimeArg
+          print "subgoalAtts = " + str( subgoalAtts )
+          print "origRule_goalAttList = " + str( origRule_goalAttList )
+          print "att = " + str( att )
+          print "goalAttID = " + str( goalAttID )
+          #tools.bp( __name__, inspect.stack()[0][3], "breakhere." )
 
         # save subgoal additional args
         if addArg :
@@ -486,193 +529,17 @@ def setNewRules( ruleNameToNegFmlaStr_simplified_map, predToID_perRule_map, curs
       cursor.execute( "INSERT INTO Rule (rid, goalName, goalTimeArg, rewritten) VALUES ('" + newRID + "','" + newName + "','" + timeArg + "','" + str(rewrittenFlag) + "')" )
 
       # save new goal attributes
-      attID = 0
+      prevInserts = []
       for attData in newGoalAtts :
-        attName = attData[0]
-        attType = attData[1]
-        if not attName == "_" :
-          cursor.execute( "INSERT INTO GoalAtt VALUES ('" + newRID + "','" + str(attID) + "','" + attName + "','" + attType + "')" )
-          attID += 1
+        goalAttID = attData[0]
+        attName   = attData[1]
+        attType   = attData[2]
+        if not attName == "_" and not goalAttID == None and not goalAttID in prevInserts :
+          cursor.execute( "INSERT INTO GoalAtt VALUES ('" + newRID + "','" + str(goalAttID) + "','" + goalAttMapper[goalAttID ] + "','" + attType + "')" )
+          prevInserts.append( goalAttID )
 
-    # -------------------------------------------- #
-    # save necessary equations per goal
-
-    for newRID in newRIDs :
-
-      # get goal att list
-      cursor.execute( "SELECT attID,attName,attType FROM GoalAtt WHERE rid='" + newRID + "'" )
-      goalAttList = cursor.fetchall()
-      goalAttList = tools.toAscii_multiList( goalAttList )
-
-      # get att list derived from all subgoals
-      cursor.execute( "SELECT sid FROM Subgoals WHERE rid='" + newRID + "'" )
-      thisSubgoalList = cursor.fetchall()
-      thisSubgoalList = tools.toAscii_multiList( thisSubgoalList )
-      thisSubgoalList = [ sidArray[0] for sidArray in thisSubgoalList ]
-
-      subgoalAttList = []
-      for sid in thisSubgoalList :
-        cursor.execute( "SELECT attID,attName,attType FROM SubgoalAtt WHERE rid='" + newRID + "' AND sid='" + sid + "'" )
-        data = cursor.fetchall()
-        data = tools.toAscii_multiList( data )
-
-        for att in data :
-          attName = att[1]
-          attType = att[2]
-
-          if not [ attName, attType ] in subgoalAttList :
-            subgoalAttList.append( [ attName, attType ] )
-
-      for attData in goalAttList :
-        appears = False
-        attName = attData[1]
-        attType = attData[2]
-        if not attName == "_" :
-          for sattData in subgoalAttList :
-            sattName = sattData[0]
-            sattType = sattData[1]
-            if attName == sattName :
-              appears = True
-          if not appears :
-            eid = tools.getID()
-            lhsAndOp = attName + "=="
-            if attType == 'int' :
-              rhs = "9999999999"
-            elif attType == "string" :
-              rhs = '"thisisastr"'
-            else :
-              attType = origRule_typeMap[ attName ]
-              if attType == 'int' :
-                rhs = "9999999999"
-              elif attType == "string" :
-                rhs = '"thisisastr"'
-
-            if attType == "UNDEFINED" or attType == "None":
-              tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : goal attribute '" + attName + "' in rule '" + dumpers.reconstructRule( newRID, cursor ) + "' has unrecognized type '" + attType + "'"  )
-
-            # create equation
-            eqn = lhsAndOp + rhs
-
-            # insert equation
-            cursor.execute( "INSERT INTO Equation VALUES ('" + newRID + "','" + eid + "','" + eqn + "')" )
-
-            # add dom table to control range of new variable
-            dom_sid            = tools.getID()
-            dom_subgoalName    = newName + "_dom_" + attName.lower()
-            dom_subgoalTimeArg = ""
-            dom_subgoalAttID   = 0
-            dom_subgoalAttName = attName
-            dom_subgoalAttType = attType
-            #print "dom_subgoalAttType = " + dom_subgoalAttType
-            cursor.execute( "INSERT INTO Subgoals   VALUES ('" + newRID + "','" + dom_sid + "','" + dom_subgoalName + "','" + dom_subgoalTimeArg + "')" )
-            cursor.execute( "INSERT INTO SubgoalAtt VALUES ('" + newRID + "','" + dom_sid + "','" + str( dom_subgoalAttID ) + "','" + dom_subgoalAttName + "','" + dom_subgoalAttType + "')" )
-            dom_fid         = tools.getID()
-            dom_factTimeArg = ""
-            cursor.execute( "INSERT INTO Fact       VALUES ('" + dom_fid + "','" + dom_subgoalName + "','" + str( dom_factTimeArg ) + "')" )
-            dom_factAttID   = 0
-            dom_factAttName = rhs
-            dom_factAttType = attType
-            #print "dom_factAttType = " + dom_factAttType
-            cursor.execute( "INSERT INTO FactAtt    VALUES ('" + dom_fid + "','" + str( dom_factAttID ) + "','" + dom_factAttName + "','" + dom_factAttType + "')"  )
 
     # --------------------------------------------------------------------- #
-    # add not_R :- dm_R for all rules associated with a negative write
-
-    notName = "not_" + ruleName
-    notRID  = tools.getID()
-
-    # get goal atts for original rule
-    cursor.execute( "SELECT rid FROM Rule WHERE goalName='" + ruleName + "'" )
-    rid = cursor.fetchone()
-    rid = tools.toAscii_str( rid )
-
-    cursor.execute( "SELECT attID,attName,attType FROM GoalAtt WHERE rid='" + rid + "'" )
-    goalAttList_orig = cursor.fetchall()
-    goalAttList_orig = tools.toAscii_multiList( goalAttList_orig )
-
-    # get goal att list for DM rules
-    cursor.execute( "SELECT attID,attName,attType FROM GoalAtt WHERE rid='" + newRID[0] + "'" )
-    goalAttList_dm = cursor.fetchall()
-    goalAttList_dm = tools.toAscii_multiList( goalAttList )
-
-    # ==================== #
-    #   create not_ rule   #
-    # ==================== #
-
-    # RULE : insert notRID, notName, timeArg, and rewritten
-    timeArg   = ""
-    rewritten = True
-    cursor.execute( "INSERT INTO Rule VALUES ('" + notRID + "','" + notName + "','" + timeArg + "','" + str( rewritten ) + "')" )
-
-    # GOALATT : insert goal attributes
-    for att in goalAttList_orig : 
-      attID   = att[0]
-      attName = att[1]
-      attType = att[2]
-      cursor.execute( "INSERT INTO GoalAtt VALUES ('" + notRID + "','" + str( attID ) + "','" + attName + "','" + attType + "')" )
-
-    # SUBGOALS : insert subgoal info
-    dm_sid         = tools.getID()
-    subgoalName    = "dm_" + ruleName
-    subgoalTimeArg = ""
-    cursor.execute( "INSERT INTO Subgoals VALUES ('" + notRID + "','" + dm_sid + "','" + subgoalName + "','" + subgoalTimeArg + "')" )
-
-    # SUBGOALATT : insert subgoal attributes
-    for att in goalAttList_dm :
-      attID   = att[0]
-      attName = att[1]
-      attType = att[2]
-      cursor.execute( "INSERT INTO SubgoalAtt VALUES ('" + notRID + "','" + dm_sid + "','" + str( attID ) + "','" + attName + "','" + attType + "')" )
-
-    # EQUATIONS : insert equations
-    for attData in goalAttList_orig :
-      appears = False
-      attName = attData[1]
-      attType = attData[2]
-
-      attName = cleanAttName( attName )
-
-      # check if att appears in the demorgans rule head.
-      for dmattData in goalAttList_dm :
-        dmattName = dmattData[1]
-        dmattType = dmattData[2]
-
-        dmattName = cleanAttName( dmattName )
-
-        if attName == dmattName :
-          appears = True
-
-      if not appears :
-        eid = tools.getID()
-        eqn = attName + "=="
-        if attType == 'int' :
-          eqn += "9999999999"
-        else :
-          #eqn += '"None"'
-          eqn += '"thisisastr"'
-
-        cursor.execute( "INSERT INTO Equation VALUES ('" + notRID + "','" + eid + "','" + eqn + "')" )
-
-        # add dom table to control range of new variable
-        dom_sid            = tools.getID()
-        dom_subgoalName    = "dom_" + attName.lower() + "_" + notRID
-        dom_subgoalTimeArg = ""
-        cursor.execute( "INSERT INTO Subgoals VALUES ('" + notRID + "','" + dom_sid + "','" + dom_subgoalName + "','" + dom_subgoalTimeArg + "')" )
-
-    # --------------------------------------------------------------------- #
-
-
-####################
-#  CLEAN ATT NAME  #
-####################
-# TODO : this is extremely hacky! need to generalize to
-# different formula cases!
-def cleanAttName( attName ) :
-  for op in arithOps :
-    if op in attName :
-      attName = attName.split( op )
-      attName = attName[0]
-  return attName
 
 
 #########
