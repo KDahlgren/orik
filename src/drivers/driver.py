@@ -21,7 +21,7 @@ import Core
 if not os.path.abspath( __file__ + "/../.." ) in sys.path :
   sys.path.append( os.path.abspath( __file__ + "/../.." ) )
 
-from utils        import parseCommandLineInput, tools
+from utils import parseCommandLineInput, tools
 
 # **************************************** #
 

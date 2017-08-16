@@ -11,7 +11,7 @@ from ctypes import *
 from types  import *
 
 
-DEBUG = True
+DEBUG = False
 
 class C4Wrapper( object ) :
 
