@@ -106,16 +106,16 @@ def setNegativeRules( cursor ) :
     nameRIDs = getRIDsFromName( name, cursor )
 
     # rewrite original rules to shift function calls in goal atts to eqns in body
-    shiftFunctionCalls( nameRIDs, cursor )
+    shiftArithOps( nameRIDs, cursor )
+
+    dumpers.programDump(  cursor )
+    tools.bp( __name__, inspect.stack()[0][3], "blah" )
 
     # rewrite original rules with uniform universal attribute variables
     setUniformUniversalAttributes( nameRIDs, cursor )
 
     # apply the demorgan's rewriting scheme to the rule set.
     applyDeMorgans( parentRID, nameRIDs, cursor )
-
-    dumpers.programDump(  cursor )
-    tools.bp( __name__, inspect.stack()[0][3], "blah" )
 
     # add domain subgoals
     addDomainSubgoals( nameRIDs, cursor )
@@ -134,6 +134,174 @@ def setNegativeRules( cursor ) :
   # return accordingly.
   else :
     return
+
+
+#####################
+#  SHIFT ARITH OPS  #
+#####################
+# given list of rids for IDB rule set to be negated.
+# for rules with arithmetic operations in the head,
+# rewrite the rules into a series of separate, but sematically
+# equivalent rules.
+def shiftArithOps( nameRIDs, cursor ) :
+
+  # for each rule, check if goal contains an arithmetic operation
+  for rid in nameRIDs :
+    cursor.execute( "SELECT attID,attName FROM GoalAtt WHERE rid=='" + rid + "'" )
+    attData = cursor.fetchall()
+    attData = tools.toAscii_multiList( attData )
+
+    for att in attData :
+      attID   = att[0]
+      attName = att[1]
+
+      if containsOp( attName ) :
+
+        # compose raw attribute with function call 
+        # (only supporting arithmetic ops at the moment)
+        decomposedAttName = getOp( attName )  # [ lhs, op, rhs ]
+        lhs = decomposedAttName[0]
+        op  = decomposedAttName[1]
+        rhs = decomposedAttName[2]
+
+        # build substitute goal attribute variable
+        newAttName = lhs + "0"
+
+        # replace the goal attribute variable
+        replaceGoalAtt( newAttName, attID, rid, cursor )
+
+        # rewrite subgoals containing the universal variable included in the equation
+        # with unique subgoals referencing new IDB definitions.
+        arithOpSubgoalRewrites( rid, newAttName, lhs, attName, cursor )
+
+        dumpers.programDump(  cursor )
+        tools.bp( __name__, inspect.stack()[0][3], "blah" )
+
+
+###############################
+#  ARITH OP SUBGOAL REWRITES  #
+###############################
+# given the id for one of the rules targeted for NegativeWrites,
+# the string replacing the arithmetic expression in teh goal,
+# and the universal attribute appearing in an arithmetic expression
+# in the head.
+# replace the subgoals containing the universal attribute with new subgoals
+# such that the new subgoals have unique names and the new replacement attribute 
+# replace the universal attribute in the subgoal.
+#
+def arithOpSubgoalRewrites( rid, newAttName, oldExprAtt, oldExpr, cursor ) :
+
+  # get subgoal info
+  cursor.execute( "SELECT Subgoals.sid,Subgoals.subgoalName,attID FROM Subgoals,SubgoalAtt WHERE Subgoals.rid=='" + rid + "' AND Subgoals.rid==SubgoalAtt.rid AND attName=='" + oldExprAtt + "'" )
+  sidData = cursor.fetchall()
+  sidData = tools.toAscii_multiList( sidData )
+
+  # ............................................. #
+  # remove duplicates
+  tmp = []
+  for sid in sidData :
+    print sid
+    if not sid in tmp :
+      tmp.append( sid )
+  sidData = tmp
+  # ............................................. #
+
+  for data in sidData :
+    sid         = data[0]
+    subgoalName = data[1]
+    attID       = data[2]
+
+    # --------------------------------------------- #
+    # replace subgoal name with unique new name 
+    # connecting to another set of IDB rule(s)
+
+    # get rule name for this rid
+    cursor.execute( "SELECT goalName FROM Rule WHERE rid=='" + rid + "'" )
+    ruleName = cursor.fetchone()
+    ruleName = tools.toAscii_str( ruleName )
+
+    # generate new unique subgoal name
+    newSubgoalName = ruleName + "_" + subgoalName + "_" + tools.getID_4()
+
+    cursor.execute( "UPDATE Subgoals SET subgoalName=='" + newSubgoalName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+
+    # --------------------------------------------- #
+    # replace universal attribute in subgoals
+    cursor.execute( "UPDATE SubgoalAtt SET attName=='" + newAttName + "' WHERE rid=='" + rid + "' AND attID=='" + str( attID ) + "' AND sid=='" + sid + "'" )
+
+    # --------------------------------------------- #
+    # build new subgoal IDB rules
+    arithOpSubgoalIDBWrites( rid, sid, newSubgoalName, subgoalName, oldExprAtt, oldExpr, attID, cursor )
+
+
+#################################
+#  ARITH OP SUBGOAL IDB WRITES  #
+#################################
+def arithOpSubgoalIDBWrites( oldRID, targetSID, newSubgoalName, oldSubgoalName, oldExprAtt, oldExpr, attID, cursor) :
+
+  # --------------------------------------------- #
+  # generate new rule ID
+  newRID = tools.getID()
+
+  # --------------------------------------------- #
+  # insert new rule data
+  rid         = newRID
+  goalName    = newSubgoalName
+  goalTimeArg = ""
+  rewritten   = "False"
+  cursor.execute( "INSERT INTO Rule (rid, goalName, goalTimeArg, rewritten) VALUES ('" + rid + "','" + goalName + "','" + goalTimeArg + "','" + rewritten + "')" )
+
+  # --------------------------------------------- #
+  # insert new goal attribute data
+
+  # get attribute data from original subgoal
+  cursor.execute( "SELECT attID,attName,attType FROM SubgoalAtt WHERE rid=='" + oldRID + "' AND sid=='" + targetSID + "'" )
+  data = cursor.fetchall()
+  data = tools.toAscii_multiList( data )
+
+  # ............................................. #
+  # define the att list for the only subgoal 
+  # in the new rule body and replace new goal
+  # att str with old goal att str
+
+  subgoalAttData = data
+
+  subgoalAttData[ attID ][1] = oldExprAtt
+
+  # ............................................. #
+  # define goal att list and 
+  # replace old arithmetic expression
+
+  # need this shit to prevent mutating subgoalAttData
+  goalAttData = []
+  for thing in data :
+    thisThing = [ i for i in thing ]
+    goalAttData.append( thisThing )
+
+  goalAttData[attID][1] = oldExpr
+
+  # ............................................. #
+  # perform inserts
+
+  # goal attributes
+  for att in goalAttData :
+    attID   = att[0]
+    attName = att[1]
+    attType = att[2]
+    cursor.execute( "INSERT INTO GoalAtt (rid, attID, attName, attType) VALUES ('" + rid + "','" + str( attID ) + "','" + attName + "','" + attType + "')" )
+
+  # subgoal
+  sid            = tools.getID()
+  subgoalName    = oldSubgoalName
+  subgoalTimeArg = ""
+  cursor.execute( "INSERT INTO Subgoals (rid, sid, subgoalName, subgoalTimeArg) VALUES ('" + rid + "','" + sid + "','" + subgoalName + "','" + subgoalTimeArg + "')" )
+
+  # subgoal attributes
+  for att in subgoalAttData :
+    attID   = att[0]
+    attName = att[1]
+    attType = att[2]
+    cursor.execute( "INSERT INTO SubgoalAtt (rid, sid, attID, attName, attType) VALUES ('" + rid + "','" + sid + "','" + str( attID ) + "','" + attName + "','" + attType + "')" )
 
 
 #########################

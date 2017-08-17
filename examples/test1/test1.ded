@@ -1,0 +1,9 @@
+b("str","str1")@1 ;
+c("str", "str")@1 ;
+
+a(X,Y) :- b(X,Y),c(X,_) ;
+a(X,Y)@next :- b(X,Y) ;
+
+pre(X,Y) :- a(X,Y) ;
+post(X,Y) :- a(X,Y) ;
+
