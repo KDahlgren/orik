@@ -115,7 +115,8 @@ class Rule :
         subgoalName = tools.toAscii_str( subgoalName )
 
         # get subgoal attribute list
-        subAtts = self.cursor.execute( "SELECT attName FROM SubgoalAtt WHERE rid == '" + self.rid + "' AND sid == '" + sid + "'" )
+        self.cursor.execute( "SELECT attName FROM SubgoalAtt WHERE rid == '" + self.rid + "' AND sid == '" + sid + "'" )
+        subAtts = self.cursor.fetchall()
         subAtts = tools.toAscii_list( subAtts )
 
         # get subgoal time arg
@@ -167,6 +168,8 @@ class Rule :
     subgoalList = ""
     currSubgoal = ""
 
+    #print "rule: " + dumpers.reconstructRule( self.rid, self.cursor )
+
     # iterate over sids
     for k in range(0,len(subIDList)) :
       sid = subIDList[ k ]
@@ -178,8 +181,11 @@ class Rule :
       if not subgoalName == None :
         subgoalName = tools.toAscii_str( subgoalName )
 
+        #print ">>> subgoalName = " + subgoalName
+
         # get subgoal attribute list
         subAtts = self.cursor.execute( "SELECT attName FROM SubgoalAtt WHERE rid == '" + self.rid + "' AND sid == '" + sid + "'" )
+        subAtts = self.cursor.fetchall()
         subAtts = tools.toAscii_list( subAtts )
 
         # get subgoal time arg
@@ -346,7 +352,7 @@ class Rule :
   #  SET ATT TYPES  #
   ###################
   # set the types for attributes located within a goal head
-  # if goal corresponds to a fact, consult fact data
+  # if goal corresponds to a fact, consult fact data.
   # else goal is an IDB, so gather types recursively.
   def setAttTypes( self ) :
     head_atts      = self.getGoalAttList()
@@ -354,10 +360,14 @@ class Rule :
     allAttTypeMaps = self.allAttTypeMapsDriver( head_atts, body_str )
 
     #print "thisRule: " + dumpers.reconstructRule( self.rid, self.cursor )
-    #types = [ allAttTypeMaps[key] for key in allAttTypeMaps ]
+    types = [ allAttTypeMaps[key] for key in allAttTypeMaps ]
     #print "allAttTypeMaps = " + str( allAttTypeMaps )
     #if "UNDEFINEDTYPE" in types :
     #  tools.bp( __name__, inspect.stack()[0][3], "allAttTypeMaps = " + str( allAttTypeMaps ) )
+
+    goalName = self.getGoalName()
+    #if "log_log_" in goalName[0:8] and "_log_" in goalName[12:17] :
+    #  tools.bp( __name__, inspect.stack()[0][3], "stuff" )
 
     if DEBUG :
       print "allAttTypeMaps = " + str(allAttTypeMaps) 
@@ -399,13 +409,20 @@ class Rule :
   ###################################
   def completeAttTypeMapsDriver( self ) :
 
+    #print "------------------------------------"
+    #print " running completeAttTypeMapsDriver "
+
     completeAttTypeMap = {}
 
     all_atts              = self.getAllAttList()
     body_str              = self.getSubgoalListStr_noTimeArgs_noAddArgs()
     subgoals_namesAndAtts = self.getInfo_subgoals_namesAndAtts( body_str )
 
+    #print "rule : " + dumpers.reconstructRule( self.rid, self.cursor )
+
     for att in all_atts :
+
+      #print "att = " + att
 
       # ------------------------------------- #
       # easy ones
@@ -418,6 +435,8 @@ class Rule :
         # list of subgoal names containing the attribute 
         # and index at which the attribute appears.
         candSubs = []
+
+        #print "subgoals_namesAndAtts = " + str( subgoals_namesAndAtts )
 
         # get list of subs containing the attribute
         for sub in subgoals_namesAndAtts :
@@ -440,13 +459,18 @@ class Rule :
 
           # =================================================== #
           # prefer facts
+
+          #print "candSubs = " + str( candSubs )
+
           for sub in candSubs :
             subName  = sub[0]
             subattID = sub[1]
 
             if tools.isFact( subName, self.cursor ) :
+              #print " >> rule = " + dumpers.reconstructRule( self.rid, self.cursor )
+              #print "here2"
               completeAttTypeMap[ att ] = self.getFactType( subName, subattID )
-              flag_DoNotExit        = False
+              flag_DoNotExit            = False
               break # break out of candSubs loop
 
           # =================================================== #
@@ -454,15 +478,39 @@ class Rule :
           # under consideration. pick a non-fact subgoal and recurse.
           if flag_DoNotExit :
 
+            #print "candSubs = " + str( candSubs )
+
             # find the first subgoal containing the reference to the hatt attribute
             for sub in candSubs :
               currSubName = sub[0]
               currIndex   = sub[1]
 
+              #print "here2: currSubName = " + currSubName,
+              #print ", currIndex = " + str( currIndex )
               completeAttTypeMap[ att ] = self.allAttTypeMapsHelper( [ self.rid ], [], currSubName, currIndex )
 
+        # ---------------------------------------------------- #
+        # attribute not found in subgoals
         else :
-          tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : rule head contains attribute not appearing in any subgoal: \nUnresolved attribute '" + hatt + "' in the head of rule:\n" + self.display() + "\nAborting..." )
+
+          # check if attribute appears in equation
+          self.cursor.execute( "SELECT eqn FROM Equation WHERE rid=='" + self.rid + "'" )
+          eqnList = self.cursor.fetchall()
+          eqnList = tools.toAscii_list( eqnList )
+
+          flag = False
+          for eqn in eqnList :
+            if att in eqn :
+              flag = True
+
+          # CASE : found att in an eqn
+          if flag :
+            completeAttTypeMap[ att ] = "int"
+            #tools.bp( __name__, inspect.stack()[0][3], "eqnList = " + str( eqnList ) )
+
+          # CASE : could not find att in any subgoals or eqns for this rule
+          else :
+            tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : rule head contains attribute not appearing in any subgoal: \nUnresolved attribute '" + att + "' in the head of rule:\n" + self.display() + "\nAborting..." )
 
     return completeAttTypeMap
 
@@ -570,6 +618,7 @@ class Rule :
             if DEBUG :
               print "subName = " + subName
 
+            #print "here1"
             allAttTypeMaps[ hatt ] = self.getFactType( subName, subattID )
             flag_DoNotExit         = False
             break # break out of candSubs loop
@@ -584,7 +633,16 @@ class Rule :
             currSubName = sub[0]
             currIndex   = sub[1]
 
+            #print "here3."
+            goalName = self.getGoalName()
+            #if "log_log_" in goalName[0:8] and "_log_" in goalName[12:17] :
+            #  print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
+            #  print "rule : " + dumpers.reconstructRule( self.rid, self.cursor )
+            #  print " FINDING ATT TYPES FOR " + self.getGoalName() 
             allAttTypeMaps[ hatt ] = self.allAttTypeMapsHelper( [ self.rid ], [], currSubName, currIndex )
+            #if "log_log_" in goalName[0:8] and "_log_" in goalName[12:17] :
+            #  print " CONCLUSION : allAttTypeMaps[ hatt ] = " + str( allAttTypeMaps[ hatt ] )
+            #  print "___________________________________________"
 
       else :
         tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : rule head contains attribute not appearing in any subgoal: \nUnresolved attribute '" + hatt + "' in the head of rule:\n" + self.display() + "\nAborting..." )
@@ -597,10 +655,9 @@ class Rule :
   ##############################
   def allAttTypeMapsHelper( self, currRIDList, prospectiveRIDList, currSubName, currIndex ) :
 
-    #if self.getGoalName() == "post" :
-    #  print "currRIDList = " + str( currRIDList )
-    #  print "currSubName = " + str( currSubName )
-    #  print "currIndex   = " + str( currIndex )
+    print "currRIDList = " + str( currRIDList )
+    print "currSubName = " + str( currSubName )
+    print "currIndex   = " + str( currIndex )
 
     if DEBUG :
       print "currRIDList = " + str(currRIDList) + "\ncurrSubName = " + str(currSubName) + "\ncurrIndex = " + str(currIndex)
@@ -609,9 +666,43 @@ class Rule :
     # BASE CASE : currSubName is a fact
     # grab data type at index currIndex
     if tools.isFact( currSubName, self.cursor ) :
-      self.cursor.execute( "SELECT attType FROM Fact,FactAtt WHERE Fact.name=='" + currSubName + "' AND FactAtt.attID=='" + str(currIndex) + "'" )
+
+      # clock facts are easy
+      clockSchema = [ 'string', 'string', 'int', 'int' ]
+      if currSubName == "clock" :
+        return clockSchema[ currIndex ]
+
+      # grab all fact ids for this fact subgoal
+      self.cursor.execute( "SELECT fid FROM Fact WHERE Fact.name=='" + currSubName + "'" )
+      fids = self.cursor.fetchall()
+      fids = tools.toAscii_list( fids )
+
+      # grab att type for data at given index
+      self.cursor.execute( "SELECT attType FROM FactAtt WHERE fid=='" + fids[0] + "' AND attID=='" + str( currIndex ) + "'" )
       attType = self.cursor.fetchone()
-      attType = tools.toAscii_str( attType )
+
+      try :
+        attType = tools.toAscii_str( attType )
+      except TypeError :
+        tools.bp( __name__, inspect.stack()[0][3], "shit" )
+
+        attType = "UNDEFINED"
+
+      #self.cursor.execute( "SELECT Fact.fid,name,attID,attName,attType,timeArg FROM Fact,FactAtt WHERE Fact.fid==FactAtt.fid AND Fact.name=='" + currSubName + "'" )
+      #res = self.cursor.fetchall()
+      #res = tools.toAscii_multiList( res )
+      #print ".........................."
+      #print "res:"
+      #for r in res :
+      #  print r
+      #print ".........................."
+
+      #print "+"
+      #print "+ tools.isFact( " + currSubName + ", self.cursor ) = " + str( tools.isFact( currSubName, self.cursor ) ) 
+      #print "+ currSubName = " + currSubName
+      #print "+ currIndex   = " + str( currIndex )
+      #print "+ attType     = " + attType
+      #print "+"
 
       #if self.getGoalName() == "post" :
       #  print "attType = " + attType
@@ -621,8 +712,16 @@ class Rule :
     # --------------------------------------------- #
     # RECURSIVE CASE
     else :
-      print "currSubName = " + currSubName
+      #print "currSubName = " + currSubName
 
+      #goalName = self.getGoalName()
+      #if "log_log_" in goalName[0:8] and "_log_" in goalName[12:17] :
+      #  print "currRIDList = " + str( currRIDList )
+      #  print "currSubName = " + str( currSubName )
+      #  print "currIndex   = " + str( currIndex )
+        #tools.bp( __name__, inspect.stack()[0][3], "stuff" )
+
+      # ..................................... #
       # get list of rids for currSubName.
       self.cursor.execute( "SELECT rid FROM Rule WHERE goalName=='" + currSubName + "'" )
       allRIDs = self.cursor.fetchall()
@@ -630,11 +729,17 @@ class Rule :
 
       prospectiveRIDList.extend( allRIDs )
 
-      print "allRIDs = " + str( allRIDs ), "currRIDList = " + str( currRIDList ), "prospectiveRIDs = " + str( prospectiveRIDList )
+      #print "allRIDs = " + str( allRIDs ), "currRIDList = " + str( currRIDList ), "prospectiveRIDs = " + str( prospectiveRIDList )
 
       if DEBUG :
         print "allRIDs = " + str(allRIDs)
 
+      #print "currSubName = " + currSubName
+      #print "allRIDs     = " + str( allRIDs )
+      #for rid in allRIDs :
+      #  print dumpers.reconstructRule( rid, self.cursor )
+
+      # ..................................... #
       # pick rid not previously considered.
       chosenRID = None
       for i in allRIDs :
@@ -647,15 +752,18 @@ class Rule :
       #print "++++++"
       #print dumpers.reconstructRule( chosenRID, self.cursor )
 
+      # ..................................... #
       # no chosen RID means cannot resolve the attribute to a fact component.
       if not chosenRID :
         tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : Cannot resolve to facts : " + self.display() )
 
+      # ..................................... #
       # recurse over the new rid
       currRIDList.append( chosenRID )
       newSubName = None
       newIndex   = None
 
+      # ..................................... #
       # get string of target attribute in new rule
       self.cursor.execute( "SELECT attName FROM GoalAtt WHERE rid = '" + chosenRID + "'" )
       attList = self.cursor.fetchall()
@@ -663,12 +771,17 @@ class Rule :
       attStr  = attList[ currIndex ]
 
       #print "attStr = " + attStr
+      attStr = self.cleanAttStr( attStr )
 
+      # ..................................... #
       # get first subgoal of chosen rule referencing the target attribute
       self.cursor.execute( "SELECT subgoalName,attID FROM Subgoals,SubgoalAtt WHERE Subgoals.rid=='" + chosenRID + "' AND Subgoals.rid==SubgoalAtt.rid AND Subgoals.sid==SubgoalAtt.sid AND attName=='" + attStr + "'" )
       info = self.cursor.fetchall()
       info = tools.toAscii_multiList( info )
 
+      #print "info = " + str( info )
+
+      # ..................................... #
       # if att doesn't appear in subgoal att list, then check equations
       if info == [] :
         self.cursor.execute( "SELECT eqn FROM Equation WHERE rid='" + chosenRID + "'" )
@@ -677,6 +790,7 @@ class Rule :
 
         #print "eqnList = " + str( eqnList )
 
+        # ..................................... #
         # find eqn with relelvant att
         for eqn_str in eqnList :
           #print "eqn_str = " + eqn_str
@@ -689,10 +803,12 @@ class Rule :
               if rhs == attStr :
                 if tools.isString( lhs ) :
                   return "string"
-                elif tools.isInt( lhs ) :
-                  return "int"
                 else :
-                  tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : unrecognized data type in lhs of eqn : " + eqn_orig + " in rule " + dumpers.reconstructRule( chosenRID, self.cursor ) )
+                  return "int"
+                #elif tools.isInt( lhs ) :
+                #  return "int"
+                #else :
+                #  tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : unrecognized data type in lhs '" + str( lhs ) + "' of eqn : " + eqn_str + " in rule " + dumpers.reconstructRule( chosenRID, self.cursor ) )
 
       #print "goalName    = " + self.getGoalName()
       #print "currRIDLIST = " + str( currRIDList )
@@ -707,7 +823,26 @@ class Rule :
       newSubName = targetSub[0]
       newIndex   = targetSub[1]
 
+      #print "> targetSub  = " + str( targetSub )
+      #print "> newSubName = " + str( newSubName )
+      #print "> newIndex   = " + str( newIndex )
+
+      #print "here1."
       return self.allAttTypeMapsHelper( currRIDList, prospectiveRIDList, newSubName, newIndex )
+
+
+  ###################
+  #  CLEAN ATT STR  #
+  ###################
+  def cleanAttStr( self, attStr ) :
+
+    for op in arithOps :
+      if op in attStr :
+        expr = attStr.split( op )
+        lhs_expr = expr[0]
+        return lhs_expr
+
+    return attStr
 
 
   ###################
@@ -715,22 +850,34 @@ class Rule :
   ###################
   def getFactType( self, factName, attID ) :
 
+    #print "factName = " + factName
+
+    # ....................................... #
+    # clock is easy
     if factName == "clock" :
       typeList = [ 'string', 'string', 'int', 'int' ]
       return typeList[ attID ]
 
+    # ....................................... #
+    # grab all data types for this fact name
+    # at the given attribute ID
     self.cursor.execute( "SELECT attType FROM Fact,FactAtt WHERE name=='" + factName + "' and attID=='" + str(attID) + "' AND Fact.fid==FactAtt.fid" )
     typeList = self.cursor.fetchall()
     typeList = tools.toAscii_list( typeList )
 
+    #print "typeList = " + str( typeList )
+
+    # ...................................... #
+    # sanity check
     # make sure all types are identical
     for t1 in typeList :
       for t2 in typeList :
         if not t1 == t2 :
           tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : data types not uniform for fact declarations of name '" + factName + "' along index attID = " + str(attID) + "\n typeList = " + str(typeList) )
 
+    # ....................................... #
     if len( typeList ) == 0 :
-      tools.bp( __name__, inspect.stack()[0][3], "factName = " + factName )
+      tools.bp( __name__, inspect.stack()[0][3], "factName = " + factName + ", attID = " + str( attID ) )
 
     return typeList[0]
 
@@ -743,7 +890,7 @@ class Rule :
     subname = subNameAndAtts[0]
     subatts = subNameAndAtts[1]
 
-    tools.bp( __name__, inspect.stack()[0][3], "subNameAndAtts = " + str( subNameAndAtts ) )
+    #tools.bp( __name__, inspect.stack()[0][3], "subNameAndAtts = " + str( subNameAndAtts ) )
 
     atts_inRuleBody = subatts
 
@@ -831,8 +978,8 @@ class Rule :
     # otherwise ... 
     finalMapping = []
     for att in attList : # maintains ordering!!!!
-      print "att          = " + str(att)
-      print "attDict[att] = " + str( attDict[att] )
+      #print "att          = " + str(att)
+      #print "attDict[att] = " + str( attDict[att] )
       finalMapping.append( [ att, attDict[att] ] )
 
     return finalMapping
@@ -995,6 +1142,8 @@ class Rule :
   def getInfo_subgoals_namesAndAtts( self, body_str_no_time_args ) :
     subsAndAtts = body_str_no_time_args.split( ")," )
 
+    #print "body_str_no_time_args = " + body_str_no_time_args
+
     # remove parens and commas
     temp_list = []
     for sub in subsAndAtts :
@@ -1077,7 +1226,7 @@ class Rule :
           tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : Type inconsistency between goal and subgoal attribute type declarations: \nIn rule " + dumpers.reconstructRule( self.rid, self.cursor ) + ",\nattribute '" + attName + "' is of type '" + goalTypeMap[ attName ] + " in the goal, but is of type '" + attType + "' in one of the subgoals.\ngoalTypeDump:\n(rid,goalName,attID,attName,attType)\n" + "\n".join([ str(item) for item in goalTypeDump ]) + "\nsubgoalTypeDump:\n(rid,sid,subgoalName,attID,attName,attType)\n" + "\n".join([ str(item) for item in subgoalTypeDump ])  )
 
         if comp == attName :
-          print "attName = " + attName + ", attType = " + attType
+          #print "attName = " + attName + ", attType = " + attType
           return attType
 
     tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : component '" + comp + "' of equation detected in rule '" + dumpers.reconstructRule( self.rid, self.cursor ) + "' has no detected type." )

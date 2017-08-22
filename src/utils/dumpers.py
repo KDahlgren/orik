@@ -56,6 +56,7 @@ def ruleDump( cursor ) :
 
     # get list of attribs in goal
     goalList    = cursor.execute( "SELECT attName FROM GoalAtt WHERE rid == '" + i + "'" )# list of goal atts
+    goalList    = cursor.fetchall()
     goalList    = tools.toAscii_list( goalList )
 
     # get goal time arg
@@ -100,6 +101,7 @@ def ruleDump( cursor ) :
 
         # get subgoal attribute list
         subAtts = cursor.execute( "SELECT attName FROM SubgoalAtt WHERE rid == '" + i + "' AND sid == '" + s + "'" )
+        subAtts = cursor.fetchall()
         subAtts = tools.toAscii_list( subAtts )
 
         # get subgoal time arg
@@ -181,6 +183,7 @@ def factDump( cursor ) :
 
     # get list of attribs in fact
     factList    = cursor.execute( "SELECT attName FROM FactAtt WHERE fid == '" + str(i) + "'" ) # list of fact atts
+    factList    = cursor.fetchall()
     factList    = tools.toAscii_list( factList )
 
     # get fact time arg
@@ -192,6 +195,12 @@ def factDump( cursor ) :
     # convert fact info to pretty string
     newFact.append( factName + "(" )
     for j in range(0,len(factList)) :
+
+      # this should only appear if facts are rewritten in the 
+      # dedalus rewrite phase.
+      if factTimeArg and j==len(factList)-2 :
+        continue
+
       if j < (len(factList) - 1) :
         newFact.append( factList[j] + "," )
       else :
@@ -243,6 +252,7 @@ def reconstructRule( rid, cursor ) :
 
   # get list of attribs in goal
   goalList    = cursor.execute( "SELECT attName FROM GoalAtt WHERE rid == '" + rid + "'" )# list of goal atts
+  goalList    = cursor.fetchall()
   goalList    = tools.toAscii_list( goalList )
 
   # get goal time arg
@@ -291,6 +301,7 @@ def reconstructRule( rid, cursor ) :
 
       # get subgoal attribute list
       subAtts = cursor.execute( "SELECT attName FROM SubgoalAtt WHERE rid == '" + rid + "' AND sid == '" + s + "'" )
+      subAtts = cursor.fetchall()
       subAtts = tools.toAscii_list( subAtts )
 
       # get subgoal time arg

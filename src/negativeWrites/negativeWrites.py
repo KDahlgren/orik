@@ -31,7 +31,7 @@ import deMorgans
 NEGATIVEWRITES_DEBUG = tools.getConfig( "DEDT", "NEGATIVEWRITES_DEBUG", bool )
 
 arithOps = [ "+", "-", "*", "/" ]
-COUNTER  = 0
+
 
 #####################
 #  NEGATIVE WRITES  #
@@ -41,7 +41,7 @@ def negativeWrites( cursor ) :
   if NEGATIVEWRITES_DEBUG :
     print " ... running negative writes ..."
 
-  setNegativeRules( cursor )
+  setNegativeRules( 0, cursor )
 
   # dump to test
   if NEGATIVEWRITES_DEBUG :
@@ -65,7 +65,9 @@ def negativeWrites( cursor ) :
 # 
 # if P' contains negated IDB subgoals, repeat negativeWrites on P'.
 #
-def setNegativeRules( cursor ) :
+def setNegativeRules( COUNTER, cursor ) :
+
+  print "COUNTER = " + str( COUNTER )
 
   if NEGATIVEWRITES_DEBUG :
     print " ... running set negative rules ..."
@@ -73,23 +75,43 @@ def setNegativeRules( cursor ) :
   # --------------------------------------------------- #
   # run input program and collect results               #
   # --------------------------------------------------- #
+  #print "made it here1."
 
   # get results from running the input program P
-  pResults = evaluate( cursor )
+  pResults = evaluate( COUNTER, cursor )
+
+  #print "made it here2."
 
   # --------------------------------------------------- #
   # rewrite lines containing negated IDBs               #
   # --------------------------------------------------- #
-
-  # maintian list of IDB goal names to rewrite
+  # maintian list of IDB goal names to rewrite.
+  # IDBs pulled from rules across the entire program.
   negatedList = []
 
   pRIDs = getAllRuleRIDs( cursor )
 
   for rid in pRIDs :
+
     if ruleContainsNegatedIDB( rid, cursor ) :
       negatedIDBNames = rewriteParentRule( rid, cursor )
       negatedList.extend( negatedIDBNames )
+
+      # ....................................... #
+      # remove duplicates
+      #tmp0  = []
+      #tmp1  = []
+      #names = [ x[0] for x in negatedList ]
+      #sids  = [ x[1] for x in negatedList ]
+      #print "names = "  + str( names )
+      #print "sids  = "  + str( sids  )
+      #for i in range(0,len(names)) :
+      #  name = names[i]
+      #  if not name in tmp1 :
+      #    tmp0.append( [ name, sids[i]] ) 
+      #negatedList = tmp0
+      # ....................................... #
+
     else :
       pass
 
@@ -97,49 +119,479 @@ def setNegativeRules( cursor ) :
   # add new rules for negated IDBs                      #
   # --------------------------------------------------- #
 
+  #if COUNTER == 1 :
+  #  print negatedList
+  #  tools.bp( __name__, inspect.stack()[0][3], "COUNTER = " + str( COUNTER ) )
+
+  #####################################################################
+  # NOTE :                                                            #
+  # negatedList is an array of [ IDB goalName, parent rule id ] pairs #
+  #####################################################################
+  DMList = []
   for nameData in negatedList :
 
     name      = nameData[0]  # name of negated IDB subgoal
     parentRID = nameData[1]  # rid of parent rule
 
+    print "name = " + name
+    if name == "not_log_from_missing_log_from_not_missing_log_from_post" :
+      tools.bp( __name__, inspect.stack()[0][3], "shit" )
+
+    # ............................................................... #
     # collect all rids for this IDB name
     nameRIDs = getRIDsFromName( name, cursor )
 
-    # rewrite original rules to shift function calls in goal atts to eqns in body
+    # ............................................................... #
+    # rewrite original rules to shift function calls in goal atts 
+    # and rewrite as a series of new rules.
+    # branch condition : 
+    # shift arith ops if IDB defined by multiple rules
+    # otherwise, just shift the equation from the goal to the body.
     shiftArithOps( nameRIDs, cursor )
 
-    dumpers.programDump(  cursor )
-    tools.bp( __name__, inspect.stack()[0][3], "blah" )
-
+    # ............................................................... #
     # rewrite original rules with uniform universal attribute variables
     setUniformUniversalAttributes( nameRIDs, cursor )
 
+    # ............................................................... #
     # apply the demorgan's rewriting scheme to the rule set.
-    applyDeMorgans( parentRID, nameRIDs, cursor )
+    newDMRIDList = applyDeMorgans( parentRID, nameRIDs, cursor )
+    DMList.append( [ newDMRIDList, name ] )
 
-    # add domain subgoals
-    addDomainSubgoals( nameRIDs, cursor )
+    # ............................................................... #
+    # add domain subgoals.
+    addDomainSubgoals( name, nameRIDs, newDMRIDList, pResults, cursor )
+
+    # --------------------------------------------------- #
+    # replace existential vars with wildcards.            #
+    # --------------------------------------------------- #
+    setWildcards( newDMRIDList, cursor )
 
   # --------------------------------------------------- #
   # final checks
   # --------------------------------------------------- #
-  # branch on continued presence of negated IDBs
+  # ................................................... #
+  # resolve negated subgoals in the new demorgans       # 
+  # rules.                                              #
+  # ................................................... #
+  filterDMNegations( DMList, cursor )
 
+  #if COUNTER == 1 :
+  #  tools.dumpAndTerm( cursor )
+
+  # ................................................... #
+  # branch on continued presence of negated IDBs
+  # ................................................... #
   # recurse if rewritten program still contains rogue negated IDBs
-  if stillContainsNegatedIDBs( cursor ) :
+  if stillContainsNegatedIDBs( newDMRIDList, cursor ) :
     COUNTER += 1
-    negativeWrites( cursor )
+    setNegativeRules( COUNTER, cursor )
 
   # otherwise, the program only has negated EDB subgoals.
-  # return accordingly.
+  # get the hell out of here.
   else :
     return
+
+
+#########################
+#  FILTER DM NEGATIONS  #
+#########################
+# examine all new rules generated as a result of the 
+# de Morgan's rewrites.
+# replace subgoals satisfying the characteristics of 
+# circumstances triggering previous rewrites.
+# replace double negatives with calls to the original 
+# positive subgoals.
+def filterDMNegations( DMList, cursor ) :
+
+  print "DUMPING RULES HERE:"
+  print "DMList = " + str( DMList )
+
+  for ruleInfo in DMList :
+
+    newRIDList = ruleInfo[0]
+    origName   = ruleInfo[1]
+
+    for rid in newRIDList :
+
+      print ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;"
+      print "FILTERING RULE "
+      print "old rule:"
+      print dumpers.reconstructRule( rid, cursor )
+
+      # ............................................... #
+      # replace previously rewritten negated subgoals   #
+      # ............................................... #
+      replaceRewrittenSubgoals( rid, origName, cursor )
+
+      # ............................................... #
+      # resolve double negatives                        #
+      # ............................................... #
+      resolveDoubleNegatives( rid, origName, cursor )
+
+      print "new rule:"
+      print dumpers.reconstructRule( rid, cursor )
+
+    #tools.dumpAndTerm( cursor )
+
+
+##############################
+#  RESOLVE DOUBLE NEGATIVES  #
+##############################
+def resolveDoubleNegatives( rid, fromName, cursor ) :
+
+  # get all subgoal ids and names
+  cursor.execute( "SELECT sid,subgoalName FROM Subgoals WHERE rid=='" + rid + "'" )
+  subInfo = cursor.fetchall()
+  subInfo = tools.toAscii_multiList( subInfo )
+
+  print "subInfo = " + str( subInfo )
+
+  # check for double negatives
+  for sub in subInfo :
+
+    sid  = sub[0]
+    name = sub[1]
+
+    if "not_" in name[0:4] and "_from_" in name :
+
+      # check if negated
+      cursor.execute( "SELECT argName FROM SubgoalAddArgs WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+      sign = cursor.fetchone()
+      sign = tools.toAscii_str( sign )
+
+      if sign == "notin" :
+
+        # build base name
+        baseName = "_from_" + fromName
+
+        # build positive name
+        nameLen     = len( name )
+        baseNameLen = len( baseName )
+        posName     = name[ 4 : nameLen - baseNameLen ]
+
+        # replace subgoal name with postivie equivalent.
+        cursor.execute( "UPDATE Subgoals SET subgoalName=='" + posName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+
+        # remove negation
+        cursor.execute( "UPDATE SubgoalAddArgs SET argName=='' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+
+        print "UPDATED DOUBLE NEGATIVE!"
+        print dumpers.reconstructRule( rid, cursor )
+        #tools.bp( __name__, inspect.stack()[0][3], "ici" )
+
+################################
+#  REPLACE REWRITTEN SUBGOALS  #
+################################
+# check if the rule at rid contains a subgoal 
+# such that the not_ version of the subgoal 
+# already exists as a result of a previous 
+# DM rewrite.
+# returns boolean
+def replaceRewrittenSubgoals( rid, origName, cursor ) :
+
+  print "... running negatesRewrittenSubgoal ..."
+  print "origName : " + origName
+  print "this rule : " + dumpers.reconstructRule( rid, cursor )
+
+  # .............................................. #
+  # generate negated name base                     #
+  # (i.e. the "_from_" portion)                    #
+  baseName = "_from_" + origName
+
+  # .............................................. #
+  # get sids for all negated subgoals in this rule
+  cursor.execute( "SELECT sid From SubgoalAddArgs WHERE rid=='" + rid + "'" )
+  sids = cursor.fetchall()
+  sids = tools.toAscii_list( sids )
+
+  # get subgoal names for negated subgoals
+  negatedSubs = []
+  for sid in sids :
+    cursor.execute( "SELECT subgoalName FROM Subgoals WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+    thisName = cursor.fetchone()
+    thisName = tools.toAscii_str( thisName )
+    negatedSubs.append( [ thisName, sid ] )
+
+  # .............................................. #
+  # get list of previously DM-rewritten rule names
+  dmNames = prevDMRewrites_NamesOnly( cursor )
+
+  print "dmNames : " + str( dmNames )
+
+  # .............................................. #
+  flag = False
+  for sub in negatedSubs :
+
+    name = sub[0]
+    sid  = sub[1]
+
+    # build hypothetical full name
+    fullName = "not_" + name + baseName
+
+    # check for existence
+    if fullName in dmNames :
+
+      # replace subgoal name
+      cursor.execute( "UPDATE Subgoals SET subgoalName=='" + fullName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+
+      # replace negation argument
+      cursor.execute( "UPDATE SubgoalAddArgs SET argName=='' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+
+      print "REPLACED REWRITTEN SUBGOAL!"
+
+
+#################################
+#  PREV DM REWRITES NAMES ONLY  #
+#################################
+def prevDMRewrites_NamesOnly( cursor ) :
+
+  cursor.execute( "SELECT goalName FROM Rule WHERE ( goalName LIKE 'not_%' ) AND ( goalName LIKE '%_from_%' )" )
+  goalNames = cursor.fetchall()
+  goalNames = tools.toAscii_list( goalNames )
+
+  # remove duplicates
+  goalNames = set( goalNames )
+  goalNames = list( goalNames )
+
+  return goalNames
+
+
+#################################
+#  STILL CONTAINS NEGATED IDBS  #
+#################################
+# check if new rules contain negated IDBs
+def stillContainsNegatedIDBs( newDMRIDList, cursor ) :
+
+  flag = False
+
+  for rid in newDMRIDList :
+    if ruleContainsNegatedIDB( rid, cursor ) :
+      flag = True
+    else :
+      continue
+
+  return flag
+
+
+###################
+#  SET WILDCARDS  #
+###################
+def setWildcards( newDMRIDList, cursor ) :
+
+  for rid in newDMRIDList :
+
+    # get goal att list
+    cursor.execute( "SELECT attID,attName,attType FROM GoalAtt WHERE rid=='" + rid + "'" )
+    goalAttList = cursor.fetchall()
+    goalAttList = tools.toAscii_multiList( goalAttList )
+
+    atts = [ x[1] for x in goalAttList ]
+
+    # get list of subgoal ids
+    cursor.execute( "SELECT sid FROM Subgoals WHERE rid=='" + rid + "'" )
+    sids = cursor.fetchall()
+    sids = tools.toAscii_list( sids )
+
+    for sid in sids :
+
+      # get subgoal att list
+      cursor.execute( "SELECT attID,attName,attType FROM SubgoalAtt WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+      subgoalAttList = cursor.fetchall()
+      subgoalAttList = tools.toAscii_multiList( subgoalAttList )
+
+      # replace all subgoal atts not appearing in goal att list
+      # with wildcards
+      for att in subgoalAttList :
+
+        attID   = att[0]
+        attName = att[1]
+        attType = att[2]
+
+        if attName in atts :
+          continue
+
+        else :
+          if not attName == "_" :
+            attName = "_"
+            cursor.execute( "UPDATE SubgoalAtt SET attName='" + attName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "' AND attID=='" + str( attID ) + "'" )
+
+
+#########################
+#  ADD DOMAIN SUBGOALS  #
+#########################
+# add domain constraints to universal attributes per rewritten rule.
+def addDomainSubgoals( name, nameRIDS, newDMRIDList, pResults, cursor ) :
+
+  if NEGATIVEWRITES_DEBUG :
+    print "   ... running ADD DOMAIN SUBGOALS ..."
+
+  # -------------------------------------------------- #
+  # make sure results exist.                           #
+  # -------------------------------------------------- #
+  theseResults = pResults[ name ]
+
+  if not theseResults == [] :
+    # -------------------------------------------------- #
+    # get the domain for each attribute of parent rule,  #
+    # as determined in pResults.                         #
+    # -------------------------------------------------- #
+    attDomsMap = getParentAttDomains( theseResults )
+
+    #if "log_log_" in name[0:8] :
+    #  print "name    = " + name
+    #  print "nameRIDs = " + str( nameRIDS )
+    #  print dumpers.reconstructRule( nameRIDS[0], cursor )
+    #  print "newDMRIDList = " + str( newDMRIDList )
+    #  print dumpers.reconstructRule( newDMRIDList[0], cursor )
+    #  print "results = " + str( pResults[ name ] )
+    #  print "attDomsMap = " + str( attDomsMap )
+    #  tools.bp( __name__, inspect.stack()[0][3], "shit" )
+
+    # -------------------------------------------------- #
+    # build domain EDBs and add to facts tables.         #
+    # -------------------------------------------------- #
+    # get base att domain name
+    domNameBase = getAttDomNameBase( name )
+
+    # save EDB facts
+    newDomNames = saveDomFacts( domNameBase, attDomsMap, cursor )
+
+    # -------------------------------------------------- #
+    # add attribute domain subgoals to all new DM rules. #
+    # -------------------------------------------------- #
+    addSubgoalsToRules( newDomNames, newDMRIDList, cursor )
+
+
+###########################
+#  ADD SUBGOALS TO RULES  #
+###########################
+def addSubgoalsToRules( newDomNames, newDMRIDList, cursor ) :
+
+  for rid in newDMRIDList :
+
+    # get goal att list
+    cursor.execute( "SELECT attID,attName,attType FROM GoalAtt WHERE rid=='" + rid + "'" )
+    goalAttList = cursor.fetchall()
+    goalAttList = tools.toAscii_multiList( goalAttList )
+
+    subNum = 0 
+    for subName in newDomNames :
+
+      # ----------------------------------- #
+      # generate sid                        #
+      # ----------------------------------- #
+      sid = tools.getID()
+
+      # ----------------------------------- #
+      # fixed subgoal time arg to nothing   #
+      # ----------------------------------- #
+      subgoalTimeArg = ""
+
+      # ----------------------------------- #
+      # insert subgoal metadata             #
+      # ----------------------------------- #
+      cursor.execute( "INSERT INTO Subgoals VALUES ('" + rid + "','"  + sid + "','" + subName + "','" + subgoalTimeArg +"')" )
+
+      # ----------------------------------- #
+      # insert subgoal att data             #
+      # ----------------------------------- #
+
+      att     = goalAttList[ subNum ]
+      attID   = 0       # domain subgoals have arity 1
+      attName = att[1]
+      attType = att[2]
+
+      cursor.execute( "INSERT INTO SubgoalAtt VALUES ('" + rid + "','" + sid + "','" + str( attID ) + "','" + attName + "','" + attType + "')" )
+
+      subNum += 1
+
+
+####################
+#  SAVE DOM FACTS  #
+####################
+def saveDomFacts( domNameBase, attDomsMap, cursor ) :
+
+  newDomNames = []
+
+  #print "attDomsMap = " + str( attDomsMap )
+
+  for att in attDomsMap :
+    attID = att
+    dom   = attDomsMap[ att ]
+
+    # insert new fact data
+    for data in dom :
+
+      # generate new fact id
+      fid = tools.getID()
+
+      # create full fact name
+      factName = domNameBase + str( attID ) 
+
+      # all dom facts are true starting at time 1
+      timeArg = '1'
+
+      #if factName == "bcast" :
+      #  print "/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/"
+      #  print "  CHECK THIS BCAST INSERT!!!!"
+
+      # insert new fact metadata
+      #print "INSERT INTO Fact VALUES ('" + fid + "','" + factName + "','" + timeArg + "')"
+      cursor.execute( "INSERT INTO Fact VALUES ('" + fid + "','" + factName + "','" + timeArg + "')" )
+
+      # set type
+      if tools.isInt(data) :
+        attType = 'int'
+      else :
+        attType = 'string'
+        data    = '"' + data + '"'
+
+      # perform insertion
+      thisID = 0 # contant because domain relations are unary.
+      #print "INSERT INTO FactAtt VALUES ('" + fid + "','" + str(thisID) + "','" + data + "','" + attType + "')"
+      cursor.execute( "INSERT INTO FactAtt VALUES ('" + fid + "','" + str(thisID) + "','" + data + "','" + attType + "')" )
+
+    # collect domain subgoal names for convenience
+    if not factName in newDomNames :
+      newDomNames.append( factName )
+
+  return newDomNames
+
+
+###########################
+#  GET ATT DOM NAME BASE  #
+###########################
+def getAttDomNameBase( name ) :
+  return "dom_" + name + "_att"
+
+
+############################
+#  GET PARENT ATT DOMAINS  #
+############################
+def getParentAttDomains( results ) :
+
+  #print "result = " + str( results )
+
+  # get tuple arity
+  arity = len( results[0] )
+
+  attDomsMap = {}
+  attID = 0
+  for i in range( 0, arity ) :
+    col = []
+    for tup in results :
+      if not tup[i] in col :
+        col.append( tup[i] )
+    attDomsMap[ i ] = col
+
+  return attDomsMap
 
 
 #####################
 #  SHIFT ARITH OPS  #
 #####################
-# given list of rids for IDB rule set to be negated.
+# given list of rids for the IDB rule set to be negated.
 # for rules with arithmetic operations in the head,
 # rewrite the rules into a series of separate, but sematically
 # equivalent rules.
@@ -174,15 +626,12 @@ def shiftArithOps( nameRIDs, cursor ) :
         # with unique subgoals referencing new IDB definitions.
         arithOpSubgoalRewrites( rid, newAttName, lhs, attName, cursor )
 
-        dumpers.programDump(  cursor )
-        tools.bp( __name__, inspect.stack()[0][3], "blah" )
-
 
 ###############################
 #  ARITH OP SUBGOAL REWRITES  #
 ###############################
 # given the id for one of the rules targeted for NegativeWrites,
-# the string replacing the arithmetic expression in teh goal,
+# the string replacing the arithmetic expression in the goal,
 # and the universal attribute appearing in an arithmetic expression
 # in the head.
 # replace the subgoals containing the universal attribute with new subgoals
@@ -200,7 +649,6 @@ def arithOpSubgoalRewrites( rid, newAttName, oldExprAtt, oldExpr, cursor ) :
   # remove duplicates
   tmp = []
   for sid in sidData :
-    print sid
     if not sid in tmp :
       tmp.append( sid )
   sidData = tmp
@@ -221,7 +669,7 @@ def arithOpSubgoalRewrites( rid, newAttName, oldExprAtt, oldExpr, cursor ) :
     ruleName = tools.toAscii_str( ruleName )
 
     # generate new unique subgoal name
-    newSubgoalName = ruleName + "_" + subgoalName + "_" + tools.getID_4()
+    newSubgoalName = ruleName + "_" + subgoalName + "_" + tools.getID_4() + "_arithoprewrite"
 
     cursor.execute( "UPDATE Subgoals SET subgoalName=='" + newSubgoalName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
 
@@ -237,14 +685,18 @@ def arithOpSubgoalRewrites( rid, newAttName, oldExprAtt, oldExpr, cursor ) :
 #################################
 #  ARITH OP SUBGOAL IDB WRITES  #
 #################################
+# write the new IDB rules supporting the distribution of equations
+# across rule subgoals.
 def arithOpSubgoalIDBWrites( oldRID, targetSID, newSubgoalName, oldSubgoalName, oldExprAtt, oldExpr, attID, cursor) :
 
   # --------------------------------------------- #
-  # generate new rule ID
+  # generate new rule ID                          #
+  # --------------------------------------------- #
   newRID = tools.getID()
 
   # --------------------------------------------- #
-  # insert new rule data
+  # insert new rule data                          #
+  # --------------------------------------------- #
   rid         = newRID
   goalName    = newSubgoalName
   goalTimeArg = ""
@@ -252,8 +704,8 @@ def arithOpSubgoalIDBWrites( oldRID, targetSID, newSubgoalName, oldSubgoalName, 
   cursor.execute( "INSERT INTO Rule (rid, goalName, goalTimeArg, rewritten) VALUES ('" + rid + "','" + goalName + "','" + goalTimeArg + "','" + rewritten + "')" )
 
   # --------------------------------------------- #
-  # insert new goal attribute data
-
+  # insert new rule data                          #
+  # --------------------------------------------- #
   # get attribute data from original subgoal
   cursor.execute( "SELECT attID,attName,attType FROM SubgoalAtt WHERE rid=='" + oldRID + "' AND sid=='" + targetSID + "'" )
   data = cursor.fetchall()
@@ -264,9 +716,14 @@ def arithOpSubgoalIDBWrites( oldRID, targetSID, newSubgoalName, oldSubgoalName, 
   # in the new rule body and replace new goal
   # att str with old goal att str
 
-  subgoalAttData = data
-
+  subgoalAttData             = data
   subgoalAttData[ attID ][1] = oldExprAtt
+
+  # ............................................. #
+  # resolve wildcard attributes to actual 
+  # variables.
+
+  subgoalAttData = resolveWildcardAtts( subgoalAttData )
 
   # ............................................. #
   # define goal att list and 
@@ -277,7 +734,6 @@ def arithOpSubgoalIDBWrites( oldRID, targetSID, newSubgoalName, oldSubgoalName, 
   for thing in data :
     thisThing = [ i for i in thing ]
     goalAttData.append( thisThing )
-
   goalAttData[attID][1] = oldExpr
 
   # ............................................. #
@@ -303,13 +759,30 @@ def arithOpSubgoalIDBWrites( oldRID, targetSID, newSubgoalName, oldSubgoalName, 
     attType = att[2]
     cursor.execute( "INSERT INTO SubgoalAtt (rid, sid, attID, attName, attType) VALUES ('" + rid + "','" + sid + "','" + str( attID ) + "','" + attName + "','" + attType + "')" )
 
+  # ............................................. #
+  # resolve types
+  newRule = Rule.Rule( newRID, cursor )
+  newRule.setAttTypes()
 
-#########################
-#  ADD DOMAIN SUBGOALS  #
-#########################
-# add domain constraints to universal attributes per rewritten rule.
-def addDomainSubgoals( nameRIDs, cursor ) :
-  return None
+  #if "log_log_" in newSubgoalName[0:8] and "_log_" in newSubgoalName[12:17] :
+  #  tools.bp( __name__, inspect.stack()[0][3], "here" )
+
+
+###########################
+#  RESOLVE WILDCARD ATTS  #
+###########################
+# resolve wildcard attributes to actual variables b/c
+# these attributes are copied directly into the goal 
+# attribute list of this new rule.
+def resolveWildcardAtts( subgoalAttData ) :
+  counter = 0
+  for data in subgoalAttData :
+
+    if data[1] == "_" :
+      data[1] = "B" + str( counter )
+      counter += 1
+
+  return subgoalAttData
 
 
 ##########################
@@ -397,6 +870,11 @@ def setUniformUniversalAttributes( rids, cursor ) :
   # get arity of this IDB                                   #
   # ------------------------------------------------------- #
   arity = None
+
+  #print "rids = " + str( rids )
+  #for rid in rids :
+  #  print dumpers.reconstructRule( rid, cursor )
+
   for rid in rids :
     cursor.execute( "SELECT attID FROM GoalAtt WHERE rid=='" + rid + "'" )
     attIDs = cursor.fetchall()
@@ -410,7 +888,6 @@ def setUniformUniversalAttributes( rids, cursor ) :
   # ------------------------------------------------------- #
   # generate list of uniform attribute names of same arity  #
   # ------------------------------------------------------- #
-
   uniformAttributeList = []
 
   for i in range(0, arity) :
@@ -421,7 +898,6 @@ def setUniformUniversalAttributes( rids, cursor ) :
   # ------------------------------------------------------- #
   # perform variable substitutions for rules accordingly    #
   # ------------------------------------------------------- #
-
   for rid in rids :
 
     uniformList = list( uniformAttributeList ) # make mutable
@@ -631,7 +1107,6 @@ def getOp( attName ) :
 #  PRINT RULES  #
 #################
 def printRules( rids, cursor ) :
-
   for rid in rids :
     print dumpers.reconstructRule( rid, cursor )
 
@@ -660,7 +1135,12 @@ def ruleContainsNegatedIDB( rid, cursor ) :
   flag = False
 
   for subgoalName in negatedSubgoals :
-    if isIDB( subgoalName, cursor ) :
+
+    # skip arith op rewrites for now.
+    if "_arithoprewrite" in subgoalName :
+      pass
+
+    elif isIDB( subgoalName, cursor ) :
       flag = True
 
   return flag
@@ -687,37 +1167,72 @@ def isIDB( subgoalName, cursor ) :
 #  REWRITE PARENT RULE  #
 #########################
 # replace negated subgoals in parent rules with positive counterparts.
+# returns name of negated subgoal replaced by positive subgoal and 
+# the parent RID.
 def rewriteParentRule( rid, cursor ) :
 
   negatedIDBNames = []
 
+  # .................................................... #
   # get rule name
   cursor.execute( "SELECT goalName FROM Rule WHERE rid='" + rid + "'" )
   goalName = cursor.fetchone()
-  goalName = tools.toAscii_str( goalName[0] )
+  goalName = tools.toAscii_str( goalName )
 
+  # .................................................... #
   # get list of negated IDB subgoals
   cursor.execute( "SELECT Subgoals.sid,Subgoals.subgoalName FROM Subgoals,SubgoalAddArgs WHERE Subgoals.rid='" + rid + "' AND Subgoals.rid==SubgoalAddArgs.rid AND Subgoals.sid==SubgoalAddArgs.sid AND argName=='notin'" )
   negatedSubgoals = cursor.fetchall()
   negatedSubgoals = tools.toAscii_multiList( negatedSubgoals )
 
+  #print "negatedSubgoals = " + str( negatedSubgoals )
+
+  # .................................................... #
   # substitute with appropriate positive counterpart
   for subgoal in negatedSubgoals :
     sid  = subgoal[0]
     name = subgoal[1]
 
-    positiveName = "not_" + name + "_from_" + goalName
+    if "_arithoprewrite" in name :
+      pass
 
-    # substitute in positive subgoal name
-    cursor.execute( "UPDATE Subgoals SET subgoalName=='" + positiveName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+    elif isIDB( name, cursor ) :
 
-    # erase negation on this subgoal
-    cursor.execute( "UPDATE SubgoalAddArgs SET argName=='' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+      positiveName = "not_" + name + "_from_" + goalName
+  
+      #print "positiveName = " + positiveName
+  
+      # .................................................... #
+      # substitute in positive subgoal name
+      cursor.execute( "UPDATE Subgoals SET subgoalName=='" + positiveName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+  
+      # .................................................... #
+      # erase negation on this subgoal
+      cursor.execute( "UPDATE SubgoalAddArgs SET argName=='' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+  
+      # .................................................... #
+      # save for return data
+      negatedIDBNames.append( [ name, rid ] )
 
-    # save for return data
-    negatedIDBNames.append( [ name, rid ] )
+  # .................................................... #
+  # remove duplicates
+  negatedIDBNames = removeDups( rid, negatedIDBNames )
 
   return negatedIDBNames
+
+
+#################
+#  REMOVE DUPS  #
+#################
+def removeDups( parentRID, negatedIDBNames ) :
+
+  tmp = []
+  for data in negatedIDBNames :
+    name = data[0]
+    if not name in tmp :
+      tmp.append( name )
+
+  return [ [ x, parentRID ] for x in tmp ]
 
 
 ########################
@@ -739,20 +1254,14 @@ def getRIDsFromName( name, cursor ) :
 # perform the rewrites on the negated IDB rules.
 # data for new rules are stored directly in the IR database.
 def applyDeMorgans( parentRID, nameRIDs, cursor ) :
-  deMorgans.doDeMorgans( parentRID, nameRIDs, cursor )
+  return deMorgans.doDeMorgans( parentRID, nameRIDs, cursor )
 
-
-#################################
-#  STILL CONTAINS NEGATED IDBS  #
-#################################
-def stillContainsNegatedIDBs( cursor ) :
-  return None
 
 
 ##############
 #  EVALUATE  #
 ##############
-def evaluate( cursor ) :
+def evaluate( COUNTER, cursor ) :
 
   # translate into c4 datalog
   allProgramLines = c4_translator.c4datalog( cursor )
@@ -774,7 +1283,7 @@ def evaluate( cursor ) :
     print "...done."
 
   # otherwise, data dump directory exists
-  eval_results_dump_to_file( results_array, eval_results_dump_dir )
+  eval_results_dump_to_file( COUNTER, results_array, eval_results_dump_dir )
 
   # ----------------------------------------------------------------- #
   # parse results into a dictionary
@@ -788,7 +1297,7 @@ def evaluate( cursor ) :
 ###############################
 #  EVAL RESULTS DUMP TO FILE  #
 ###############################
-def eval_results_dump_to_file( results_array, eval_results_dump_dir ) :
+def eval_results_dump_to_file( COUNTER, results_array, eval_results_dump_dir ) :
 
   eval_results_dump_file_path = eval_results_dump_dir + "eval_dump_" + str( COUNTER ) + ".txt"
 

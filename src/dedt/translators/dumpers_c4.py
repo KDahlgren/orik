@@ -89,13 +89,14 @@ def dumpSingleFact_c4( fid, cursor ) :
 
   # get list of attribs in fact
   factList    = cursor.execute( "SELECT attName FROM FactAtt WHERE fid == '" + fid + "'" ) # list of fact atts
+  factList    = cursor.fetchall()
   factList    = tools.toAscii_list( factList )
 
   # get fact time arg
-  factTimeArg = ""
-  cursor.execute( "SELECT timeArg FROM Fact WHERE fid == '" + fid + "'" )
-  factTimeArg = cursor.fetchone()
-  factTimeArg = tools.toAscii_str( factTimeArg )
+  #factTimeArg = ""
+  #cursor.execute( "SELECT timeArg FROM Fact WHERE fid == '" + fid + "'" )
+  #factTimeArg = cursor.fetchone()
+  #factTimeArg = tools.toAscii_str( factTimeArg )
 
   # convert fact info to pretty string
   fact += factName + "("
@@ -104,8 +105,8 @@ def dumpSingleFact_c4( fid, cursor ) :
       fact += factList[j] + ","
     else :
       fact += factList[j]
-  if not factTimeArg == "" :
-    fact += "," + factTimeArg
+  #if not factTimeArg == "" :
+  #  fact += "," + factTimeArg
 
   fact += ");" + "\n" # end all facts with a semicolon
 
@@ -132,6 +133,7 @@ def dumpSingleRule_c4( rid, cursor ) :
 
   # get list of attribs in goal
   goalList    = cursor.execute( "SELECT attName FROM GoalAtt WHERE rid == '" + rid + "'" )# list of goal atts
+  goalList    = cursor.fetchall()
   goalList    = tools.toAscii_list( goalList )
 
   # get goal time arg
@@ -161,6 +163,9 @@ def dumpSingleRule_c4( rid, cursor ) :
   subIDs = cursor.fetchall()
   subIDs = tools.toAscii_list( subIDs )
 
+  # prioritize dom subgoals first.
+  subIDs = prioritizeDoms( rid, subIDs, cursor )
+
   # iterate over subgoal ids
   for k in range(0,len(subIDs)) :
     newSubgoal = ""
@@ -179,6 +184,7 @@ def dumpSingleRule_c4( rid, cursor ) :
 
       # get subgoal attribute list
       subAtts = cursor.execute( "SELECT attName FROM SubgoalAtt WHERE rid == '" + rid + "' AND sid == '" + s + "'" )
+      subAtts = cursor.fetchall()
       subAtts = tools.toAscii_list( subAtts )
 
       # get subgoal time arg
@@ -245,6 +251,31 @@ def dumpSingleRule_c4( rid, cursor ) :
   # .................................. #
 
   return rule
+
+
+#####################
+#  PRIORITIZE DOMS  #
+#####################
+# order domain subgoals first
+def prioritizeDoms( rid, subIDs, cursor ) :
+
+  domSubs           = []
+  nonDomSubs        = []
+
+  # check if subgoal is a domain subgoal
+  # branch on result.
+  for subID in subIDs :
+
+    cursor.execute( "SELECT subgoalName FROM Subgoals WHERE rid=='" + rid + "' AND sid=='" + subID + "'" )
+    subgoalName = cursor.fetchone()
+    subgoalName = tools.toAscii_str( subgoalName )
+
+    if "dom_" in subgoalName[0:4] : 
+      domSubs.append( subID )
+    else :
+      nonDomSubs.append( subID )
+
+  return domSubs + nonDomSubs
 
 
 ################

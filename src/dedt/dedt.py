@@ -235,6 +235,10 @@ def rewrite( ruleMeta, cursor ) :
   # negative writes
   negativeWrites( cursor )
 
+  print ":::::::::::::::::::::::::::::::::"
+  print ":: STARTING PROVENANCE REWRITE ::"
+  print ":::::::::::::::::::::::::::::::::"
+
   # add provenance rules
   provenanceRewriter.rewriteProvenance( ruleMeta, cursor )
 

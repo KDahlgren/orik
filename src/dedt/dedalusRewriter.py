@@ -446,6 +446,61 @@ def rewriteRewritten( cursor ) :
     print " ... done asynchronous rewrite ... "
 
 
+###################
+#  REWRITE FACTS  #
+###################
+# update fact schemas with time arguments.
+def rewriteFacts( cursor ) :
+
+  # get all fact ids
+  fids = getAllFactIDs( cursor )
+
+  # augment fact schemas with time args
+  updateFactSchemas( fids, cursor )
+
+
+#########################
+#  UPDATE FACT SCHEMAS  #
+#########################
+def updateFactSchemas( fids, cursor ) :
+
+  for fid in fids :
+
+    # get time arg
+    cursor.execute( "SELECT timeArg FROM Fact WHERE fid=='" + fid + "'" )
+    timeArg = cursor.fetchone()
+    timeArg = tools.toAscii_str( timeArg )
+
+    # get max attID
+    cursor.execute( "SELECT max(attID) FROM FactAtt WHERE fid=='" + fid + "'" )
+    maxID = cursor.fetchone()
+    maxID = maxID[0]
+
+    # update fact schema
+    attID    = maxID + 1
+    thisType = "int"
+
+    #DEBUGGING
+    cursor.execute( "SELECT name FROM Fact WHERE fid=='" + fid + "'" ) 
+    name = cursor.fetchone()
+    name = tools.toAscii_str( name )
+    #if name == "bcast" :
+    #  print "1CHECK THIS BCAST INSERT!!!"
+    #  print "INSERT INTO FactAtt VALUES ('" + fid + "','" + str(attID) + "','" + timeArg + "','" + thisType + "')"
+
+    cursor.execute( "INSERT INTO FactAtt VALUES ('" + fid + "','" + str(attID) + "','" + timeArg + "','" + thisType + "')" )
+
+
+######################
+#  GET ALL FACT IDS  #
+######################
+def getAllFactIDs( cursor ) :
+  cursor.execute( "SELECT fid FROM Fact" )
+  fids = cursor.fetchall()
+  fids = tools.toAscii_list( fids )
+  return fids
+
+
 #####################
 #  DEDALUS REWRITE  #
 #####################
@@ -465,6 +520,9 @@ def rewriteDedalus( cursor ) :
 
   # rewrite rewritten rules ( aka 'rewritten' rules )
   rewriteRewritten( cursor )
+
+  # rewrite facts
+  rewriteFacts( cursor )
 
   if DEDALUSREWRITER_DEBUG :
     print " ... done rewriteDedalus ... "

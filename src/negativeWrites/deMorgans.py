@@ -36,7 +36,6 @@ def doDeMorgans( parentRID, ruleRIDs, cursor ) :
   # ----------------------------------------------------------- #
   # get data for naming stuff
   # ----------------------------------------------------------- #
-
   # parent name
   cursor.execute( "SELECT goalName FROM Rule WHERE rid='" + parentRID + "'" )
   parentName = cursor.fetchall()
@@ -50,7 +49,7 @@ def doDeMorgans( parentRID, ruleRIDs, cursor ) :
   # ----------------------------------------------------------- #
   # combine all rules for each rule name into a single 
   # sympy formula string
-
+  # ----------------------------------------------------------- #
   # associate each subgoal per rule for this IDB definition with an identifier
   # and map to [ rid, [ sign, sid ] ] arrays
   predicateToID_map     = {}
@@ -63,7 +62,8 @@ def doDeMorgans( parentRID, ruleRIDs, cursor ) :
   for rid in ruleRIDs :
 
     # get list of all sids for this rid
-    cursor.execute( "SELECT sid FROM Subgoals WHERE rid='" + rid + "'" )
+    # filter out sids for domain subgoals
+    cursor.execute( "SELECT sid FROM Subgoals WHERE rid=='" + rid + "' AND NOT subgoalName LIKE 'dom_%'" )
     sidList = cursor.fetchall()
     sidList = tools.toAscii_list( sidList )
 
@@ -91,6 +91,84 @@ def doDeMorgans( parentRID, ruleRIDs, cursor ) :
       else :
         key = rid + "," + sid
       ridSidToPredicate_map[ key ] = predID
+
+  # ----------------------------------------------------------- #
+  # simplify DNF
+  simplified_negFmla = getDNFFmla_v1( ridSidToPredicate_map )
+  #simplified_negFmla = getDNFFmla_v2( ridSidToPredicate_map )
+
+  # ----------------------------------------------------------- #
+  # save a new rule to IR db per disjunct
+  newDMRIDList = setNewRules( parentName, thisIDBName, simplified_negFmla, predicateToID_map, cursor )
+
+  # ----------------------------------------------------------- #
+
+  return newDMRIDList
+
+
+#####################
+#  GET DNF FMLA V2  #
+#####################
+def getDNFFmla_v2( ridSidToPredicate_map ) :
+
+  # ////////////////////////////////////////// #
+  # convert to sympy formula
+  ruleConjuncts_map = {}
+  for key in ridSidToPredicate_map :
+    predID = ridSidToPredicate_map[ key ]
+    key    = key.split( "," )
+    rid    = key[0]
+    sid    = key[1]
+    sign   = None
+
+    if "_NEG_" in sid :
+      sid  = sid.replace( "_NEG_", "" )
+      sign = "_NEG_"
+
+    if rid in ruleConjuncts_map :
+      currConjunct_str = ruleConjuncts_map[ rid ]
+      if sign :
+        ruleConjuncts_map[ rid ] = currConjunct_str + " & ~( " + predID + " )"
+      else :
+        ruleConjuncts_map[ rid ] = currConjunct_str + " & " + predID
+    else :
+      if sign :
+        ruleConjuncts_map[ rid ] = "~( " + predID + " )"
+      else :
+        ruleConjuncts_map[ rid ] = predID
+
+  # ----------------------------------------------------------------- #
+  # decrease work on sympy call by negating clauses individually 
+  # and taking the conjunction of the negated clauses:
+  #
+
+  # apply negations and DNF simplifications on clauses individually
+  for rid in ruleConjuncts_map :
+    conjunct_str = ruleConjuncts_map[ rid ]
+    ruleConjuncts_map[ rid ] = sympy.to_dnf( "~ ( " + conjunct_str + " )" )
+
+  # build negative DNF fmla
+  # by AND'ing together negated clauses.
+  negFmla = None
+  for key in ruleConjuncts_map :
+    if negFmla :
+      negFmla += " & " + str( ruleConjuncts_map[key] )
+    else :
+      negFmla = str( ruleConjuncts_map[key] )
+
+  print "negFmla = " + negFmla
+
+  ## simplify DNF
+  #simplified_negFmla = sympy.to_dnf( negFmla )
+  #return simplified_negFmla
+
+  return negFmla
+
+
+#####################
+#  GET DNF FMLA V1  #
+#####################
+def getDNFFmla_v1( ridSidToPredicate_map ) :
 
   # ////////////////////////////////////////// #
   # convert to sympy formula
@@ -133,18 +211,17 @@ def doDeMorgans( parentRID, ruleRIDs, cursor ) :
   # ----------------------------------------------------------- #
   # negate sympy formulas and simplify into DNF
 
-  # negate
+  # negate DNF
   negFmla = "~( " + posFmla + " )"
 
-  # simplify
+  print "negFmla = " + negFmla
+
+  # simplify DNF
   simplified_negFmla = sympy.to_dnf( negFmla )
 
-  # ----------------------------------------------------------- #
-  # save a new rule to IR db per disjunct
+  print "simplified_negFmla = " + str( simplified_negFmla )
 
-  setNewRules( parentName, thisIDBName, simplified_negFmla, predicateToID_map, cursor )
-
-  # ----------------------------------------------------------- #
+  return simplified_negFmla
 
 
 ###################
@@ -160,9 +237,13 @@ def setNewRules( parentName, ruleName, simplified_negFmla, predicateToID_map, cu
 
   if NEGATIVEWRITES_DEBUG :
     print " ... running set new rules ..."
- 
+
+  #print "simplified_negFmla = " + str( simplified_negFmla ) 
+  #tools.dumpAndTerm( cursor )
+
   # -------------------------------------------------------------------- #
-  # initialize local data collection structures
+  # initialize local data collection structures                          #
+  # -------------------------------------------------------------------- #
   newName       = "not_" + ruleName + "_from_" + parentName
   newGoalAtts   = [] # populate with a uniform set of variables and propogate the set among all DM rules.
   newRIDs       = [] # list of the rids for the new DM rules.
@@ -177,18 +258,21 @@ def setNewRules( parentName, ruleName, simplified_negFmla, predicateToID_map, cu
   ridList   = tools.toAscii_list( ridList )
   pickedRID = ridList[0]
 
-  # get attribute list
-  cursor.execute( "SELECT attID,attName FROM GoalAtt WHERE rid='" + pickedRID + "'" )
+  # get original attribute list. This is authoratative b/c
+  # setting uniform variable scheme prior to applying DeMorgan's rewrites.
+  cursor.execute( "SELECT attID,attName,attType FROM GoalAtt WHERE rid='" + pickedRID + "'" )
   origAttList = cursor.fetchall()
   origAttList = tools.toAscii_multiList( origAttList )
 
   # fill goalAttMapper with attID : uniform string
   for att in origAttList :
-    attID = att[0]
-    goalAttMapper[ attID ] = "A" + str( attID )
+    attID   = att[0]
+    attName = att[1]
+    goalAttMapper[ attID ] = attName
 
   # -------------------------------------------------------------------- #
-  # get all clauses for this rule
+  # get all clauses for this rule                                        #
+  # -------------------------------------------------------------------- #
   negated_simplified_fmla_str = str( simplified_negFmla )
   negated_simplified_fmla_str = negated_simplified_fmla_str.translate( None, string.whitespace)
   negated_simplified_fmla_str = negated_simplified_fmla_str.replace( "(", "" )
@@ -196,48 +280,63 @@ def setNewRules( parentName, ruleName, simplified_negFmla, predicateToID_map, cu
   clauses                     = negated_simplified_fmla_str.split( "|" )
 
   # -------------------------------------------------------------------- #
-  # get predicate (subgoal) ID mapping for this rule
+  # get predicate (subgoal) ID mapping for this rule                     #
+  # predicateToID_map[ predID ] = [ rid, [ sign, sid ] ]                 #
+  # -------------------------------------------------------------------- #
   predMap = predicateToID_map
 
   # -------------------------------------------------------------------- #
-  # spawn one new not_ rule per clause
+  # spawn one new not_ rule per clause                                   #
+  # -------------------------------------------------------------------- #
   for c in clauses :
 
-    # register id for new rule
+    # get an id for the new rule
     newRID = tools.getID()
     newRIDs.append( newRID )
 
-    # grab the list of literals
+    # grab the list of literals in this clause
     literalList = c.split( "&" )
 
     # iterate over literal list to construct the string representation
     for literal in literalList :
+
+      # remove negation from string and record a notin for this subgoal.
       if "~" in literal :
         predicate = literal.replace( "~", "" )
         addArg    = "notin"
+
+      # no negation means do nothing.
       else :
         predicate = literal
         addArg    = None
 
+      # grab the parent rid, sign, and sid for this subgoal
+      # represented by this literal in the Boolean formula.
       predData  = predMap[ predicate ]
       rid       = predData[0]
       sign      = predData[1][0]
       sid       = predData[1][1]
 
-      #print "orig rule: " + dumpers.reconstructRule( rid, cursor )
+      # grab info regarding the original rule.
       origRule             = Rule.Rule( rid, cursor )
       origRule_typeMap     = origRule.getAllAttTypes()
       origRule_goalAttList = origRule.getGoalAttList()
 
       # -------------------------------------------- #
-      # get subgoal info
-
-      # get name and time arg
+      # get subgoal info                             #
+      # -------------------------------------------- #
+      # get name and time arg for this subgoal from the original rule.
       cursor.execute( "SELECT subgoalName,subgoalTimeArg FROM Subgoals WHERE rid='" + rid + "' AND sid='" + sid + "'"  )
-      data           = cursor.fetchall()
-      data           = tools.toAscii_multiList( data )
-      subgoalName    = data[0][0]
-      subgoalTimeArg = data[0][1]
+      data           = cursor.fetchone()
+      data           = tools.toAscii_list( data )
+      subgoalName    = data[0]
+      try :
+        subgoalTimeArg = data[1]
+      except IndexError :
+        subgoalTimeArg = ""
+
+      #print "here"
+      #tools.dumpAndTerm( cursor )
 
       # get subgoal attribute list
       cursor.execute( "SELECT attID,attName,attType FROM SubgoalAtt WHERE rid='" + rid + "' AND sid='" + sid + "'" )
@@ -245,8 +344,8 @@ def setNewRules( parentName, ruleName, simplified_negFmla, predicateToID_map, cu
       subgoalAtts = tools.toAscii_multiList( subgoalAtts )
 
       # -------------------------------------------- #
-      # save subgoal with the rid of the new rule
-
+      # save subgoal with the rid of the new rule    #
+      # -------------------------------------------- #
       # create new sid
       newSID = tools.getID()
 
@@ -261,9 +360,9 @@ def setNewRules( parentName, ruleName, simplified_negFmla, predicateToID_map, cu
         goalAttNames = [ x[0] for x in newGoalAtts ]
 
         # ----------------------------------------------------- #
-        # check if atts appear in goal atts
-        # if so, get the corresponding attID from goal att list
-
+        # check if atts appear in goal atts                     #
+        # if so, get the corresponding attID from goal att list #
+        # ----------------------------------------------------- #
         goalAttID = None
         if attName in origRule_goalAttList :
           goalAttID = origRule_goalAttList.index( attName )
@@ -288,16 +387,16 @@ def setNewRules( parentName, ruleName, simplified_negFmla, predicateToID_map, cu
 
         # insert
         cursor.execute( "INSERT INTO SubgoalAtt VALUES ('" + newRID + "','" + newSID + "','" + str( attID ) + "','" + attName + "','" + attType + "')" )
-        print "completed insert"
-        print "--------------------"
-        print "c = " + str( c )
-        print "origRule : " + dumpers.reconstructRule( rid, cursor )
-        print "subgoalName = " + subgoalName
-        print "subgoalTimeArg = " + subgoalTimeArg
-        print "subgoalAtts = " + str( subgoalAtts )
-        print "origRule_goalAttList = " + str( origRule_goalAttList )
-        print "att = " + str( att )
-        print "goalAttID = " + str( goalAttID )
+        #print "completed insert"
+        #print "--------------------"
+        #print "c = " + str( c )
+        #print "origRule : " + dumpers.reconstructRule( rid, cursor )
+        #print "subgoalName = " + subgoalName
+        #print "subgoalTimeArg = " + subgoalTimeArg
+        #print "subgoalAtts = " + str( subgoalAtts )
+        #print "origRule_goalAttList = " + str( origRule_goalAttList )
+        #print "att = " + str( att )
+        #print "goalAttID = " + str( goalAttID )
         #tools.bp( __name__, inspect.stack()[0][3], "breakhere." )
 
       # save subgoal additional args
@@ -317,18 +416,24 @@ def setNewRules( parentName, ruleName, simplified_negFmla, predicateToID_map, cu
     cursor.execute( "INSERT INTO Rule (rid, goalName, goalTimeArg, rewritten) VALUES ('" + newRID + "','" + newName + "','" + timeArg + "','" + str(rewrittenFlag) + "')" )
 
     # save new goal attributes
-    prevInserts = []
-    for attData in newGoalAtts :
+    #prevInserts = []
+    #for attData in newGoalAtts :
+    #  goalAttID = attData[0]
+    #  attName   = attData[1]
+    #  attType   = attData[2]
+    #  if not attName == "_" and not goalAttID == None and not goalAttID in prevInserts :
+    #    cursor.execute( "INSERT INTO GoalAtt VALUES ('" + newRID + "','" + str(goalAttID) + "','" + goalAttMapper[goalAttID ] + "','" + attType + "')" )
+    #    prevInserts.append( goalAttID )
+
+    for attData in origAttList :
       goalAttID = attData[0]
       attName   = attData[1]
       attType   = attData[2]
-      if not attName == "_" and not goalAttID == None and not goalAttID in prevInserts :
-        cursor.execute( "INSERT INTO GoalAtt VALUES ('" + newRID + "','" + str(goalAttID) + "','" + goalAttMapper[goalAttID ] + "','" + attType + "')" )
-        prevInserts.append( goalAttID )
-
+      cursor.execute( "INSERT INTO GoalAtt VALUES ('" + newRID + "','" + str(goalAttID) + "','" + attName + "','" + attType + "')" )
 
   # --------------------------------------------------------------------- #
 
+  return newRIDs
 
 #########
 #  EOF  #

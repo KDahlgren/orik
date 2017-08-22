@@ -24,6 +24,18 @@ operators = [ "<", ">", "<=", ">=", "==",  "+", "-", "*", "/" ]
 TOOLS_DEBUG = False
 
 
+###################
+#  DUMP AND TERM  #
+###################
+# dump the program from IR DB and terminate execution.
+def dumpAndTerm( cursor ) :
+  print "============================="
+  print "==      DUMP AND TERM      =="
+  print "============================="
+  dumpers.programDump(  cursor )
+  bp( __name__, inspect.stack()[0][3], "hit a dump and terminate. congrats. aborting..." )
+
+
 #####################
 #  BREAKPOINT (bp)  #
 #####################
@@ -112,7 +124,7 @@ def getID() :
 # input nothing
 # output random 4 char upper case alphanumeric id
 def getID_4() :
-  return "".join( random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ') for i in range(4) )
+  return "".join( random.choice('abcdefghijklmnopqrstuvwxyz') for i in range(4) )
 
 #########################
 #  GET RANDOM ATT NAME  #
@@ -244,6 +256,13 @@ def checkParentheses( line ) :
 # output list of ascii results
 def toAscii_list( sqlresults ) :
 
+  #print "sqlresults = " + str( sqlresults ),
+  #print "type( sqlresults ) = " + str( type( sqlresults ) )
+
+  if not type( sqlresults ) is list :
+    sqlresults = [ sqlresults ]
+    #print "> sqlresults = " + str( sqlresults )
+
   cleanResults = []
   for r in sqlresults :
     if not r[0] == None :
@@ -254,6 +273,7 @@ def toAscii_list( sqlresults ) :
     return cleanResults
   else :
     return None
+
 
 #########################
 #  TO ASCII MULTI LIST  #
@@ -613,6 +633,17 @@ def checkDataTypes( rid, cursor ) :
 #  IS STRING  #
 ###############
 def isString( var ) :
+
+  # .......................... #
+  # arithmetic operators 
+  # not allowed in strings
+  for op in operators :
+    if op in var :
+      return False
+
+  # .......................... #
+  # quotes definitely mean 
+  # input is a string.
   if "'" in var or '"' in var :
     return True
   else :
@@ -643,99 +674,101 @@ def getVarType( var, rid, cursor ) :
 
   if isString( var ) :
     return "string"
-
-  elif isInt( var ) :
+  else :
     return "int"
 
-  else :
-    # get info for subgoal containing var
-    cursor.execute( "SELECT subgoalName,attID,attName FROM Subgoals,SubgoalAtt WHERE Subgoals.rid=='" + rid + "' AND Subgoals.rid==SubgoalAtt.rid AND Subgoals.sid==SubgoalAtt.sid AND SubgoalAtt.attName=='" + var + "'" )
-    info = cursor.fetchall()
-    info = toAscii_multiList( info )
+  #elif isInt( var ) :
+  #  return "int"
 
-    #print "-----------------------"
-    #print "info = " + str( info )
+  #else :
+  #  # get info for subgoal containing var
+  #  cursor.execute( "SELECT subgoalName,attID,attName FROM Subgoals,SubgoalAtt WHERE Subgoals.rid=='" + rid + "' AND Subgoals.rid==SubgoalAtt.rid AND Subgoals.sid==SubgoalAtt.sid AND SubgoalAtt.attName=='" + var + "'" )
+  #  info = cursor.fetchall()
+  #  info = toAscii_multiList( info )
 
-    # check if variable is defined in an equation
-    if info == [] :
-      cursor.execute( "SELECT rid,eid,eqn FROM Equation WHERE rid='" + rid + "'" )
-      rule_eqns = cursor.fetchall()
-      rule_eqns = toAscii_multiList( rule_eqns )
-      eqns = [ eqn[2] for eqn in rule_eqns ]
+  #  #print "-----------------------"
+  #  #print "info = " + str( info )
 
-      parsedEqns = []
-      for eqn in eqns :
-        #print "eqn = " + str( eqn )
-        for op in operators :
-          if op in eqn :
-            #print eqn + " contains op " + op
-            eqn_orig = eqn
-            eqn = eqn.split( op )
-            #print "split eqn = " + str( eqn )
-            lhs = eqn[0]
-            rhs = eqn[1]
-            if lhs == var and isString( rhs ) :
-              return "string"
-            elif lhs == var and isInt( rhs ) :
-              return "int"
-            elif lhs == var :
-              bp( __name__, inspect.stack()[0][3], "FATAL ERROR : unrecognized type in eqn : " + str( eqn_orig ) )
-            #else :
-            #  print "could not match var " + var + " in eqn " + str( eqn )
-      bp( __name__, inspect.stack()[0][3], "FATAL ERROR : variable " + var + " not defined in rule\n" + dumpers.reconstructRule( rid, cursor ) )
+  #  # check if variable is defined in an equation
+  #  if info == [] :
+  #    cursor.execute( "SELECT rid,eid,eqn FROM Equation WHERE rid='" + rid + "'" )
+  #    rule_eqns = cursor.fetchall()
+  #    rule_eqns = toAscii_multiList( rule_eqns )
+  #    eqns = [ eqn[2] for eqn in rule_eqns ]
 
-    # variable exists in subgoal
-    else :
-      typeList = []
-      #print "info = " + str( info )
-      for subgoal in info :
-        subgoalName = subgoal[0]
-        attID       = subgoal[1]
-  
-        if subgoalName == "clock" :
-          if attID == 0 :
-            typeList.append( "string" )
-          elif attID == 1 :
-            typeList.append( "string" )
-          elif attID == 2 :
-            #typeList.append( "string" )
-            typeList.append( "int" )
-          elif attID == 3 :
-            #typeList.append( "string" )
-            typeList.append( "int" )
-          else :
-            bp( __name__, inspect.stack()[0][3], "FATAL ERROR: clock only has schema arity 4, attempting to access index " + ( attID ) )
-  
-        elif isFact( subgoalName, cursor ) :
-          cursor.execute( "SELECT attType FROM Fact,FactAtt WHERE Fact.fid==FactAtt.fid AND Fact.name=='" + subgoalName + "' AND FactAtt.attID=='" + str( attID ) + "'" )
-          thisType = cursor.fetchone()
-          #print "IS FACT:"
-          #print "subgoalName = " + subgoalName
-          #print "thisType = " + str( thisType )
-          thisType = toAscii_str( thisType )
-          typeList.append( thisType )
-  
-        else : # it's a rule
-          cursor.execute( "SELECT attType FROM Rule,GoalAtt WHERE Rule.rid==GoalAtt.rid AND Rule.goalName=='" + subgoalName + "' AND GoalAtt.attID=='" + str( attID ) + "'" )
-          thisType = cursor.fetchone()
-          #print "IS RULE:"
-          #print "subgoalName = " + subgoalName
-          #print "thisType = " + str( thisType )
-          thisType = toAscii_str( thisType )
-          typeList.append( thisType )
-  
-      # make sure all types in type list agree
-      for t1 in typeList :
-        for t2 in typeList :
-          if not t1 == t2 :
-            bp( __name__, inspect.stack()[0][3], "FATAL ERROR : single variable has multiple type representations: " + str(typeList) + "\nAborting..." )
+  #    parsedEqns = []
+  #    for eqn in eqns :
+  #      #print "eqn = " + str( eqn )
+  #      for op in operators :
+  #        if op in eqn :
+  #          #print eqn + " contains op " + op
+  #          eqn_orig = eqn
+  #          eqn = eqn.split( op )
+  #          #print "split eqn = " + str( eqn )
+  #          lhs = eqn[0]
+  #          rhs = eqn[1]
+  #          if lhs == var and isString( rhs ) :
+  #            return "string"
+  #          elif lhs == var and isInt( rhs ) :
+  #            return "int"
+  #          elif lhs == var :
+  #            bp( __name__, inspect.stack()[0][3], "FATAL ERROR : unrecognized type in eqn : " + str( eqn_orig ) )
+  #          #else :
+  #          #  print "could not match var " + var + " in eqn " + str( eqn )
+  #    bp( __name__, inspect.stack()[0][3], "FATAL ERROR : variable " + var + " not defined in rule\n" + dumpers.reconstructRule( rid, cursor ) )
 
-    #print "var = " + str( var )
-    #print "rid = " + rid
-    #print dumpers.reconstructRule( rid, cursor )
-    #print "typeList = " + str( typeList ) 
-    #print "-----------------------"
-    return typeList[0]
+  #  # variable exists in subgoal
+  #  else :
+  #    typeList = []
+  #    #print "info = " + str( info )
+  #    for subgoal in info :
+  #      subgoalName = subgoal[0]
+  #      attID       = subgoal[1]
+  #
+  #      if subgoalName == "clock" :
+  #        if attID == 0 :
+  #          typeList.append( "string" )
+  #        elif attID == 1 :
+  #          typeList.append( "string" )
+  #        elif attID == 2 :
+  #          #typeList.append( "string" )
+  #          typeList.append( "int" )
+  #        elif attID == 3 :
+  #          #typeList.append( "string" )
+  #          typeList.append( "int" )
+  #        else :
+  #          bp( __name__, inspect.stack()[0][3], "FATAL ERROR: clock only has schema arity 4, attempting to access index " + ( attID ) )
+  #
+  #      elif isFact( subgoalName, cursor ) :
+  #        cursor.execute( "SELECT attType FROM Fact,FactAtt WHERE Fact.fid==FactAtt.fid AND Fact.name=='" + subgoalName + "' AND FactAtt.attID=='" + str( attID ) + "'" )
+  #        thisType = cursor.fetchone()
+  #        #print "IS FACT:"
+  #        #print "subgoalName = " + subgoalName
+  #        #print "thisType = " + str( thisType )
+  #        thisType = toAscii_str( thisType )
+  #        typeList.append( thisType )
+  #
+  #      else : # it's a rule
+  #        cursor.execute( "SELECT attType FROM Rule,GoalAtt WHERE Rule.rid==GoalAtt.rid AND Rule.goalName=='" + subgoalName + "' AND GoalAtt.attID=='" + str( attID ) + "'" )
+  #        thisType = cursor.fetchone()
+  #        #print "IS RULE:"
+  #        #print "subgoalName = " + subgoalName
+  #        #print "thisType = " + str( thisType )
+  #        thisType = toAscii_str( thisType )
+  #        typeList.append( thisType )
+  #
+  #    # make sure all types in type list agree
+  #    for t1 in typeList :
+  #      for t2 in typeList :
+  #        if not t1 == t2 :
+  #          bp( __name__, inspect.stack()[0][3], "FATAL ERROR : single variable has multiple type representations: " + str(typeList) + "\nAborting..." )
+
+  #  #print "var = " + str( var )
+  #  #print "rid = " + rid
+  #  #print dumpers.reconstructRule( rid, cursor )
+  #  #print "typeList = " + str( typeList ) 
+  #  #print "-----------------------"
+  #  return typeList[0]
 
 
 ##################

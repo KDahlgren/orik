@@ -71,7 +71,15 @@ class Fact :
   def setAttList( self, attList ) :
     attID       = 0  # allows duplicate attributes in attList
     defaultType = "UNDEFINED"
+
+    #if self.getName() == "bcast" :
+    #  print "BCAST INSERT!"
+
     for attName in attList :
+
+      #print self.getName() + " : ", 
+      #print "INSERT INTO FactAtt VALUES ('" + self.fid + "','" + str(attID) + "','" + attName + "','" + str(defaultType) + "')"
+
       self.cursor.execute("INSERT INTO FactAtt VALUES ('" + self.fid + "','" + str(attID) + "','" + attName + "','" + str(defaultType) + "')")
       attID += 1
 
@@ -83,6 +91,11 @@ class Fact :
   def setAttTypes( self ) :
     allDataList = self.getAttList()               # ordered by appearance in program
     allAttTypes = self.getTypeList( allDataList ) # ordered by appearance in program
+
+    #if self.getName() == "bcast" : 
+    #  print "allDataList = " + str( allDataList )
+    #  print "allAttTypes = " + str( allAttTypes )
+    #  tools.dumpAndTerm( self.cursor )
 
     # set att types for this fact
     # ordering is crucial

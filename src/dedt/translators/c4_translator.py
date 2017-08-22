@@ -171,12 +171,12 @@ def c4datalog( cursor ) :
         typeList.append( attType )
 
       # check for time argument
-      cursor.execute( "SELECT timeArg FROM Fact WHERE fid='" + fid + "'" )
-      timeArg = cursor.fetchone()
-      timeArg = tools.toAscii_str( timeArg )
+      #cursor.execute( "SELECT timeArg FROM Fact WHERE fid='" + fid + "'" )
+      #timeArg = cursor.fetchone()
+      #timeArg = tools.toAscii_str( timeArg )
 
-      if timeArg :
-        typeList.append( "int" )
+      #if timeArg :
+      #  typeList.append( "int" )
 
       # populate new c4 define statement
       newDefine = ""
@@ -207,9 +207,9 @@ def c4datalog( cursor ) :
   # ----------------------------------------------------------- #
   # add not_clock define
 
-  definesList.append( "define(not_clock,{string,string,int,int});\n" )
-  tableListStr += "not_clock,"
-  tableListArray.append( "not_clock" )
+  #definesList.append( "define(not_clock,{string,string,int,int});\n" )
+  #tableListStr += "not_clock,"
+  #tableListArray.append( "not_clock" )
 
   # ----------------------------------------------------------- #
   # add facts
