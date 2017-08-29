@@ -290,6 +290,10 @@ def c4datalog( cursor ) :
     for statement in group :
       allProgramLines.append( statement.rstrip() )
 
+  # remove duplicates
+  tableListArray = set( tableListArray )
+  tableListArray = list( tableListArray )
+
   return [ allProgramLines, tableListArray ]
 
 

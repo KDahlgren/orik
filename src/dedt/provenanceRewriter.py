@@ -109,19 +109,21 @@ def regProv( regRule, nameAppend, cursor ) :
 
   #sys.exit( "BREAKPOINT: regRule = " + str(regRule.getSubgoalListStr()) )
 
+  # -------------------------------------------------- #
   # parse rule
   parsedRule = dedalusParser.parse( regRule.display() )
 
   #sys.exit( "BREAKPOINT: regRule.display() = " + str( regRule.display() ) + "\nparsedRule = " + str(parsedRule) )
 
+  # -------------------------------------------------- #
   # generate random ID for new rule
   rid = tools.getID()
 
+  # -------------------------------------------------- #
   # initialize new rule
   firingsRule = Rule.Rule( rid, cursor )
 
   # -------------------------------------------------- #
-
   # get goal info
   goalName      = regRule.getGoalName() + nameAppend + str(rid)
   goalTimeArg   = ""
@@ -132,7 +134,6 @@ def regProv( regRule, nameAppend, cursor ) :
     print "regProv: goalName     = " + goalName
 
   # -------------------------------------------------- #
-
   # get subgoal array
   subgoalArray = extractors.extractSubgoalList( parsedRule[1] )
 
@@ -145,21 +146,25 @@ def regProv( regRule, nameAppend, cursor ) :
   if PROVENANCEREWRITE_DEBUG :
     print "regProv: subgoalArray = " + str(subgoalArray)
 
+  # -------------------------------------------------- #
   # collect goal args while inserting subgoals
   firstSubgoalAtts = []
   goalAttList = []
 
+  # -------------------------------------------------- #
   # populate with original goal atts first
   goalAttList = regRule.getGoalAttList()
 
   if PROVENANCEREWRITE_DEBUG :
     print ">>>>>>>> goalAttList init = " + str(goalAttList)
 
+  # -------------------------------------------------- #
   # then populate with remaining subgoal atts
   for subgoal in subgoalArray :
     # generate random ID for subgoal
     sid = tools.getID()
 
+    # -------------------------------------------------- #
     # extract info
     subgoalName    = extractors.extractSubgoalName(     subgoal )
     subgoalAttList = extractors.extractAttList(         subgoal ) # returns list
@@ -173,25 +178,29 @@ def regProv( regRule, nameAppend, cursor ) :
       print "regProv: subgoalAttList = " + str(subgoalAttList)
       print "regProv: subgoalAddArgs = " + str(subgoalAddArgs)
 
+    # -------------------------------------------------- #
     # catch first subgoal att
     if len(subgoalAddArgs) == 0 :
       firstSubgoalAtts.append( subgoalAttList[0] )
 
+    # -------------------------------------------------- #
     # populate goal attribute list
     for att in subgoalAttList :
       if (not att in goalAttList) and (not att.isdigit()) and (not att == "_") :  # exclude numbers from goal atts
         goalAttList.append( att )
 
+    # -------------------------------------------------- #
     # make sure time attribute appears as rightmost attribute
     if not goalAttList == None :
-      if PROVENANCEREWRITE_DEBUG :
-        print "timeAtt = " + timeAtt
-        print "old goalAttList = " + str(goalAttList)
-      goalAttList = [x for x in goalAttList if x != timeAtt]
-      if PROVENANCEREWRITE_DEBUG :
-        print "new goalAttList = " + str(goalAttList)
-      goalAttList.append(timeAtt)
 
+      for att in goalAttList :
+
+        # make sure time attribute(s) appear in the rightmost columns
+        if "SndTime" in att :
+          goalAttList = [x for x in goalAttList if x != att ]
+          goalAttList.append( att )
+
+    # -------------------------------------------------- #
     # save firings subgoal
     firingsRule.setSingleSubgoalInfo( sid, subgoalName, subgoalTimeArg )
     firingsRule.setSingleSubgoalAttList( sid, subgoalAttList )
@@ -232,10 +241,14 @@ def rewriteProvenance( ruleMeta, cursor ) :
   if PROVENANCEREWRITE_DEBUG :
     print " ... running rewriteProvenance ... "
 
+  # -------------------------------------------------- #
   # iterate over rules
+  print "DUMPING RULE META :"
   for rule in ruleMeta :
-    containsAgg = False
 
+    # ......................................... #
+    # check for aggregates in goal attributes
+    containsAgg = False
     goalAtts = rule.getGoalAttList()
 
     for att in goalAtts :
@@ -243,8 +256,12 @@ def rewriteProvenance( ruleMeta, cursor ) :
         if agg in att :
           containsAgg = True
 
+    # ......................................... #
+    # branch on presence of aggregates in goal
     if containsAgg :
+      tools.bp( __name__, inspect.stack()[0][3], "shit came back to haunt you." )
       aggProv( rule, "_bindings", cursor )
+
     else :
       regProv( rule, "_prov", cursor )
 
