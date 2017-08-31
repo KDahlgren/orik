@@ -33,6 +33,10 @@ arithOps = [ "+", "-", "*", "/" ]
 # and adds domain constraint subgoals where appropriate. 
 def doDeMorgans( parentRID, ruleRIDs, cursor ) :
 
+  print "==========================================="
+  print "... running DO DEMORGANS from deMorgans ..."
+  print "==========================================="
+
   # ----------------------------------------------------------- #
   # get data for naming stuff
   # ----------------------------------------------------------- #

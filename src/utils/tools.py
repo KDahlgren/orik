@@ -654,16 +654,21 @@ def isString( var ) :
 #  IS INT  #
 ############
 def isInt( var ) :
-  # clean var of operators
-  for op in operators :
-    if op in var :
-      var = var.replace( op, "" )
 
-  # check of positive integer
-  if var.isdigit() :
+  if type( var ) is int :
     return True
-  else :
-    return False
+
+  elif type(var) is str :
+    # clean var of operators
+    for op in operators :
+      if op in var :
+        var = var.replace( op, "" )
+  
+    # check if positive integer
+    if var.isdigit() :
+      return True
+    else :
+      return False
 
 
 ##################

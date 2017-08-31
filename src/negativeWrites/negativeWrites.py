@@ -22,6 +22,7 @@ from translators import c4_translator
 from utils       import clockTools, tools, dumpers
 
 import deMorgans
+import rewriteNegativeEDBs
 
 # ------------------------------------------------------ #
 
@@ -155,7 +156,9 @@ def setNegativeRules( oldRuleMeta, COUNTER, cursor ) :
 
     # ............................................................... #
     # rewrite original rules with uniform universal attribute variables
-    setUniformUniversalAttributes( posNameRIDs, cursor )
+    # if relation possesses more than one IDB rule definition.
+    if len( posNameRIDs ) > 1 :
+      setUniformUniversalAttributes( posNameRIDs, cursor )
 
     # ............................................................... #
     # apply the demorgan's rewriting scheme to the rule set.
@@ -187,6 +190,16 @@ def setNegativeRules( oldRuleMeta, COUNTER, cursor ) :
 
   #if COUNTER == 1 :
   #  tools.dumpAndTerm( cursor )
+
+  # ................................................... #
+  # rewrite rules with negated EDBs containing          #
+  # wildcards                                           #
+  # ................................................... #
+  additionalNewRules = rewriteNegativeEDBs.rewriteNegativeEDBs( cursor )
+  newRules.extend( additionalNewRules )
+
+  if COUNTER == 1 :
+    tools.dumpAndTerm( cursor )
 
   # ................................................... #
   # branch on continued presence of negated IDBs
@@ -461,45 +474,137 @@ def addDomainSubgoals( parentRID, posName, nameRIDS, newDMRIDList, pResults, cur
 ##################
 def getAttDoms( parentRID, posName, nameRIDS, newDMRIDList, pResults, cursor ) :
 
+  print "================================================"
+  print "... running GET ATT DOMS from negativeWrites ..."
+  print "================================================"
+
+  print "parent rule    : " + dumpers.reconstructRule( parentRID, cursor )
+  print "posName        : " + posName
+  print "nameRIDS rules :"
+  for rid in nameRIDS :
+    print dumpers.reconstructRule( rid, cursor )
+
   attDomsMap = {}
 
   #----------------------------------------------------------#
-  if "missing_log" in posName[0:11] :
-    print "parent Rule:"
-    print dumpers.reconstructRule( parentRID, cursor )
+  #if "missing_log" in posName[0:11] :
+  #  print "parent Rule:"
+  #  print dumpers.reconstructRule( parentRID, cursor )
 
-    print "nameRIDS"
-    for rid in nameRIDS :
-      print dumpers.reconstructRule( rid, cursor )
+  #  print "nameRIDS"
+  #  for rid in nameRIDS :
+  #    print dumpers.reconstructRule( rid, cursor )
 
-    print "newDMRIDList"
-    for rid in newDMRIDList :
-      print dumpers.reconstructRule( rid, cursor )
-
-    print "attDomsMap = " + str( attDomsMap )
-    tools.bp( __name__, inspect.stack()[0][3], "shit" )
+  #  print "newDMRIDList"
+  #  for rid in newDMRIDList :
+  #    print dumpers.reconstructRule( rid, cursor )
   #----------------------------------------------------------#
+
+  # ---------------------------------------------------- #
+  # get the parent rule name                             #
+  # ---------------------------------------------------- #
+  parentName = getParentName( parentRID, cursor )
+
+  print "parentName = " + parentName
+  print "pResults[ " + parentName + " ] :"
+  print pResults[ parentName ]
 
   # ---------------------------------------------------- #
   # get the domain for each attribute of positive rule,  #
   # as determined in pResults.                           #
   # ---------------------------------------------------- #
-  attDomsMap = getParentAttDomains( pResults[ posName ] )
+  attDomsMap = getParentAttDomains( pResults[ parentName ] )
+
+  # ---------------------------------------------------- #
+  # empty domain map means parent rule didn't fire.      #
+  # fill doms with default values.                       #
+  # ---------------------------------------------------- #
+  if attDomsMap == {} :
+    print "filling defaults..."
+    attDomsMap = fillDefaults( newDMRIDList, cursor )
+
+  #----------------------------------------------------------#
+  #if "missing_log" in posName[0:11] :
+  #  print "attDomsMap = " + str( attDomsMap )
+  #  tools.bp( __name__, inspect.stack()[0][3], "shit" )
+  #----------------------------------------------------------#
+
+  print "attDomsMap = " + str( attDomsMap )
 
   return attDomsMap
+
+
+###################
+#  FILL DEFAULTS  #
+###################
+def fillDefaults( newDMRIDList, cursor ) :
+
+  # get goal arity
+  chooseAnRID = newDMRIDList[0]
+  cursor.execute( "SELECT attID,attType FROM GoalAtt WHERE rid=='" + chooseAnRID + "'" )
+  data = cursor.fetchall()
+  data = tools.toAscii_multiList( data )
+
+  lastAttID = data[-1][0]
+  arity     = lastAttID + 1
+
+  domMap = {}
+  for i in range( 0, arity ) :
+
+    attType = data[ i ][ 1 ]
+
+    if attType == "string" :
+      col = [ "_DEFAULT_STRING_" ]
+    else :
+      col = [ 99999999999 ]
+
+    domMap[ i ] = col
+
+  return domMap
+
+
+#####################
+#  GET PARENT NAME  #
+#####################
+def getParentName( parentRID, cursor ) :
+
+  cursor.execute( "SELECT goalName FROM Rule WHERE rid=='" + parentRID + "'" )
+  parentName = cursor.fetchone()
+  parentName = tools.toAscii_str( parentName )
+
+  return parentName
 
 
 ###########################
 #  ADD SUBGOALS TO RULES  #
 ###########################
+# add domain subgoals to new demorgan's rules.
 def addSubgoalsToRules( newDomNames, newDMRIDList, cursor ) :
 
   for rid in newDMRIDList :
 
+    print "this rule : " + dumpers.reconstructRule( rid, cursor )
+
+    # ----------------------------------- #
     # get goal att list
     cursor.execute( "SELECT attID,attName,attType FROM GoalAtt WHERE rid=='" + rid + "'" )
     goalAttList = cursor.fetchall()
     goalAttList = tools.toAscii_multiList( goalAttList )
+
+    print "goalAttList = " + str( goalAttList )
+    print "newDomNames = " + str( newDomNames )
+
+    # ----------------------------------- #
+    # map att names to att indexes
+    attNameIndex = {}
+    for att in goalAttList :
+      attID   = att[0]
+      attName = att[1]
+      attType = att[2]
+
+      attIndex = attName.replace( "A", "" )
+
+      attNameIndex[ attName ] = attIndex
 
     subNum = 0 
     for subName in newDomNames :
@@ -523,6 +628,9 @@ def addSubgoalsToRules( newDomNames, newDMRIDList, cursor ) :
       # insert subgoal att data             #
       # ----------------------------------- #
 
+      print "subNum = " + str(subNum)
+      print "subName = " + str( subName )
+
       att     = goalAttList[ subNum ]
       attID   = 0       # domain subgoals have arity 1
       attName = att[1]
@@ -538,10 +646,16 @@ def addSubgoalsToRules( newDomNames, newDMRIDList, cursor ) :
 ####################
 def saveDomFacts( domNameBase, attDomsMap, cursor ) :
 
+  print "++++++++++++++++++++++++++++++++++++++++++++++++++"
+  print "... running SAVE DOM FACTS from negativeWrites ..."
+  print "++++++++++++++++++++++++++++++++++++++++++++++++++"
+
+  if domNameBase[0:10] == "dom_clock_" :
+    print "domNameBase = " + domNameBase
+    print "attDomsMap = " + str( attDomsMap )
+    #tools.bp( __name__, inspect.stack()[0][3], "stop here" )
+
   newDomNames = []
-
-  #print "attDomsMap = " + str( attDomsMap )
-
   for att in attDomsMap :
     attID = att
     dom   = attDomsMap[ att ]
@@ -584,7 +698,7 @@ def saveDomFacts( domNameBase, attDomsMap, cursor ) :
       # perform insertion
       thisID = 0 # contant because domain relations are unary.
       #print "INSERT INTO FactAtt VALUES ('" + fid + "','" + str(thisID) + "','" + data + "','" + attType + "')"
-      cursor.execute( "INSERT INTO FactAtt VALUES ('" + fid + "','" + str(thisID) + "','" + data + "','" + attType + "')" )
+      cursor.execute( "INSERT INTO FactAtt VALUES ('" + fid + "','" + str(thisID) + "','" + str( data ) + "','" + attType + "')" )
 
     # -------------------------------------------- #
     # collect domain subgoal names for convenience
@@ -606,21 +720,26 @@ def getAttDomNameBase( name ) :
 ############################
 def getParentAttDomains( results ) :
 
-  #print "result = " + str( results )
+  #print "results = " + str( results )
 
-  # get tuple arity
-  arity = len( results[0] )
+  if not results == [] :
 
-  attDomsMap = {}
-  attID = 0
-  for i in range( 0, arity ) :
-    col = []
-    for tup in results :
-      if not tup[i] in col :
-        col.append( tup[i] )
-    attDomsMap[ i ] = col
+    # get tuple arity
+    arity = len( results[0] )
 
-  return attDomsMap
+    attDomsMap = {}
+    attID = 0
+    for i in range( 0, arity ) :
+      col = []
+      for tup in results :
+        if not tup[i] in col :
+          col.append( tup[i] )
+      attDomsMap[ i ] = col
+
+    return attDomsMap
+
+  else :
+    return {}
 
 
 #####################
@@ -912,6 +1031,12 @@ def addEqn( eqn, rid, cursor ) :
 # rewrite original rules with uniform universal attribute variables
 def setUniformUniversalAttributes( rids, cursor ) :
 
+  print "===================================================================="
+  print "... running SET UNIFORM UNIVERSAL ATTRIBUTES from negativeWrites ..."
+  print "===================================================================="
+
+  print "positive rule version rids : " + str( rids )
+
   # ------------------------------------------------------- #
   # get arity of this IDB                                   #
   # ------------------------------------------------------- #
@@ -922,14 +1047,9 @@ def setUniformUniversalAttributes( rids, cursor ) :
   #  print dumpers.reconstructRule( rid, cursor )
 
   for rid in rids :
-    cursor.execute( "SELECT attID FROM GoalAtt WHERE rid=='" + rid + "'" )
-    attIDs = cursor.fetchall()
-    attIDs = [ a[0] for a in attIDs ]
-    ar     = max( attIDs ) + 1
-    if arity and not arity == ar :
-      tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : schema mismatch in rules :\n" + printRules( rids, curosr ) )
-    else :
-      arity = ar
+    cursor.execute( "SELECT max(attID) FROM GoalAtt WHERE rid=='" + rid + "'" )
+    maxID = cursor.fetchone()
+    arity = maxID[0]
 
   # ------------------------------------------------------- #
   # generate list of uniform attribute names of same arity  #
@@ -948,6 +1068,9 @@ def setUniformUniversalAttributes( rids, cursor ) :
 
     uniformList = list( uniformAttributeList ) # make mutable
     variableMap = {}
+
+    print "arity : " + str( arity )
+    print "rule : " + dumpers.reconstructRule( rid, cursor )
 
     for i in range(0, arity) :
 
@@ -1184,6 +1307,10 @@ def ruleContainsNegatedIDB( rid, cursor ) :
 
     # skip arith op rewrites for now.
     if "_arithoprewrite" in subgoalName :
+      pass
+
+    # skip edb rewrites
+    elif "_edbrewrite" in subgoalName :
       pass
 
     elif isIDB( subgoalName, cursor ) :
