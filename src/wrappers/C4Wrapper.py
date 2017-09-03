@@ -281,6 +281,8 @@ class C4Wrapper( object ) :
       print "... loading prog ..."
 
     for subprog in fullprog :
+      print "SUBMITTING SUBPROG : "
+      print subprog
       c_prog = bytes( subprog )
       self.lib.c4_install_str( self.c4_obj, c_prog )
 
@@ -300,6 +302,8 @@ class C4Wrapper( object ) :
     self.lib.c4_terminate( )
 
     # ---------------------------------------- #
+    #print "FROM C4WRAPPER : results_array :"
+    #print results_array
     return results_array
 
 

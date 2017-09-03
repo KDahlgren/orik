@@ -92,6 +92,8 @@ def setNegativeRules( oldRuleMeta, COUNTER, cursor ) :
   # IDBs pulled from rules across the entire program.
   negatedList = []
 
+  newDMRIDList = []
+
   pRIDs = getAllRuleRIDs( cursor )
 
   for rid in pRIDs :
@@ -205,7 +207,7 @@ def setNegativeRules( oldRuleMeta, COUNTER, cursor ) :
   # branch on continued presence of negated IDBs
   # ................................................... #
   # recurse if rewritten program still contains rogue negated IDBs
-  if stillContainsNegatedIDBs( newDMRIDList, cursor ) :
+  if not newDMRIDList == [] and stillContainsNegatedIDBs( newDMRIDList, cursor ) :
     COUNTER += 1
     setNegativeRules( newRules, COUNTER, cursor )
 
@@ -1442,6 +1444,9 @@ def evaluate( COUNTER, cursor ) :
   # run program
   results_array = c4_evaluator.runC4_wrapper( allProgramLines )
 
+  #print "FROM evaluate in negativeWrites : results_array :"
+  #print results_array
+
   # ----------------------------------------------------------------- #
   # dump evaluation results locally
   eval_results_dump_dir = os.path.abspath( os.getcwd() ) + "/data/"
@@ -1462,6 +1467,9 @@ def evaluate( COUNTER, cursor ) :
   # parse results into a dictionary
   parsedResults = tools.getEvalResults_dict_c4( results_array )
 
+  #print "FROM evaluate in negativeWrites : parsedResults :"
+  #print parsedResults
+
   # ----------------------------------------------------------------- #
 
   return parsedResults
@@ -1479,9 +1487,7 @@ def eval_results_dump_to_file( COUNTER, results_array, eval_results_dump_dir ) :
 
   for line in results_array :
 
-    # output to stdout
-    if NEGATIVEWRITES_DEBUG :
-      print line
+    print line
 
     # output to file
     f.write( line + "\n" )

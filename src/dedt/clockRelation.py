@@ -19,6 +19,7 @@ from utils import dumpers, parseCommandLineInput, tools
 #  GLOBALS  #
 #############
 CLOCKRELATION_DEBUG = tools.getConfig( "DEDT", "CLOCKRELATION_DEBUG", bool )
+COMM_MODEL          = tools.getConfig( "DEDT", "COMM_MODEL", str )
 
 #########################
 #  INIT CLOCK RELATION  #
@@ -27,6 +28,7 @@ CLOCKRELATION_DEBUG = tools.getConfig( "DEDT", "CLOCKRELATION_DEBUG", bool )
 # create initial clock relation
 # output nothing
 def initClockRelation( cursor, argDict ) :
+
   # check if node topology defined in Fact relation
   nodeFacts = cursor.execute('''SELECT name FROM Fact WHERE Fact.name == "node"''')
 
@@ -42,13 +44,29 @@ def initClockRelation( cursor, argDict ) :
 
     nodeSet = argDict[ "nodes" ]
 
-    for i in range( int(defaultStartSendTime), int(maxSendTime)+1 ) :
-      for n1 in nodeSet :
-        for n2 in nodeSet :
-          delivTime = str(i + 1)
-          #cursor.execute("INSERT OR IGNORE INTO Clock VALUES ('" + n1 + "','" + n2 + "','" + str(i) + "','" + delivTime + "')")
-          cursor.execute("INSERT OR IGNORE INTO Clock VALUES ('" + n1 + "','" + n2 + "','" + str(i) + "','" + delivTime + "', 'True')")
+    # synchronous communication model
+    if COMM_MODEL == "SYNC" :
+      for i in range( int(defaultStartSendTime), int(maxSendTime)+1 ) :
+        for n1 in nodeSet :
+          for n2 in nodeSet :
+            delivTime = str(i + 1)
+            #cursor.execute("INSERT OR IGNORE INTO Clock VALUES ('" + n1 + "','" + n2 + "','" + str(i) + "','" + delivTime + "')")
+            print "INSERT OR IGNORE INTO Clock VALUES ('" + n1 + "','" + n2 + "','" + str(i) + "','" + delivTime + "', 'True')"
+            cursor.execute("INSERT OR IGNORE INTO Clock VALUES ('" + n1 + "','" + n2 + "','" + str(i) + "','" + delivTime + "', 'True')")
 
+    # asynchronous communication model
+    elif COMM_MODEL == "ASYNC" :
+      for i in range( int(defaultStartSendTime), int(maxSendTime)+1 ) :
+        for j in range( i, int(maxSendTime)+2 ) :
+          for n1 in nodeSet :
+            for n2 in nodeSet :
+              #cursor.execute("INSERT OR IGNORE INTO Clock VALUES ('" + n1 + "','" + n2 + "','" + str(i) + "','" + delivTime + "')")
+              cursor.execute("INSERT OR IGNORE INTO Clock VALUES ('" + n1 + "','" + n2 + "','" + str(i) + "','" + str( j ) + "', 'True')")
+
+    else :
+      tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : in settings.ini : COMM_MODEL '" + str(COMM_MODEL) + "' not recognized. Aborting." )
+
+    #dumpers.clockDump( cursor )
     #tools.bp( __name__, inspect.stack()[0][3], "EOT = " + str(maxSendTime) + ",\ndumpers.clockDump( cursor ) = " + str( dumpers.clockDump(cursor)) )
 
     # check for bugs

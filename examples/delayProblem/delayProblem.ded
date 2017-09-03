@@ -4,7 +4,7 @@ init_b("str")@2 ;
 
 g(X) :- a(X), notin b(X) ;
 a(X)@async :- init_a(X) ;
-b(X)@async :- init_b(X) ;
+b(X) :- init_b(X) ;
 
 pre(X) :- g(X) ;
 post(X) :- pre(X) ;

@@ -124,6 +124,8 @@ def runC4_wrapper( allProgramData ) :
       results_array = w.run( allProgramData )
 
       # return c4 evaluation results as an array of strings
+      #print "FROM runC4_wrapper : results_array :"
+      #print results_array
       return results_array
 
     else :

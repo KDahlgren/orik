@@ -98,6 +98,9 @@ class Core :
   # return some data structure or storage location encompassing the evaluation results.
   def evaluate( self, allProgramData ) :
 
+    # inject custom faults here.
+    allProgramData = injectCustomFaults( allProgramData )
+
     results_array = c4_evaluator.runC4_wrapper( allProgramData )
 
     # ----------------------------------------------------------------- #
@@ -160,6 +163,7 @@ class Core :
       # assume the right-most attribute/variable/field of the post schema
       # represents the last send time (aka EOT).
       # should be true b/c of the dedalus rewriter reqs for deductive rules.
+
       postrecords_all = parsedResults[ "post" ]
       postrecords_eot = []
     
@@ -220,7 +224,32 @@ class Core :
 
     return provTreeComplete
   
-  
+ 
+##########################
+#  INJECT CUSTOM FAULTS  #
+##########################
+def injectCustomFaults( allProgramData ) :
+
+  # grab the custom fault == list of clock facts to remove from full clock relation
+  customFault = tools.getConfig( "CORE", "CUSTOM_FAULT", list )
+
+  if customFault :
+    # delete specified clock facts from program
+    faultyProgramLines = []
+    programLines       = allProgramData[0]
+    tableList          = allProgramData[1]
+    for line in programLines :
+      line = line.replace( ";", "" )
+      if line in customFault :
+        pass
+      else :
+        faultyProgramLines.append( line + ";" )
+
+    return [ faultyProgramLines, tableList ]
+
+  else :
+    return allProgramData
+ 
 #########
 #  EOF  #
 #########

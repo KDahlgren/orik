@@ -106,6 +106,7 @@ class ProvTree( ) :
   # input list of prov trees (DerivTree instances)
   # save image file, no return value
   def createGraph( self, addNameInfo, iter_count ) :
+
     if DEBUG :
       print "... running createGraph ..."
       print "subtrees   = " + str( self.subtrees )

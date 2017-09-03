@@ -40,6 +40,9 @@ class RuleNode( Node ) :
   #################
   def __init__( self, name, prid, provAttMap, record, results, cursor ) :
 
+    if self.name == "not_missing_log_from_post" :
+      tools.bp( __name__, inspect.stack()[0][3], "hit not_missing_log_from_post rule call!" )
+
     # ///////////////////////////////////////////////////////// #
     # NODE CONSTRUCTOR: treeType, name, isNeg, record, program results, db cursor
     Node.__init__( self, "rule", name, False, record, results, cursor )
@@ -108,6 +111,8 @@ class RuleNode( Node ) :
       recval = self.triggerRecord[ i ]
 
       if val == None :
+        fullProvAttMap.append( [ att, recval ] )
+      elif val == "_" :
         fullProvAttMap.append( [ att, recval ] )
       elif val == recval :
         fullProvAttMap.append( attValPair )
@@ -239,8 +244,15 @@ class RuleNode( Node ) :
   #  SPAWN NODE  #
   ################
   def spawnNode( self, subName, isNeg, seedRecord ) :
+
+    if subName == "not_missing_log_from_post" :
+       print ">>> spawning descendant goal node for not_missing_log_from_post"
+    #  tools.bp( __name__, inspect.stack()[0][3], "stop here in Rule" )
+
     self.descendants.append( DerivTree.DerivTree( subName, None, "goal", isNeg, None, seedRecord, self.results, self.cursor ) )
 
+    #if subName == "not_missing_log_from_post" :
+    #  tools.bp( __name__, inspect.stack()[0][3], "hit this." )
 
 #########
 #  EOF  #

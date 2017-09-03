@@ -175,6 +175,11 @@ def getEvalResults_dict_c4( results_array ) :
       # get current line
       currLine     = results_array[ i ]
 
+      # hit empty last relation
+      if i == len( results_array ) - 1 and prevLine == "---------------------------" :
+        currRelation                = currLine
+        resultsDict[ currRelation ] = []
+
       # hit an empty relation
       if prevPrevLine == "---------------------------"  and currLine == "---------------------------"  :
         resultsDict[ currRelation ] = []

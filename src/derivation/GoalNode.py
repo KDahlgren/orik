@@ -28,11 +28,30 @@ class GoalNode( Node ) :
   #  SPECIAL ATTRIBS  #
   #####################
   descendants = []
+  name        = None
+  isNeg       = None
+  seedRecord  = None
+  results     = []
 
   #################
   #  CONSTRUCTOR  #
   #################
   def __init__( self, name, isNeg, seedRecord, results, cursor ) :
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    print "in GoalNode.GoalNode : " + name
+    print "name = " + name
+    print "isNeg = " + str( isNeg )
+    print "seedRecord = " + str( seedRecord )
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+
+    self.name       = name
+    self.isNeg      = isNeg
+    self.seedRecord = seedRecord
+    self.results    = results
+
+    #if self.name == "not_missing_log_from_post" :
+    #  tools.bp( __name__, inspect.stack()[0][3], "generating goal node for not_missing_log_from_post" )
 
     # ///////////////////////////////////////////////////////// #
     # NODE CONSTRUCTOR: treeType, name, isNeg, record, program results, dbcursor
@@ -422,6 +441,9 @@ class GoalNode( Node ) :
   # relation.
   def getAllTriggerRecords( self, pgattMaps ) :
 
+    if self.name == "not_missing_log_from_post" :
+      print "<><>pgattMaps = " + str( pgattMaps )
+
     pTrigRecs = []
 
     for attMap in pgattMaps :
@@ -441,8 +463,17 @@ class GoalNode( Node ) :
       # correctness relies upon ordered nature of the mappings.
       validRecList = []
       for rec in resultsTable :
+
+        if self.name == "not_missing_log_from_post" :
+          print "rec = " + str( rec )
+          print "mapping = " + str( mapping )
+
         if self.checkAgreement( mapping, rec ) :
           validRecList.append( rec )
+
+      if self.name == "not_missing_log_from_post" :
+        print "pname = " + pname
+        print "validRecList = " + str( validRecList )
 
       pTrigRecs.append( [ prid, mapping, validRecList ] )
 
@@ -465,6 +496,8 @@ class GoalNode( Node ) :
       recval     = rec[i]
 
       if val == None :
+        pass
+      elif val == "_" :
         pass
       elif val == recval :
         pass
@@ -561,6 +594,10 @@ class GoalNode( Node ) :
   #  SPAWN RULE  #
   ################
   def spawnRule( self, rid, provAttMap, seedRecord ) :
+
+    #if self.name == "not_missing_log_from_post" :
+    #  tools.bp( __name__, inspect.stack()[0][3], "here!" )
+
     self.descendants.append( DerivTree.DerivTree( self.name, rid, "rule", False, provAttMap, seedRecord, self.results, self.cursor ) )
 
 

@@ -42,7 +42,6 @@ class DerivTree( ) :
   provAttMap     = None
   idPair         = None
 
-
   ####################
   #  IS FINAL STATE  #
   ####################
@@ -76,6 +75,16 @@ class DerivTree( ) :
     self.programResults = results
     self.cursor         = cursor
     self.provAttMap     = provAttMap
+
+    if self.name == "not_missing_log_from_post" :
+      print " spawning DerivTree with goal node not_missing_log_from_post"
+      print "self.name           = " + self.name
+      print "self.rid            = " + str( self.rid )
+      print "self.treeType       = " + self.treeType
+      print "self.isNeg          = " + str( self.isNeg )
+      print "self.programResults = " + str( self.programResults )
+      print "self.provAttMap     = " + str( self.provAttMap )
+      print "***record              = " + str( record )
 
     if DEBUG :
       print "=================================="
@@ -114,6 +123,13 @@ class DerivTree( ) :
   def generateDerivTree( self, record ) :
 
     if self.treeType == "goal" :
+
+      if self.name == "not_missing_log_from_post" :
+        print "self.name = " + str( self.name )
+        print "self.isNeg = " + str( self.isNeg ) 
+        print "record = " + str( record )
+        #tools.bp( __name__, inspect.stack()[0][3], "stuff" )
+
       self.root = GoalNode.GoalNode( self.name, self.isNeg, record, self.programResults, self.cursor )
 
     elif self.treeType == "rule" :
@@ -130,6 +146,19 @@ class DerivTree( ) :
   #  GET TOPOLOGY  #
   ##################
   def getTopology( self ) :
+
+    if self.name == "not_missing_log_from_post" :
+
+      print "printing here"
+      print "self.name           = " + self.name
+      #print "self.rid            = " + self.rid
+      print "self.treeType       = " + self.treeType
+      print "self.isNeg          = " + str( self.isNeg )
+      print "self.programResults = " + str( self.programResults )
+      print "self.provAttMap     = " + str( self.provAttMap )
+
+      #tools.bp( __name__, inspect.stack()[0][3], "shit" )
+
     nodes = []
     edges = []
 
