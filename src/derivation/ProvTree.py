@@ -131,6 +131,10 @@ class ProvTree( ) :
     for tree in self.subtrees :
       edges.append( pydot.Edge( provRootNode, provTools.createNode( tree.root ) ) )
       topology = tree.getTopology( )
+
+      # node/edge postprocessing
+      topology = self.processTopo( topology )
+
       nodes.extend( topology[0] )
       edges.extend( topology[1] )
 
@@ -153,6 +157,59 @@ class ProvTree( ) :
 
     print "Saving prov tree render to " + str(path)
     graph.write_png( path + ".png" )
+
+
+  ##################
+  #  PROCESS TOPO  #
+  ##################
+  def processTopo( self, topology ) :
+
+    #print "topology    = " + str( topology )
+    #print "topology[0] = " + str( topology[0] )
+    #print "topology[1] = " + str( topology[1] )
+    #for node in topology[0] :
+    #  print str( node.get_name() )
+    #for edge in topology[1] :
+    #  print "src  = " + str( edge.get_source() )
+    #  print "dest =" + str( edge.get_destination() )
+
+    topology = self.suppressDomNodes( topology )
+
+    return topology
+
+
+  ########################
+  #  SUPPRESS DOM NODES  #
+  ########################
+  def suppressDomNodes( self, topology ) :
+
+    processed_nodeset = []
+    processed_edgeset = []
+
+    orig_nodeset = topology[0]
+    orig_edgeset = topology[1]
+
+    # nodes are pydot objects.
+    # get_name also pulls quotation marks.
+    for node in orig_nodeset :
+      if not "dom_" in node.get_name()[1:5] :
+        processed_nodeset.append( node )
+      else :
+        #print "<><><>deleted node " + str( node.get_name() )
+        continue
+
+    # edges are pydot objects.
+    # get_source and get_destination also pull quotation marks.
+    for edge in orig_edgeset :
+      sourceNode      = edge.get_source()
+      destinationNode = edge.get_destination()
+      if not "dom_" in sourceNode[1:5] and not "dom_" in destinationNode[1:5] :
+        processed_edgeset.append( edge )
+      else :
+        #print "<><><>deleted edge (" + sourceNode + "," + destinationNode + ")"
+        continue
+
+    return ( processed_nodeset, processed_edgeset )
 
 
   ##################
