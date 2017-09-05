@@ -426,27 +426,36 @@ def setWildcards( EOT, newDMRIDList, cursor ) :
         handleClockSubgoals( EOT, rid, sid, cursor )
 
       else :
-        # ---------------------------------------- #
-        # get subgoal att list
-        cursor.execute( "SELECT attID,attName,attType FROM SubgoalAtt WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
-        subgoalAttList = cursor.fetchall()
-        subgoalAttList = tools.toAscii_multiList( subgoalAttList )
+        handleNonClockSubgoals( atts, rid, sid, cursor )
 
-        # ---------------------------------------- #
-        # replace all subgoal atts not appearing in goal att list
-        # with wildcards
-        for att in subgoalAttList :
+      #handleNonClockSubgoals( atts, rid, sid, cursor )
 
-          attID   = att[0]
-          attName = att[1]
-          attType = att[2]
 
-          if attName in atts :
-            continue
+###############################
+#  HANDLE NON CLOCK SUBGOALS  #
+###############################
+def handleNonClockSubgoals( atts, rid, sid, cursor ) :
+  # ---------------------------------------- #
+  # get subgoal att list
+  cursor.execute( "SELECT attID,attName,attType FROM SubgoalAtt WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+  subgoalAttList = cursor.fetchall()
+  subgoalAttList = tools.toAscii_multiList( subgoalAttList )
 
-          else :
-            if not attName == "_" :
-              replaceWithWildcard( rid, sid, attID, cursor )
+  # ---------------------------------------- #
+  # replace all subgoal atts not appearing in goal att list
+  # with wildcards
+  for att in subgoalAttList :
+
+    attID   = att[0]
+    attName = att[1]
+    attType = att[2]
+
+    if attName in atts :
+      continue
+
+    else :
+      if not attName == "_" :
+        replaceWithWildcard( rid, sid, attID, cursor )
 
 
 ##########################
@@ -542,7 +551,7 @@ def addAdditionalTimeDom( EOT, att, rid, cursor ) :
   attType = "int"
   attID   = 0
 
-  for i in range( 1, EOT+2 ) :
+  for i in range( 1, EOT+1 ) :
     fid = tools.getID()
 
     # ------------------------------------- #

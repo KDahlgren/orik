@@ -53,11 +53,12 @@ class C4Wrapper( object ) :
   # this is what molly does.
   def getInputProg_one_group_for_everything_besides_clocks_and_group_clocks_by_sndTime( self, program ) :
 
-    other                = []
+    nonClock             = []
     clockStatementGroups = [] # list of strings grouping clock statements by SndTime
     currClockList        = ""
     currTime             = 1
 
+    # ---------------------------------------------------------------------- #
     # only works if clock facts are sorted by increasing SndTime when 
     # appearing in the input c4 line list.
     # also only works if simulations start at time 1.
@@ -69,25 +70,27 @@ class C4Wrapper( object ) :
 
       parsedStatement = statement.split( "(" )
 
+      # ---------------------------------------------------------------------- #
       # CASE : hit a clock fact
       if parsedStatement[0] == "clock" :
 
+        # ---------------------------------------------------------------------- #
         # check if the next statement in the program also declares a clock fact
         try :
           nextStatement    = program[ i+1 ]
           parsedStatement1 = nextStatement.split( "(" )
-          parsedClockArgs1 = parsedStatement1[1].split( "," ) # split clock fact arguments into a list
           assert( parsedStatement1[0] == "clock" )
         except :
-          currClockList += statement
-          lastClock      = True
+          lastClock = True
 
         parsedClockArgs = parsedStatement[1].split( "," ) # split clock fact arguments into a list
 
+        # ---------------------------------------------------------------------- #
         # check if SndTime is in the current group
         if not lastClock and int( parsedClockArgs[2] ) == currTime :
           currClockList += statement
 
+        # ---------------------------------------------------------------------- #
         # hit a clock fact in the next time group
         elif not lastClock and int( parsedClockArgs[2] ) > currTime :
           clockStatementGroups.append( currClockList ) # save the old clock group
@@ -95,17 +98,29 @@ class C4Wrapper( object ) :
           currClockList += statement                   # reset the clock group
           currTime       = int( parsedClockArgs[2] )   # reset the curr time
 
+        # ---------------------------------------------------------------------- #
+        # hit a clock fact in the next time group and last clock true
+        elif lastClock and int( parsedClockArgs[2] ) > currTime :
+          clockStatementGroups.append( currClockList ) # save the old clock group
+          currClockList  = ""                          # reset the clock group
+          currClockList += statement                   # reset the clock group
+          currTime       = int( parsedClockArgs[2] )   # reset the curr time
+          clockStatementGroups.append( currClockList ) # save the old clock group
+
+        # ---------------------------------------------------------------------- #
         # hit a clock fact in the last time group
         elif lastClock :
           clockStatementGroups.append( currClockList ) # save the old clock group
 
+      # ---------------------------------------------------------------------- #
       # CASE : hit a non clock fact
       else :
-        other.append( statement )
+        nonClock.append( statement )
 
-    finalProg = []
-    other_str = "".join( other )
-    finalProg.append( other_str )             # add all non-clock clock statements
+    finalProg    = []
+    nonClock_str = "".join( nonClock )
+
+    finalProg.append( nonClock_str )          # add all non-clock clock statements
     finalProg.extend( clockStatementGroups )  # add clock statements
 
     return finalProg

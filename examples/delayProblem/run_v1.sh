@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-cmd="time python ../../src/drivers/driver.py -c 0 -n str --EOT 1 -f ./delayProblem_v1.ded --evaluator c4"
+cmd="time python ../../src/drivers/driver.py -c 0 -n str --EOT 2 -f ./delayProblem_v1.ded --evaluator c4"
 opt_cmd="cmd"
 
 rm ./IR.db

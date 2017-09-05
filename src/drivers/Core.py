@@ -228,19 +228,26 @@ class Core :
 ##########################
 #  INJECT CUSTOM FAULTS  #
 ##########################
+# example :
+#   [CORE]
+#   CUSTOM_FAULT = ['clock("str","str",2,2)']
+# use double quotes for str data in clock tuples and single quotes around clock facts.
+
 def injectCustomFaults( allProgramData ) :
 
-  # grab the custom fault == list of clock facts to remove from full clock relation
-  customFault = tools.getConfig( "CORE", "CUSTOM_FAULT", list )
 
-  if customFault :
+  # grab the custom fault, which is a list of clock fact strings, with quotes,
+  # to remove from full clock relation
+  customFaultList = tools.getConfig( "CORE", "CUSTOM_FAULT", list )
+
+  if customFaultList :
     # delete specified clock facts from program
     faultyProgramLines = []
     programLines       = allProgramData[0]
     tableList          = allProgramData[1]
     for line in programLines :
       line = line.replace( ";", "" )
-      if line in customFault :
+      if line in customFaultList :
         pass
       else :
         faultyProgramLines.append( line + ";" )
