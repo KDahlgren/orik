@@ -37,12 +37,12 @@ arithOps = [ "+", "-", "*", "/" ]
 #####################
 #  NEGATIVE WRITES  #
 #####################
-def negativeWrites( cursor ) :
+def negativeWrites( EOT, cursor ) :
 
   if NEGATIVEWRITES_DEBUG :
     print " ... running negative writes ..."
 
-  newRuleMeta = setNegativeRules( [], 0, cursor )
+  newRuleMeta = setNegativeRules( EOT, [], 0, cursor )
 
   # dump to test
   if NEGATIVEWRITES_DEBUG :
@@ -68,7 +68,7 @@ def negativeWrites( cursor ) :
 # 
 # if P' contains negated IDB subgoals, repeat negativeWrites on P'.
 #
-def setNegativeRules( oldRuleMeta, COUNTER, cursor ) :
+def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
 
   print "COUNTER = " + str( COUNTER )
 
@@ -179,7 +179,7 @@ def setNegativeRules( oldRuleMeta, COUNTER, cursor ) :
     # --------------------------------------------------- #
     # replace existential vars with wildcards.            #
     # --------------------------------------------------- #
-    setWildcards( newDMRIDList, cursor )
+    setWildcards( EOT, newDMRIDList, cursor )
 
   # --------------------------------------------------- #
   # final checks
@@ -209,7 +209,7 @@ def setNegativeRules( oldRuleMeta, COUNTER, cursor ) :
   # recurse if rewritten program still contains rogue negated IDBs
   if not newDMRIDList == [] and stillContainsNegatedIDBs( newDMRIDList, cursor ) :
     COUNTER += 1
-    setNegativeRules( newRules, COUNTER, cursor )
+    setNegativeRules( EOT, newRules, COUNTER, cursor )
 
   # otherwise, the program only has negated EDB subgoals.
   # get the hell out of here.
@@ -400,10 +400,11 @@ def stillContainsNegatedIDBs( newDMRIDList, cursor ) :
 ###################
 #  SET WILDCARDS  #
 ###################
-def setWildcards( newDMRIDList, cursor ) :
+def setWildcards( EOT, newDMRIDList, cursor ) :
 
   for rid in newDMRIDList :
 
+    # ---------------------------------------- #
     # get goal att list
     cursor.execute( "SELECT attID,attName,attType FROM GoalAtt WHERE rid=='" + rid + "'" )
     goalAttList = cursor.fetchall()
@@ -411,6 +412,7 @@ def setWildcards( newDMRIDList, cursor ) :
 
     atts = [ x[1] for x in goalAttList ]
 
+    # ---------------------------------------- #
     # get list of subgoal ids
     cursor.execute( "SELECT sid FROM Subgoals WHERE rid=='" + rid + "'" )
     sids = cursor.fetchall()
@@ -418,26 +420,155 @@ def setWildcards( newDMRIDList, cursor ) :
 
     for sid in sids :
 
-      # get subgoal att list
-      cursor.execute( "SELECT attID,attName,attType FROM SubgoalAtt WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
-      subgoalAttList = cursor.fetchall()
-      subgoalAttList = tools.toAscii_multiList( subgoalAttList )
+      # ---------------------------------------- #
+      # branch on clock subgoals. 
+      if isClock( rid, sid, cursor ) :
+        handleClockSubgoals( EOT, rid, sid, cursor )
 
-      # replace all subgoal atts not appearing in goal att list
-      # with wildcards
-      for att in subgoalAttList :
+      else :
+        # ---------------------------------------- #
+        # get subgoal att list
+        cursor.execute( "SELECT attID,attName,attType FROM SubgoalAtt WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+        subgoalAttList = cursor.fetchall()
+        subgoalAttList = tools.toAscii_multiList( subgoalAttList )
 
-        attID   = att[0]
-        attName = att[1]
-        attType = att[2]
+        # ---------------------------------------- #
+        # replace all subgoal atts not appearing in goal att list
+        # with wildcards
+        for att in subgoalAttList :
 
-        if attName in atts :
-          continue
+          attID   = att[0]
+          attName = att[1]
+          attType = att[2]
 
-        else :
-          if not attName == "_" :
-            attName = "_"
-            cursor.execute( "UPDATE SubgoalAtt SET attName='" + attName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "' AND attID=='" + str( attID ) + "'" )
+          if attName in atts :
+            continue
+
+          else :
+            if not attName == "_" :
+              replaceWithWildcard( rid, sid, attID, cursor )
+
+
+##########################
+#  REPLACE WITH WILCARD  #
+##########################
+def replaceWithWildcard( rid, sid, attID, cursor ) :
+  attName = "_"
+  cursor.execute( "UPDATE SubgoalAtt SET attName='" + attName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "' AND attID=='" + str( attID ) + "'" )
+
+
+###########################
+#  HANDLE CLOCK SUBGOALS  #
+###########################
+# check clock for existential attributes, regardless of whether clock is negative or positive.
+# if existential attributes exist for either SndTime or DelivTime, 
+# add an additional subgoal to the rule.
+def handleClockSubgoals( EOT, rid, sid, cursor ) :
+
+  # ------------------------------------ #
+  # get all goal atts
+  cursor.execute( "SELECT attID,attName FROM GoalAtt WHERE rid=='" + rid + "'" )
+  gattData = cursor.fetchall()
+  gattData = tools.toAscii_multiList( gattData )
+
+  # ------------------------------------ #
+  # get all subgoal atts
+  cursor.execute( "SELECT attID,attName FROM SubgoalAtt WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+  sattData = cursor.fetchall()
+  sattData = tools.toAscii_multiList( sattData )
+
+  # ------------------------------------ #
+  # check if sugoal att is existnetial
+  gattList = [ att[1] for att in gattData ]
+  sattList = [ att[1] for att in sattData ]
+
+  # ------------------------------------ #
+  for i in range( 0, len(sattList) ) :
+
+    att = sattList[i]
+
+    # check if clock subgoal att appears in goal att list
+    # thus, att is universal
+    if att in gattList :
+      continue
+
+    # otherwise, clock subgoal att does not appear in goal
+    # att list. thus, att is existential.
+    else :
+      if att == "SndTime" or att == "DelivTime" :
+        addAdditionalTimeDom( EOT, att, rid, cursor )
+
+      else :
+        replaceWithWildcard( rid, sid, i, cursor )
+
+
+#############################
+#  ADD ADDITIONAL TIME DOM  #
+#############################
+def addAdditionalTimeDom( EOT, att, rid, cursor ) :
+
+  sid            = tools.getID()
+  subgoalTimeArg = ""
+  attID          = 0 # dom subgoals are fixed at arity 1
+  attType        = "int"
+  argName        = ""
+
+  if att == "SndTime" :
+    subgoalName = "dom_sndtime"
+    attName     = "SndTime"
+
+  else : # att == "DelivTime"
+    subgoalName = "dom_delivtime"
+    attName     = "DelivTime"
+
+  # ------------------------------------- #
+  # add info to Subgoals relation
+  cursor.execute( "INSERT INTO Subgoals VALUES ('" + rid + "','" + sid + "','" + subgoalName + "','" + subgoalTimeArg + "')" )
+
+  # ------------------------------------- #
+  # add info to SubgoalAtt relation
+  cursor.execute( "INSERT INTO SubgoalAtt VALUES ('" + rid + "','" + sid + "','" + str( attID ) + "','" + attName + "','" + attType + "')" )
+
+  # ------------------------------------- #
+  # add info to SubgoalAddArgs relation
+  cursor.execute( "INSERT INTO SubgoalAddArgs VALUES ('" + rid + "','" + sid + "','" + argName + "')" )
+
+  # ------------------------------------- #
+  # add info to SubgoalAddArgs relation
+  # add relevant new facts.
+  # dom ranges over all ints between 1 and EOT.
+  name    = subgoalName
+  timeArg = 1   # all dom facts are true starting at time 1
+  attType = "int"
+  attID   = 0
+
+  for i in range( 1, EOT+2 ) :
+    fid = tools.getID()
+
+    # ------------------------------------- #
+    # add info to Fact relation
+    cursor.execute( "INSERT INTO Fact VALUES ('" + fid + "','" + name + "','" + str( timeArg ) + "')" )
+
+    # ------------------------------------- #
+    # add info to FactAtt
+    attName = i
+    cursor.execute( "INSERT INTO FactAtt VALUES ('" + fid + "','" + str( attID ) + "','" + str( attName ) + "','" + attType + "')" )
+
+
+##############
+#  IS CLOCK  #
+##############
+# check if subgoal at sid in rule rid is a clock subgoal
+def isClock( rid, sid, cursor ) :
+
+  cursor.execute( "SELECT subgoalName FROM Subgoals WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
+  subName = cursor.fetchone()
+  subName = tools.toAscii_str( subName )
+
+  if subName == "clock" :
+    return True
+
+  return False
 
 
 #########################

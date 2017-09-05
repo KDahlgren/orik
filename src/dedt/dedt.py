@@ -227,13 +227,13 @@ def starterClock( cursor, argDict ) :
 ########################
 # input cursor, assume IR successful
 # output nothing
-def rewrite( ruleMeta, cursor ) :
+def rewrite( EOT, ruleMeta, cursor ) :
 
   # rewrite intitial facts and rules
   dedalusRewriter.rewriteDedalus( cursor )
 
   # negative writes
-  newDMRuleMeta = negativeWrites( cursor )
+  newDMRuleMeta = negativeWrites( EOT, cursor )
   ruleMeta.extend( newDMRuleMeta )
 
   print ":::::::::::::::::::::::::::::::::"
@@ -264,7 +264,7 @@ def runTranslator( cursor, dedFile, argDict, evaluator ) :
   starterClock( cursor, argDict )
 
   # dedalus and provenance rewrite to final IR
-  rewrite( ruleMeta, cursor ) # <- here.
+  rewrite( argDict[ "EOT" ], ruleMeta, cursor ) # <- here.
 
   # check for bugs
   if DEDT_DEBUG :
