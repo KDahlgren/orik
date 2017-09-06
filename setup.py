@@ -93,7 +93,7 @@ def containsError( line ) :
 #  MAIN  #
 ##########
 def main() :
-  print "Running pyLDFI setup with args : \n" + str(sys.argv)
+  print "Running orik setup with args : \n" + str(sys.argv)
 
   # clean any existing libs
   os.system( "make clean" )
