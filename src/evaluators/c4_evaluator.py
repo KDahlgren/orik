@@ -19,7 +19,6 @@ from wrappers import C4Wrapper
 # **************************************** #
 
 
-C4_DYLIB     = '../../lib/c4/build/src/libc4/libc4.dylib'
 C4_EXEC_PATH = os.path.dirname(os.path.abspath( __file__ )) + "/../../lib/c4/build/src/c4i/c4i"
 
 DEBUG = tools.getConfig( "EVALUATORS", "C4_EVALUATOR_DEBUG", bool )
@@ -120,7 +119,7 @@ def runC4_wrapper( allProgramData ) :
     if allProgramData[1] and not allProgramData[1] == "" :
 
       # run the program using the c4 wrapper
-      w             = C4Wrapper.C4Wrapper( C4_DYLIB ) # initializes c4 wrapper instance
+      w             = C4Wrapper.C4Wrapper( ) # initializes c4 wrapper instance
       results_array = w.run( allProgramData )
 
       # return c4 evaluation results as an array of strings
