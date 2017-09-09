@@ -155,10 +155,11 @@ class GoalNode( Node ) :
 
     # get all matching (or partially matching, in the case of '_') clock records
     # optimistic by default
-    qSRC       = "src=='" + src + "'"
-    qDEST      = " AND dest=='" + dest + "'"
-    qSNDTIME   = " AND sndTime==" + sndTime + ""
-    qDELIVTIME = " AND delivTime==" + delivTime + ""
+    qSRC           = "src=='" + src + "'"
+    qDEST          = " AND dest=='" + dest + "'"
+    qSNDTIME       = " AND sndTime==" + sndTime + ""
+    qDELIVTIME     = " AND delivTime==" + delivTime + ""
+    qInclusionBool = " AND simInclude=='True'"
 
     # erase query components as necessary
     # EXISTING BUG TODO : does not work if _ in src --> need to handle ANDs more intelligently
@@ -172,7 +173,7 @@ class GoalNode( Node ) :
       qDELIVTIME = ""
 
     # set query
-    query = "SELECT src,dest,sndTime,delivTime FROM Clock WHERE " + qSRC + qDEST + qSNDTIME + qDELIVTIME
+    query = "SELECT src,dest,sndTime,delivTime FROM Clock WHERE " + qSRC + qDEST + qSNDTIME + qDELIVTIME + qInclusionBool
 
     if DEBUG :
       print "query = " + str(query)
@@ -522,6 +523,11 @@ class GoalNode( Node ) :
     #   CASE goal is a fact node
     if tools.isFactNode( self.name, triggerRecordList, self.cursor ) :
 
+      if self.name == "clock" :
+        print "PRINTING TRIGGER RECORD LIST"
+        for t in triggerRecordList :
+          print "t = " + str( t )
+
       # ************************************************* #
       #                HANDLE CLOCK FACTS                 #
       #
@@ -587,6 +593,7 @@ class GoalNode( Node ) :
   #  SPAWN FACT  #
   ################
   def spawnFact( self, trigRec ) :
+    print "spawning fact with trigFac '" + str( trigRec ) + "'"
     self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, trigRec, self.results, self.cursor ) )
 
 

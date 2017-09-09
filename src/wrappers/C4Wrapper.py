@@ -10,6 +10,14 @@ import inspect, os, string, sys, time
 from ctypes import *
 from types  import *
 
+# ------------------------------------------------------ #
+# import sibling packages HERE!!!
+if not os.path.abspath( __file__ + "/../.." ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+
+from utils import tools
+# ------------------------------------------------------ #
+
 
 DEBUG = False
 
@@ -54,6 +62,7 @@ class C4Wrapper( object ) :
   ########################################################################################
   # this is what molly does.
   def getInputProg_one_group_for_everything_besides_clocks_and_group_clocks_by_sndTime( self, program ) :
+
 
     nonClock             = []
     clockStatementGroups = [] # list of strings grouping clock statements by SndTime
@@ -112,6 +121,7 @@ class C4Wrapper( object ) :
         # ---------------------------------------------------------------------- #
         # hit a clock fact in the last time group
         elif lastClock :
+          currClockList += statement
           clockStatementGroups.append( currClockList ) # save the old clock group
 
       # ---------------------------------------------------------------------- #

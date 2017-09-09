@@ -68,9 +68,10 @@ class FactNode( Node ) :
   def extractTrigger( self ) :
 
     # get arity of fact table results
-    res = self.results[self.name]
-    arity = len( res[0] )
+    res     = self.results[self.name]
+    arity   = len( res[0] )
 
+    # get this record
     thisRec = self.record[ : arity ]
     thisRec = [ str(r) for r in thisRec ]  # transform all data items to strings to avoid migraines.
 
