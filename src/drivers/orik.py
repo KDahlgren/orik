@@ -37,10 +37,10 @@ TABLE_LIST_PATH   = os.path.abspath( __file__ + "/../.."    ) + "/evaluators/pro
 # remove files from previous runs or else suffer massive file collections.
 os.system( "rm " + os.path.abspath( __file__ + "/../../.." ) + "/save_data/graphOutput/*.png" )
 
-############
-#  DRIVER  #
-############
-def driver() :
+##########
+#  ORIK  #
+##########
+def orik() :
 
   os.system( "rm IR.db" ) # delete db from previous run, if appicable
 
@@ -68,7 +68,7 @@ def driver() :
 #########################
 #  THREAD OF EXECUTION  #
 #########################
-driver()
+orik()
 
 
 #########

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-cmd="time python ../../src/drivers/driver.py -c 0 -n str --EOT 1 -f ./omissionProblem.ded --evaluator c4"
+cmd="time python ../../src/drivers/orik.py -c 0 -n str --EOT 1 -f ./omissionProblem_v0.ded --evaluator c4"
 opt_cmd="cmd"
 
 rm ./IR.db
