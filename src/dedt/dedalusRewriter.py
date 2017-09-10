@@ -196,7 +196,7 @@ def rewriteDeductive( cursor ) :
       if len( firstSubgoalAtts ) > 0 :
         pass
         # add clock subgoal
-        clockTools.addClockSubgoal_deductive( rid, firstSubgoalAtts, timeAtt_snd, timeAtt_deliv, cursor )
+        #clockTools.addClockSubgoal_deductive( rid, firstSubgoalAtts, timeAtt_snd, timeAtt_deliv, cursor )
       else :
         print dumpers.reconstructRule( rid, cursor )
         tools.bp( __name__, inspect.stack()[0][3], "We've got major probs, mate. The subgoals of this rule have no attributes.\nfirstSubgoalAtts = " + str(firstSubgoalAtts) + "\nMake sure the rule is safe." )
