@@ -228,6 +228,7 @@ def c4datalog( cursor ) :
   # add clock facts
 
   clockFactList = dumpers_c4.dump_clock( cursor )
+
   if C4_TRANSLATOR_DEBUG :
     print "c4_translator: clockFactList = " + str( clockFactList )
 

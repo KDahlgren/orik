@@ -1582,6 +1582,7 @@ def evaluate( COUNTER, cursor ) :
   allProgramLines = c4_translator.c4datalog( cursor )
 
   # run program
+  print "call c4 wrapper from negativeWrites"
   results_array = c4_evaluator.runC4_wrapper( allProgramLines )
 
   #print "FROM evaluate in negativeWrites : results_array :"
