@@ -33,6 +33,8 @@ class ProvTree( ) :
   subtrees      = None
   parsedResults = None
   cursor        = None
+  nodeset       = None
+  edgeset       = None
 
 
   #################
@@ -43,7 +45,6 @@ class ProvTree( ) :
     self.subtrees      = []
     self.parsedResults = parsedResults
     self.cursor        = cursor
-
 
   ######################
   #  IS ULTIMATE GOAL  #
@@ -146,6 +147,10 @@ class ProvTree( ) :
       print "edges : " + str(len(edges))
       for i in range(0,len(edges)) :
         print "edge#" + str(i) + " : " + str(edges[i])
+
+    # set attributes
+    self.nodeset = nodes
+    self.edgeset = edges
   
     # create graph
     # add nodes :
