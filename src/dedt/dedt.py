@@ -233,8 +233,10 @@ def rewrite( EOT, ruleMeta, cursor ) :
   dedalusRewriter.rewriteDedalus( cursor )
 
   # negative writes
-  newDMRuleMeta = negativeWrites( EOT, cursor )
-  ruleMeta.extend( newDMRuleMeta )
+  NEGPROV = tools.getConfig( "DEFAULT", "NEGPROV", bool )
+  if NEGPROV :
+    newDMRuleMeta = negativeWrites( EOT, cursor )
+    ruleMeta.extend( newDMRuleMeta )
 
   print ":::::::::::::::::::::::::::::::::"
   print ":: STARTING PROVENANCE REWRITE ::"
