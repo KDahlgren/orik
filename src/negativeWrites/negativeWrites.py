@@ -792,7 +792,12 @@ def saveDomFacts( domNameBase, attDomsMap, cursor ) :
   print "... running SAVE DOM FACTS from negativeWrites ..."
   print "++++++++++++++++++++++++++++++++++++++++++++++++++"
 
-  if domNameBase[0:10] == "dom_clock_" :
+  #if domNameBase[0:10] == "dom_clock_" :
+  #  print "domNameBase = " + domNameBase
+  #  print "attDomsMap = " + str( attDomsMap )
+  #  #tools.bp( __name__, inspect.stack()[0][3], "stop here" )
+
+  if domNameBase.startswith( "dom_put_" ) :
     print "domNameBase = " + domNameBase
     print "attDomsMap = " + str( attDomsMap )
     #tools.bp( __name__, inspect.stack()[0][3], "stop here" )

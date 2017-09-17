@@ -52,9 +52,9 @@ class FactNode( Node ) :
   def __str__( self ) :
     if self.isNeg :
       negStr = "_NOT_"
-      return "fact-> " + negStr + " " + self.name + "(" + str(self.triggerRecord) + ")"
+      return "fact->" + negStr + " " + self.name + "(" + str(self.triggerRecord) + ")"
     else :
-      return "fact-> " + self.name + "(" + str(self.triggerRecord) + ")"
+      return "fact->" + self.name + "(" + str(self.triggerRecord) + ")"
 
 
   #####################

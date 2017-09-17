@@ -35,12 +35,13 @@ class DerivTree( ) :
   name           = None # name of relation identifier
   rid            = None # rule id, if applicable
   treeType       = None # goal, rule, or fact
-  isNeg          = None # is goal negative? assume positive
+  isNeg          = None # is goal negative?
   root           = None # GoalNode, RuleNode, FactNode
   programResults = None # complete dictionary of parsed results from table dump
   cursor         = None # database pointer
   provAttMap     = None
   idPair         = None
+  record         = None
 
   ####################
   #  IS FINAL STATE  #
@@ -75,6 +76,7 @@ class DerivTree( ) :
     self.programResults = results
     self.cursor         = cursor
     self.provAttMap     = provAttMap
+    self.record         = record
 
     if self.name == "not_missing_log_from_post" :
       print " spawning DerivTree with goal node not_missing_log_from_post"
@@ -140,6 +142,15 @@ class DerivTree( ) :
 
     else :
       self.errorMsg1()
+
+  # ------------------------------------------ #
+  #############################
+  #  GET TOPOLOGY SIMPLIFIED  #
+  #############################
+  def getTopology_simplified( self ) :
+
+    return None
+
 
   # ------------------------------------------ #
   ##################
@@ -210,6 +221,42 @@ class DerivTree( ) :
         topo = d.getTopology()
         nodes.extend( topo[0] )
         edges.extend( topo[1] )
+
+    # <><><><><><><><><><><><><><><><><><><><><><> #
+    print
+    print "/////////////////////////"
+    print "root name   is " + self.root.name
+    print "root type   is " + self.root.treeType
+    print "root record is " + str( self.root.record )
+    print "num nodes    = " + str( len(nodes) )
+    print "num edges    = " + str( len(edges) )
+
+    #if self.root.name == "not_missing_log_from_post" :
+    #  print "nodes in subtree : "
+    #  for node in nodes :
+    #    print node.to_string()
+    #  print "edges in subtree : "
+    #  for edge in edges :
+    #    print "src = " + edge.get_source() + ", des = " + edge.get_destination()
+
+    #if self.root.name == "clock" :
+    #  print "nodes in subtree : "
+    #  for node in nodes :
+    #    print node.to_string()
+    #  print "edges in subtree : "
+    #  for edge in edges :
+    #    print "src = " + edge.get_source() + ", des = " + edge.get_destination()
+
+    #if self.root.name == "log" :
+    #  print "nodes in subtree : "
+    #  for node in nodes :
+    #    print node.to_string()
+    #  print "edges in subtree : "
+    #  for edge in edges :
+    #    print "src = " + edge.get_source() + ", des = " + edge.get_destination()
+
+    print "/////////////////////////"
+    # <><><><><><><><><><><><><><><><><><><><><><> #
 
     return ( nodes, edges )
 

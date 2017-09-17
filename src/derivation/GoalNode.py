@@ -132,9 +132,9 @@ class GoalNode( Node ) :
   def __str__( self ) :
     if self.isNeg :
       negStr = "_NOT_"
-      return negStr + " " + self.name + "(" + str(self.record) + ")"
+      return "goal->" + negStr + " " + self.name + "(" + str(self.record) + ")"
     else :
-      return self.name + "(" + str(self.record) + ")"
+      return "goal->" + self.name + "(" + str(self.record) + ")"
 
 
   ###################

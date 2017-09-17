@@ -87,7 +87,7 @@ class RuleNode( Node ) :
   #############
   # the string representation of a RuleNode
   def __str__( self ) :
-    return "rule-> "+ self.name + "(" + str(self.record) + ")"
+    return "rule->"+ self.name + "(" + str(self.record) + ")"
 
 
   ##################
