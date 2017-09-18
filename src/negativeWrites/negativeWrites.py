@@ -592,7 +592,8 @@ def addDomainSubgoals( parentRID, posName, nameRIDS, newDMRIDList, pResults, cur
   # -------------------------------------------------- #
   # make sure results exist.                           #
   # -------------------------------------------------- #
-  attDomsMap = getAttDoms( parentRID, posName, nameRIDS, newDMRIDList, pResults, cursor )
+  attDomsMap        = getAttDoms( parentRID, posName, nameRIDS, newDMRIDList, pResults, cursor )
+  childParentAttMap = getChildParentAttMap( parentRID, posName, cursor )
 
   if not attDomsMap == {} :
 
@@ -603,12 +604,101 @@ def addDomainSubgoals( parentRID, posName, nameRIDS, newDMRIDList, pResults, cur
     domNameBase = getAttDomNameBase( posName )
 
     # save EDB facts
-    newDomNames = saveDomFacts( domNameBase, attDomsMap, cursor )
+    newDomNames = saveDomFacts( childParentAttMap, domNameBase, attDomsMap, posName, pResults, cursor )
 
     # -------------------------------------------------- #
     # add attribute domain subgoals to all new DM rules. #
     # -------------------------------------------------- #
     addSubgoalsToRules( newDomNames, newDMRIDList, cursor )
+
+
+##############################
+#  GET CHILD PARENT ATT MAP  #
+##############################
+# map goal attribute indexes of parent rule to the attribute indexes of targeted negated subgoals.
+def getChildParentAttMap( parentRID, posName, cursor ) :
+
+  # ------------------------------------------- #
+  # get parent name
+
+  cursor.execute( "SELECT goalName FROM Rule WHERE rid=='" + parentRID + "'" )
+  parentName = cursor.fetchone()
+  parentName = tools.toAscii_str( parentName )
+
+  # ------------------------------------------- #
+  # get all parent goal atts
+
+  cursor.execute( "SELECT attID,attName FROM GoalAtt WHERE rid=='" + parentRID + "'" )
+  gatts = cursor.fetchall()
+  gatts = tools.toAscii_multiList( gatts )
+
+  # ------------------------------------------- #
+  # get all subgoal atts for not_posName
+
+  negName = "not_" + posName + "_from_" + parentName
+  cursor.execute( "SELECT sid FROM Subgoals WHERE rid=='" + parentRID + "' AND subgoalName=='" + negName + "'" )
+  sids = cursor.fetchall()
+  sids = tools.toAscii_list( sids )
+
+  # ------------------------------------------- #
+  # map indexes of subgoal atts to goal att indexes
+
+  childParentAttMap = {}
+  for sid in sids :
+    cursor.execute( "SELECT attID,attName FROM SubgoalAtt WHERE rid=='" + parentRID + "' AND sid=='" + sid + "'"  )
+    satts = cursor.fetchall()
+    satts = tools.toAscii_multiList( satts )
+
+    thisMap = {}
+    for gatt in gatts :
+      gattID   = gatt[0]
+      gattName = gatt[1]
+
+      for satt in satts :
+        sattID   = satt[0]
+        sattName = satt[1]
+
+        if sattName == "_" :
+          thisMap[ sattID ] = "_"
+
+        if gattName == sattName :
+          thisMap[ sattID ] = gattID
+
+    childParentAttMap[ sid ] = thisMap
+
+  childParentAttMap = combineMaps( childParentAttMap )
+
+  return childParentAttMap
+
+
+##################
+#  COMBINE MAPS  #
+##################
+# if parent rule negates the target subgoal multiple times,
+# then combine the goal index valus into a list per subgoal att index 
+# across negated instances.
+def combineMaps( childParentAttMap ) :
+
+  allMaps = []
+  for sidkey in childParentAttMap :
+    thismap = childParentAttMap[ sidkey ]
+    allMaps.append( thismap )
+
+  combinedMaps = {}
+
+  # iniliaze att id keys with empty lists
+  aMap = allMaps[0]
+  for key in aMap :
+    combinedMaps[ key ] = []
+
+  # iterate over all maps and accumulate indexes
+  for aMap in allMaps :
+    for key in aMap :
+      val = aMap[ key ]
+      if not val in combinedMaps[ key ] :
+        combinedMaps[ key ].append(val)
+
+  return combinedMaps
 
 
 ##################
@@ -786,7 +876,7 @@ def addSubgoalsToRules( newDomNames, newDMRIDList, cursor ) :
 ####################
 #  SAVE DOM FACTS  #
 ####################
-def saveDomFacts( domNameBase, attDomsMap, cursor ) :
+def saveDomFacts( childParentAttMap, domNameBase, attDomsMap, posName, pResults, cursor ) :
 
   print "++++++++++++++++++++++++++++++++++++++++++++++++++"
   print "... running SAVE DOM FACTS from negativeWrites ..."
@@ -802,10 +892,12 @@ def saveDomFacts( domNameBase, attDomsMap, cursor ) :
     print "attDomsMap = " + str( attDomsMap )
     #tools.bp( __name__, inspect.stack()[0][3], "stop here" )
 
+  combinedAttMaps = combineAttMaps( childParentAttMap, attDomsMap, posName, pResults )
+
   newDomNames = []
-  for att in attDomsMap :
+  for att in combinedAttMaps :
     attID = att
-    dom   = attDomsMap[ att ]
+    dom   = combinedAttMaps[ attID ]
 
     # -------------------------------------------- #
     # insert new fact data
@@ -854,6 +946,47 @@ def saveDomFacts( domNameBase, attDomsMap, cursor ) :
 
   return newDomNames
 
+
+######################
+#  COMBINE ATT MAPS  #
+######################
+def combineAttMaps( childParentAttMap, attDomsMap, posName, pResults ) :
+
+  finalMap = {}
+
+  print "childParentAttMap = " + str( childParentAttMap )
+
+  for subIndex in childParentAttMap :
+    goalIndexList = childParentAttMap[ subIndex ]
+    thisRange = []
+    for goalIndex in goalIndexList :
+
+      # check if wildcard
+      if goalIndex == "_" :
+        thisRange.extend( getDomAttRangeFromSubgoalRule( subIndex, posName, pResults ) )
+
+      else :
+        thisRange.extend( attDomsMap[ goalIndex ] )
+
+    finalMap[ subIndex ] = thisRange
+
+  return finalMap
+
+
+#########################################
+#  GET DOM ATT RANGE FROM SUBGOAL RULE  #
+#########################################
+def getDomAttRangeFromSubgoalRule( subIndex, posName, pResults ) :
+
+  domAttRange = []
+
+  results = pResults[ posName ]
+
+  domAttRange = []
+  for tup in results :
+    domAttRange.append( tup[ subIndex ] )
+
+  return domAttRange
 
 ###########################
 #  GET ATT DOM NAME BASE  #
