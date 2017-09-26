@@ -12,7 +12,7 @@ import inspect, os, sys
 if not os.path.abspath( __file__ + "/../.." ) in sys.path :
   sys.path.append( os.path.abspath( __file__ + "/../.." ) )
 
-from utils import tools
+from utils import tools, dumpers
 # ------------------------------------------------------ #
 
 #############
@@ -166,6 +166,7 @@ def dumpSingleRule_c4( rid, cursor ) :
   # prioritize dom subgoals first.
   subIDs = prioritizeDoms( rid, subIDs, cursor )
 
+  subTimeArg = None
   # iterate over subgoal ids
   for k in range(0,len(subIDs)) :
     newSubgoal = ""
@@ -182,6 +183,7 @@ def dumpSingleRule_c4( rid, cursor ) :
       if DUMPERS_C4_DEBUG :
         print "subgoalName = " + subgoalName
 
+
       # get subgoal attribute list
       subAtts = cursor.execute( "SELECT attName FROM SubgoalAtt WHERE rid == '" + rid + "' AND sid == '" + s + "'" )
       subAtts = cursor.fetchall()
@@ -192,9 +194,13 @@ def dumpSingleRule_c4( rid, cursor ) :
       subTimeArg = cursor.fetchone() # assume only one time arg
       subTimeArg = tools.toAscii_str( subTimeArg )
 
-      # replace SndTime in subgoal with subTimeArg, if applicable
-      if not subTimeArg == "" :
-        sys.exit( "subTimeArg = " + str(subTimeArg) )
+      #if goalName == "pre" and subgoalName == "bcast" :
+      #  print "............................................"
+      #  print dumpers.reconstructRule( rid, cursor )
+      #  print "subgoalName = " + subgoalName
+      #  print "subAtts     = " + str( subAtts )
+      #  print "subTimeArg  = " + str( subTimeArg )
+      #  tools.bp( __name__, inspect.stack()[0][3], "stuff" )
 
       # get subgoal additional args
       cursor.execute( "SELECT argName FROM SubgoalAddArgs WHERE rid == '" + rid + "' AND sid == '" + s + "'" )
@@ -209,10 +215,17 @@ def dumpSingleRule_c4( rid, cursor ) :
 
       # add in all attributes
       for j in range(0,len(subAtts)) :
+
+        currAtt = subAtts[j]
+
+        # replace SndTime in subgoal with subTimeArg, if applicable
+        if not subTimeArg == "" and "SndTime" in currAtt :
+          currAtt = str( subTimeArg )
+
         if j < (len(subAtts) - 1) :
-          newSubgoal += subAtts[j] + ","
+          newSubgoal += currAtt + ","
         else :
-          newSubgoal += subAtts[j] + ")"
+          newSubgoal += currAtt + ")"
 
       # cap with a comma, if applicable
       if k < len( subIDs ) - 1 :
@@ -240,6 +253,10 @@ def dumpSingleRule_c4( rid, cursor ) :
 
         # convert eqn info to pretty string
         rule += "," + str(eqn)
+
+  # add SndTime eqn (only works for one subgoal time annotation)
+  #if not subTimeArg == None and not subTimeArg == "" :
+  #  rule += ",SndTime==" + str( subTimeArg )
 
   # --------------------------------------------------------------- #
 

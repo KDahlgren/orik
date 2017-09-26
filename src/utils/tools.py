@@ -7,6 +7,7 @@ tools.py
 '''
 
 import ConfigParser, inspect, os, random, re, string, sys, numbers
+random.seed(42) # seed with the answer to life, the universe, and everything.
 
 # ------------------------------------------------------ #
 # import sibling packages HERE!!!
@@ -674,6 +675,17 @@ def isInt( var ) :
       return True
     else :
       return False
+
+
+##############
+#  GET TYPE  #
+##############
+def getType( var ) :
+
+  if isString( var ) :
+    return "string"
+  else :
+    return "int"
 
 
 ##################

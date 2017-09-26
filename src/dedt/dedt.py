@@ -34,7 +34,9 @@ if not os.path.abspath( __file__ + "/../../negativeWrites" ) in sys.path :
 
 from utils          import dumpers, extractors, tools, parseCommandLineInput
 from translators    import c4_translator, dumpers_c4
-from negativeWrites import negativeWrites
+#from negativeWrites import negativeWrites, evaluate
+
+import negativeWrites
 
 import clockRelation
 import dedalusParser
@@ -68,6 +70,8 @@ def dedToIR( filename, cursor ) :
 
   # iterate over parsed lines
   for line in parsedLines :
+
+    print "^^ PROCESSING LINE : " + str( line )
 
     # ----------------------------------------------- #
     #                     FACTS                       #
@@ -112,6 +116,7 @@ def dedToIR( filename, cursor ) :
 
       # generate a random ID for the rule
       rid = tools.getID()
+      print "random rid : " + rid
 
       # --------------------------- #
       #            GOAL             #
@@ -155,8 +160,8 @@ def dedToIR( filename, cursor ) :
         sid = tools.getID()
 
         # ................................. #
-        if "@" in sub :
-          tools.bp( __name__, inspect.stack()[0][3], "sub = " + str(sub) )
+        #if "@" in sub :
+        #  tools.bp( __name__, inspect.stack()[0][3], "sub = " + str(sub) )
         # ................................. #
 
         subgoalName    = extractors.extractSubgoalName(    sub )
@@ -170,6 +175,11 @@ def dedToIR( filename, cursor ) :
           print "subgoalAttList = " + str(subgoalAttList)
           print "subgoalTimeArg = " + str(subgoalTimeArg)
           print "subgoalAddArgs = " + str(subgoalAddArgs)
+
+        if goalName == "pre" and subgoalName == "___notin___bcast" :
+          print "why is this not picking up the time arg???"
+          print "subgoalTimeArg = "  + str( subgoalTimeArg )
+          #tools.bp( __name__, inspect.stack()[0][3], "blah" )
 
         newRule.setSingleSubgoalInfo( sid, subgoalName, subgoalTimeArg )
         newRule.setSingleSubgoalAttList( sid, subgoalAttList )
@@ -204,6 +214,8 @@ def dedToIR( filename, cursor ) :
       if DEDT_DEBUG :
         print "newRule.display() = " + newRule.display()
 
+      print "FINAL RULE : " + dumpers.reconstructRule(rid, cursor )
+
   # ----------------------------------------------------------- #
   # set goal attribute types for all rules
   for rule in ruleMeta :
@@ -232,10 +244,12 @@ def rewrite( EOT, ruleMeta, cursor ) :
   # rewrite intitial facts and rules
   dedalusRewriter.rewriteDedalus( cursor )
 
+  original_prog = c4_translator.c4datalog( cursor ) # assumes c4 evaluator
+
   # negative writes
   NEGPROV = tools.getConfig( "DEFAULT", "NEGPROV", bool )
   if NEGPROV :
-    newDMRuleMeta = negativeWrites( EOT, cursor )
+    newDMRuleMeta = negativeWrites.negativeWrites( EOT, original_prog, cursor )
     ruleMeta.extend( newDMRuleMeta )
 
   print ":::::::::::::::::::::::::::::::::"
@@ -244,6 +258,8 @@ def rewrite( EOT, ruleMeta, cursor ) :
 
   # add provenance rules
   provenanceRewriter.rewriteProvenance( ruleMeta, cursor )
+
+  return original_prog
 
 
 ####################
@@ -266,7 +282,7 @@ def runTranslator( cursor, dedFile, argDict, evaluator ) :
   starterClock( cursor, argDict )
 
   # dedalus and provenance rewrite to final IR
-  rewrite( argDict[ "EOT" ], ruleMeta, cursor ) # <- here.
+  original_prog_lines_only = rewrite( argDict[ "EOT" ], ruleMeta, cursor ) # <- here.
 
   # check for bugs
   if DEDT_DEBUG :
@@ -278,7 +294,7 @@ def runTranslator( cursor, dedFile, argDict, evaluator ) :
   elif evaluator == "pyDatalog" :
     allProgramLines = pydatalog_translator.getPyDatalogProg( cursor )
 
-  return allProgramLines
+  return [ allProgramLines, original_prog_lines_only ]
 
 
 ##############################
@@ -333,7 +349,9 @@ def translateDedalus( argDict, cursor ) :
   evaluator = argDict[ 'evaluator' ] # flavor of datalog depends upon user's choice of evaluator.
 
   for dedfilename, status in fileDict.items() :
-    allProgramData = runTranslator( cursor, dedfilename, argDict, evaluator )
+    data = runTranslator( cursor, dedfilename, argDict, evaluator )
+    allProgramData           = data[0]
+    original_prog_lines_only = data[1]
 
   if DEDT_DEBUG1 :
     dumpers.factDump(  cursor )
@@ -342,7 +360,7 @@ def translateDedalus( argDict, cursor ) :
 
   # ----------------------------------------------------------------- #
 
-  return allProgramData
+  return [ allProgramData, original_prog_lines_only ]
 
 #########
 #  EOF  #

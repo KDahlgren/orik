@@ -317,6 +317,11 @@ class Rule :
       if op in subgoalName :
         subgoalName = subgoalName.replace( op, "" )
 
+    #if self.getGoalName() == "pre" and subgoalName == "bcast" :
+    #  print "my name is pre"
+    #  print "subgoalTimeArg = " + str( subgoalTimeArg )
+    #  #tools.bp( __name__, inspect.stack()[0][3], "blah" )
+
     self.cursor.execute("INSERT INTO Subgoals VALUES ('" + self.rid + "','" + sid + "','" + subgoalName + "','" + subgoalTimeArg + "')")
 
 
@@ -558,6 +563,8 @@ class Rule :
   #
   def allAttTypeMapsDriver( self, head_atts, body_str ) :
 
+    print dumpers.reconstructRule( self.rid, self.cursor )
+
     subgoals_namesAndAtts = self.getInfo_subgoals_namesAndAtts( body_str )
 
     #if self.getGoalName() == "post" :
@@ -613,6 +620,9 @@ class Rule :
         for sub in candSubs :
           subName  = sub[0]
           subattID = sub[1]
+
+          print "subName  : " + subName
+          print "subattID : " + str( subattID )
 
           if tools.isFact( subName, self.cursor ) :
             if DEBUG :
@@ -850,7 +860,8 @@ class Rule :
   ###################
   def getFactType( self, factName, attID ) :
 
-    #print "factName = " + factName
+    print "factName = " + factName
+    print "attID    = " + str( attID )
 
     # ....................................... #
     # clock is easy
@@ -865,7 +876,7 @@ class Rule :
     typeList = self.cursor.fetchall()
     typeList = tools.toAscii_list( typeList )
 
-    #print "typeList = " + str( typeList )
+    print "typeList = " + str( typeList )
 
     # ...................................... #
     # sanity check

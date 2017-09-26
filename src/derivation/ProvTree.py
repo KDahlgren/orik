@@ -48,6 +48,22 @@ class ProvTree( ) :
     self.cursor        = cursor
 
 
+  ###############
+  #  COPY TREE  #
+  ###############
+  def copyTree( self ) :
+
+    newTree               = ProvTree( self.rootname, self.parsedResults, self.cursor )
+    newTree.rootname      = self.rootname
+    newTree.subtrees      = self.subtrees
+    newTree.parsedResults = self.parsedResults
+    newTree.cursor        = self.cursor
+    newTree.nodeset       = self.nodeset
+    newTree.edgeset       = self.edgeset
+
+    return newTree
+
+
   ######################
   #  IS ULTIMATE GOAL  #
   ######################
@@ -113,6 +129,8 @@ class ProvTree( ) :
     # grab the set of unique edges in the original
     # provenance tree.
     edges = self.getAllUniqueEdges()
+
+    #tools.bp( __name__, inspect.stack()[0][3], "num unique edges = " + str( len(edges) ) )
 
     # ------------------------------------------------ #
     # model the edges in a SimpTree object.
@@ -184,7 +202,7 @@ class ProvTree( ) :
   #  CREATE GRAPH  #
   ##################
   # save image file, no return value
-  def createGraph( self, addNameInfo, iter_count ) :
+  def createGraph( self, addNameInfo, fmla_index, iter_count ) :
 
     if DEBUG :
       print "... running createGraph ..."
@@ -194,7 +212,7 @@ class ProvTree( ) :
     graph = pydot.Dot( graph_type = 'digraph', strict=True ) # strict => ignore duplicate edges
 
     #path  = IMGSAVEPATH + "/provtree_render_" + str(time.strftime("%d-%m-%Y")) + "_" + str( time.strftime( "%H"+"hrs-"+"%M"+"mins-"+"%S" +"secs" )) + "_" + str(iter_count)
-    path  = IMGSAVEPATH + "/provtree_render_" + str(iter_count)
+    path  = IMGSAVEPATH + "/provtree_render_fmla" + str( fmla_index ) + "_iter" + str(iter_count)
 
     # example: add "_buggyGraph" to the end of the name
     if addNameInfo :

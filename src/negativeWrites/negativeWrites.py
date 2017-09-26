@@ -22,6 +22,7 @@ from translators import c4_translator
 from utils       import clockTools, tools, dumpers
 
 import deMorgans
+import domainRewrites
 import rewriteNegativeEDBs
 
 # ------------------------------------------------------ #
@@ -37,12 +38,13 @@ arithOps = [ "+", "-", "*", "/" ]
 #####################
 #  NEGATIVE WRITES  #
 #####################
-def negativeWrites( EOT, cursor ) :
+def negativeWrites( EOT, original_prog, cursor ) :
 
   if NEGATIVEWRITES_DEBUG :
     print " ... running negative writes ..."
 
   newRuleMeta = setNegativeRules( EOT, [], 0, cursor )
+  domainRewrites.addDomainEDBs( original_prog, cursor )
 
   # dump to test
   if NEGATIVEWRITES_DEBUG :
@@ -83,15 +85,12 @@ def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
   # get results from running the input program P
   pResults = evaluate( COUNTER, cursor )
 
-  #print "made it here2."
-
   # --------------------------------------------------- #
   # rewrite lines containing negated IDBs               #
   # --------------------------------------------------- #
   # maintian list of IDB goal names to rewrite.
   # IDBs pulled from rules across the entire program.
-  negatedList = []
-
+  negatedList  = []
   newDMRIDList = []
 
   pRIDs = getAllRuleRIDs( cursor )
@@ -102,32 +101,12 @@ def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
       negatedIDBNames = rewriteParentRule( rid, cursor )
       negatedList.extend( negatedIDBNames )
 
-      # ....................................... #
-      # remove duplicates
-      #tmp0  = []
-      #tmp1  = []
-      #names = [ x[0] for x in negatedList ]
-      #sids  = [ x[1] for x in negatedList ]
-      #print "names = "  + str( names )
-      #print "sids  = "  + str( sids  )
-      #for i in range(0,len(names)) :
-      #  name = names[i]
-      #  if not name in tmp1 :
-      #    tmp0.append( [ name, sids[i]] ) 
-      #negatedList = tmp0
-      # ....................................... #
-
     else :
       pass
 
   # --------------------------------------------------- #
   # add new rules for negated IDBs                      #
   # --------------------------------------------------- #
-
-  #if COUNTER == 1 :
-  #  print negatedList
-  #  tools.bp( __name__, inspect.stack()[0][3], "COUNTER = " + str( COUNTER ) )
-
   #####################################################################
   # NOTE :                                                            #
   # negatedList is an array of [ IDB goalName, parent rule id ] pairs #
@@ -174,7 +153,9 @@ def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
 
     # ............................................................... #
     # add domain subgoals.
-    addDomainSubgoals( parentRID, posName, posNameRIDs, newDMRIDList, pResults, cursor )
+    #addDomainSubgoals( parentRID, posName, posNameRIDs, newDMRIDList, pResults, cursor )
+    newRuleMeta = domainRewrites.domainRewrites( parentRID, posName, newDMRIDList, cursor )
+    newRules.append( newRuleMeta )
 
     # --------------------------------------------------- #
     # replace existential vars with wildcards.            #
@@ -196,12 +177,16 @@ def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
   # ................................................... #
   # rewrite rules with negated EDBs containing          #
   # wildcards                                           #
+  # needed to make results readable by masking          #
+  # default values.                                     #
+  # Also, c4 doesn't properly handle negated subgoals   #
+  # with wildcards.                                     #
   # ................................................... #
   additionalNewRules = rewriteNegativeEDBs.rewriteNegativeEDBs( cursor )
   newRules.extend( additionalNewRules )
 
-  if COUNTER == 1 :
-    tools.dumpAndTerm( cursor )
+  #if COUNTER == 1 :
+  #  tools.dumpAndTerm( cursor )
 
   # ................................................... #
   # branch on continued presence of negated IDBs
