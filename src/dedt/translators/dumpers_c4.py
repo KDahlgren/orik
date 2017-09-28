@@ -166,6 +166,9 @@ def dumpSingleRule_c4( rid, cursor ) :
   # prioritize dom subgoals first.
   subIDs = prioritizeDoms( rid, subIDs, cursor )
 
+  # prioritize negated subgoals last.
+  subIDs = prioritizeNegatedLast( rid, subIDs, cursor )
+
   subTimeArg = None
   # iterate over subgoal ids
   for k in range(0,len(subIDs)) :
@@ -268,6 +271,36 @@ def dumpSingleRule_c4( rid, cursor ) :
   # .................................. #
 
   return rule
+
+
+#############################
+#  PRIORITIZE NEGATED LAST  #
+#############################
+def prioritizeNegatedLast( rid, subIDs, cursor ) :
+
+  posSubs = []
+  negSubs = []
+
+  # check if subgoal is negated
+  # branch on result.
+  for subID in subIDs :
+
+    cursor.execute( "SELECT argName FROM SubgoalAddArgs WHERE rid=='" + rid + "' AND sid=='" + subID + "'" )
+    sign = cursor.fetchone()
+
+    # positive subgoals may have no argName data
+    # all instances of negative subgoals WILL have an argName
+    if sign :
+      sign = tools.toAscii_str( sign )
+    else :
+      sign = ""
+
+    if not sign == "notin" :
+      posSubs.append( subID )
+    else :
+      negSubs.append( subID )
+
+  return posSubs + negSubs
 
 
 #####################

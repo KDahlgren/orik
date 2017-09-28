@@ -1,7 +1,7 @@
 #/usr/bin/env python
 
 '''
-rewriteNegativeEDBs.py
+rewriteNegativeSubgoalsWithWildcards.py
 '''
 
 import inspect, os, string, sys
@@ -30,10 +30,10 @@ NEGATIVEWRITES_DEBUG = tools.getConfig( "DEDT", "NEGATIVEWRITES_DEBUG", bool )
 arithOps = [ "+", "-", "*", "/" ]
 
 
-###########################
-#  REWRITE NEGATIVE EDBS  #
-###########################
-def rewriteNegativeEDBs( cursor ) :
+##############################################
+#  REWRITE NEGATIVE SUBGOALS WITH WILDCARDS  #
+##############################################
+def rewriteNegativeSubgoalsWithWildcards( cursor ) :
 
   newRuleMeta = []
 
@@ -88,9 +88,11 @@ def rewriteNegativeEDBs( cursor ) :
 # attData contains the full att list for the input (original) subgoal
 def rewriteRule( rid, sid, attData, cursor ) :
 
-  print "#######################################################"
-  print " ... running REWRITE RULE from rewriteNegativeEDBs ... "
-  print "#######################################################"
+  print "#################################################################"
+  print " ... running REWRITE RULE from rewriteSubgoalsWithWildcards ... #"
+  print "#################################################################"
+
+  print "BEFORE : attData : " + str( attData )
 
   # ------------------------------------------- #
   # get name of sid
@@ -99,8 +101,39 @@ def rewriteRule( rid, sid, attData, cursor ) :
   subgoalName = tools.toAscii_str( subgoalName )
 
   # ------------------------------------------- #
+  # branch on idb subgoals.
+  # if negated subgoal with wildcard is IDB, then ensure all attTypes are defined
+  # by pulling attTypes from the IDB goal attribute list.
+
+  if not tools.isFact_only( subgoalName, cursor ) :
+    # get rule id for the idb
+    cursor.execute( "SELECT rid FROM Rule WHERE goalName=='" + subgoalName + "'" )
+    idbrid = cursor.fetchone()
+    idbrid = tools.toAscii_str( idbrid )
+
+    # get goal schema
+    cursor.execute( "SELECT attID,attName,attType FROM GoalAtt WHERE rid=='" + idbrid + "'" )
+    idbAttData = cursor.fetchall()
+    idbAttData = tools.toAscii_multiList( idbAttData )
+
+    print "idbAttData : " + str( idbAttData )
+
+    # fix original subgoal att list types
+    tmp = []
+    for i in range(0,len(idbAttData)) :
+      idb_att  = idbAttData[i]
+      orig_att = attData[i]
+
+      attID   = orig_att[0]
+      attName = orig_att[1]
+      attType = idb_att[2]
+
+      tmp.append( [ attID, attName, attType ] )
+    attData = tmp
+
+  # ------------------------------------------- #
   # generate new subgoal name
-  newSubgoalName = subgoalName + "_" + tools.getID_4() + "_edbrewrite"
+  newSubgoalName = subgoalName + "_" + tools.getID_4() + "_wildcardrewrite"
 
   # ------------------------------------------- #
   # generate new subgoal att list
@@ -116,7 +149,7 @@ def rewriteRule( rid, sid, attData, cursor ) :
       attNameList.append( attName )
       attID += 1
 
-  if subgoalName == "clock" :
+  if True :
     print ">> ORIG RULE <<"
     print dumpers.reconstructRule( rid, cursor )
     print ">>>         <<<"
@@ -130,7 +163,7 @@ def rewriteRule( rid, sid, attData, cursor ) :
   cursor.execute( "UPDATE Subgoals SET subgoalName=='" + newSubgoalName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
 
   # ------------------------------------------- #
-  # delet old subgoal att data
+  # delete old subgoal att data
   arity = len( attData )
   for attID in range( 0, arity ) :
     cursor.execute( "DELETE FROM SubgoalAtt WHERE rid=='" + rid + "' AND sid=='" + sid + "' AND attID=='" + str( attID ) + "'"  )
@@ -146,6 +179,14 @@ def rewriteRule( rid, sid, attData, cursor ) :
 
   # ------------------------------------------- #
   # add new rule
+
+  print "-------------------------------------"
+  print "subgoalName       : " + subgoalName
+  print "newSubgoalName    : " + newSubgoalName
+  print "attData           : " + str( attData )
+  print "newSubgoalAttList : " + str( newSubgoalAttList )
+  #tools.bp( __name__, inspect.stack()[0][3], "asdf" )
+
   newRule = addNewRule( subgoalName, newSubgoalName, attData, newSubgoalAttList, cursor )
 
   return newRule
@@ -155,6 +196,12 @@ def rewriteRule( rid, sid, attData, cursor ) :
 ##################
 def addNewRule( origSubgoalName, newSubgoalName, origSubgoalAttList, newSubgoalAttList, cursor ) :
 
+  print "////////////////////////////////////////////"
+  print "origSubgoalName    : " + origSubgoalName
+  print "newSubgoalName     : " + newSubgoalName
+  print "origSubgoalAttList : " + str( origSubgoalAttList )
+  print "newSubgoalAttList  : " + str( newSubgoalAttList )
+
   # ------------------------------------------- #
   # generate new rule id
   newRID = tools.getID()
@@ -162,7 +209,7 @@ def addNewRule( origSubgoalName, newSubgoalName, origSubgoalAttList, newSubgoalA
   # ------------------------------------------- #
   # save goal data
   goalTimeArg   = ""
-  rewrittenFlag = False
+  rewrittenFlag = True
 
   # insert into Rule
   cursor.execute("INSERT INTO Rule (rid, goalName, goalTimeArg, rewritten) VALUES ('" + newRID + "','" + newSubgoalName + "','" + goalTimeArg + "','" + str(rewrittenFlag) + "')")

@@ -645,11 +645,17 @@ class Rule :
 
             #print "here3."
             goalName = self.getGoalName()
+            print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
+            print " FINDING ATT TYPES FOR " + self.getGoalName() 
+            print "rule : " + dumpers.reconstructRule( self.rid, self.cursor )
+
             #if "log_log_" in goalName[0:8] and "_log_" in goalName[12:17] :
             #  print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
             #  print "rule : " + dumpers.reconstructRule( self.rid, self.cursor )
             #  print " FINDING ATT TYPES FOR " + self.getGoalName() 
+
             allAttTypeMaps[ hatt ] = self.allAttTypeMapsHelper( [ self.rid ], [], currSubName, currIndex )
+
             #if "log_log_" in goalName[0:8] and "_log_" in goalName[12:17] :
             #  print " CONCLUSION : allAttTypeMaps[ hatt ] = " + str( allAttTypeMaps[ hatt ] )
             #  print "___________________________________________"
@@ -663,11 +669,21 @@ class Rule :
   ##############################
   #  ALL ATT TYPE MAPS HELPER  #
   ##############################
+  # currRIDList        := the list of rule ids under consideration for deriving the type of 
+  #                       the targetted goal attribute
+  # prospectiveRIDList := the list of rids for IDBs corresponding to subgoals in the original rule
+  #                       which define the targeted goal attribute
+  # currSubName        := the name of the subgoal currently representing the authority 
+  #                       on the type of the targeted attribute
+  # currIndex          := the index of the attribute in currSubName from which to derive a type
   def allAttTypeMapsHelper( self, currRIDList, prospectiveRIDList, currSubName, currIndex ) :
 
+    print "//////////////////////////////////////"
     print "currRIDList = " + str( currRIDList )
     print "currSubName = " + str( currSubName )
     print "currIndex   = " + str( currIndex )
+    for r in currRIDList :
+      print dumpers.reconstructRule( r, self.cursor )
 
     if DEBUG :
       print "currRIDList = " + str(currRIDList) + "\ncurrSubName = " + str(currSubName) + "\ncurrIndex = " + str(currIndex)
@@ -676,6 +692,8 @@ class Rule :
     # BASE CASE : currSubName is a fact
     # grab data type at index currIndex
     if tools.isFact( currSubName, self.cursor ) :
+
+      print currSubName + " is an EDB!"
 
       # clock facts are easy
       clockSchema = [ 'string', 'string', 'int', 'int' ]
@@ -722,6 +740,8 @@ class Rule :
     # --------------------------------------------- #
     # RECURSIVE CASE
     else :
+      print currSubName + " is an IDB!"
+
       #print "currSubName = " + currSubName
 
       #goalName = self.getGoalName()

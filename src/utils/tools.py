@@ -436,24 +436,79 @@ def attSearchPass2( pydatalogRule ) :
   return wildList
 
 
+##################
+#  IS FACT ONLY  #
+##################
+# check if relation is a fact only
+# returns false if relation is EDB and IDB
+def isFact_only( goalName, cursor ) :
+
+    isIDB = False
+    isEDB = False
+
+    print "Running tools.isFact_only on goalName '" + goalName + "'"
+
+    # --------------------------------------------------------------- #
+    # first check if the relation name corresponds to an IDB name
+    cursor.execute( "SELECT rid FROM Rule WHERE goalName=='" + str(goalName) + "'" )
+    ridList = cursor.fetchall()
+    ridList = toAscii_multiList( ridList )
+    if len( ridList ) > 0 :
+      isIDB = True
+
+    # --------------------------------------------------------------- #
+    # then check if the relation name corresponds to an EDB name
+    # get all fact ids corresponding to the relation name
+    cursor.execute( "SELECT fid FROM Fact WHERE name=='" + str(goalName) + "'" )
+    fidList = cursor.fetchall()
+    fidList = toAscii_multiList( fidList )
+
+    if goalName == "clock" or len( fidList ) > 0 :
+      isEDB = True
+
+    # return true if the goal name corresponds to an EDB
+    if isEDB and not isIDB :
+      return True
+    else :
+      return False
+
+
 #############
 #  IS FACT  #
 #############
 # check if a particular string corresponds to the name of a fact table.
 def isFact( goalName, cursor ) :
-    cursor.execute( "SELECT attID,attName FROM Fact,FactAtt WHERE Fact.fid==FactAtt.fid AND Fact.name=='" + str(goalName) + "'" )
-    attIDsNames = cursor.fetchall()
-    attIDsNames = toAscii_multiList( attIDsNames )
 
-    if TOOLS_DEBUG :
-      print "in RuleNode isFact:"
-      print "name        = " + name
-      print "attIDsNames = " + str(attIDsNames)
+    isIDB = False
+    isEDB = False
 
-    if attIDsNames or (goalName == "clock") :
+    print "Running tools.isFact on goalName '" + goalName + "'"
+
+    # --------------------------------------------------------------- #
+    # first check if the relation name corresponds to an IDB name
+    cursor.execute( "SELECT rid FROM Rule WHERE goalName=='" + str(goalName) + "'" )
+    ridList = cursor.fetchall()
+    ridList = toAscii_multiList( ridList )
+    if len( ridList ) > 0 :
+      isIDB = True
+
+    # --------------------------------------------------------------- #
+    # then check if the relation name corresponds to an EDB name
+    # get all fact ids corresponding to the relation name
+    cursor.execute( "SELECT fid FROM Fact WHERE name=='" + str(goalName) + "'" )
+    fidList = cursor.fetchall()
+    fidList = toAscii_multiList( fidList )
+
+    if goalName == "clock" or len( fidList ) > 0 :
+      isEDB = True
+
+    # return true if the goal name corresponds to an EDB
+    if isEDB :
       return True
     else :
       return False
+
+
 
 ########################
 #  CLEAN FACT RECORDS  #

@@ -36,7 +36,7 @@ from utils          import dumpers, extractors, tools, parseCommandLineInput
 from translators    import c4_translator, dumpers_c4
 #from negativeWrites import negativeWrites, evaluate
 
-import negativeWrites
+import negativeWrites, rewriteNegativeSubgoalsWithWildcards
 
 import clockRelation
 import dedalusParser
@@ -244,6 +244,9 @@ def rewrite( EOT, ruleMeta, cursor ) :
   # rewrite intitial facts and rules
   dedalusRewriter.rewriteDedalus( cursor )
 
+  # rewrite negated subgoals with wildcards
+  rewriteNegativeSubgoalsWithWildcards.rewriteNegativeSubgoalsWithWildcards( cursor )
+
   original_prog = c4_translator.c4datalog( cursor ) # assumes c4 evaluator
 
   # negative writes
@@ -276,7 +279,7 @@ def runTranslator( cursor, dedFile, argDict, evaluator ) :
 
   # ded to IR
   meta     = dedToIR( dedFile, cursor )
-  ruleMeta = meta[1]
+  ruleMeta = meta[1] # observe fact meta not used.
 
   # generate the first clock
   starterClock( cursor, argDict )

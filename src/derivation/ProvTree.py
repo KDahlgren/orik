@@ -256,17 +256,30 @@ class ProvTree( ) :
     print "num nodes    = " + str( len(nodes) )
     print "num edges    = " + str( len(edges) )
 
-    #countMap = {}
-    #for node in self.nodeset :
-    #  count = 0
-    #  for n in self.nodeset :
-    #    if n.to_string() == node.to_string() :
-    #      count += 1
-    #  countMap[ node.to_string() ] = count
-    #for node in countMap :
-    #  print node + " : " + str( countMap[node] )
+    edgeCountMap = {}
+    for edge in self.edgeset :
+      count = 0
+      for e in self.edgeset :
+        if e.to_string() == edge.to_string() :
+          count += 1
+      edgeCountMap[ edge.to_string() ] = count
+    for edge in edgeCountMap :
+      print edge + " : " + str( edgeCountMap[edge] )
+
+    print "-----------------------"
+
+    countMap = {}
+    for node in self.nodeset :
+      count = 0
+      for n in self.nodeset :
+        if n.to_string() == node.to_string() :
+          count += 1
+      countMap[ node.to_string() ] = count
+    for node in countMap :
+      print node + " : " + str( countMap[node] )
 
     print "/////////////////////////"
+    #tools.bp( __name__, inspect.stack()[0][3], "stophere" )
     # <><><><><><><><><><><><><><><><><><><><><><> #
 
     # create graph
@@ -295,7 +308,7 @@ class ProvTree( ) :
     #  print "src  = " + str( edge.get_source() )
     #  print "dest =" + str( edge.get_destination() )
 
-    topology = self.suppressDomNodes( topology )
+    #topology = self.suppressDomNodes( topology )
 
     return topology
 
