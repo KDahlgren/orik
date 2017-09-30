@@ -22,7 +22,8 @@ from translators import c4_translator
 from utils       import clockTools, tools, dumpers
 
 import deMorgans
-import rewriteNegativeEDBs
+import domainRewrites
+import rewriteNegativeSubgoalsWithWildcards
 
 # ------------------------------------------------------ #
 
@@ -37,12 +38,14 @@ arithOps = [ "+", "-", "*", "/" ]
 #####################
 #  NEGATIVE WRITES  #
 #####################
-def negativeWrites( EOT, cursor ) :
+def negativeWrites( EOT, original_prog, cursor ) :
 
   if NEGATIVEWRITES_DEBUG :
     print " ... running negative writes ..."
 
-  newRuleMeta = setNegativeRules( EOT, [], 0, cursor )
+  newRuleMeta = setNegativeRules( EOT, original_prog, [], 0, cursor )
+
+  print "negativeWrites...DONE"
 
   # dump to test
   if NEGATIVEWRITES_DEBUG :
@@ -68,7 +71,9 @@ def negativeWrites( EOT, cursor ) :
 # 
 # if P' contains negated IDB subgoals, repeat negativeWrites on P'.
 #
-def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
+def setNegativeRules( EOT, original_prog, oldRuleMeta, COUNTER, cursor ) :
+
+  domainRewrites.addDomainEDBs( original_prog, cursor )
 
   print "COUNTER = " + str( COUNTER )
 
@@ -83,15 +88,12 @@ def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
   # get results from running the input program P
   pResults = evaluate( COUNTER, cursor )
 
-  #print "made it here2."
-
   # --------------------------------------------------- #
   # rewrite lines containing negated IDBs               #
   # --------------------------------------------------- #
   # maintian list of IDB goal names to rewrite.
   # IDBs pulled from rules across the entire program.
-  negatedList = []
-
+  negatedList  = []
   newDMRIDList = []
 
   pRIDs = getAllRuleRIDs( cursor )
@@ -102,42 +104,48 @@ def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
       negatedIDBNames = rewriteParentRule( rid, cursor )
       negatedList.extend( negatedIDBNames )
 
-      # ....................................... #
-      # remove duplicates
-      #tmp0  = []
-      #tmp1  = []
-      #names = [ x[0] for x in negatedList ]
-      #sids  = [ x[1] for x in negatedList ]
-      #print "names = "  + str( names )
-      #print "sids  = "  + str( sids  )
-      #for i in range(0,len(names)) :
-      #  name = names[i]
-      #  if not name in tmp1 :
-      #    tmp0.append( [ name, sids[i]] ) 
-      #negatedList = tmp0
-      # ....................................... #
-
     else :
       pass
 
   # --------------------------------------------------- #
   # add new rules for negated IDBs                      #
   # --------------------------------------------------- #
-
-  #if COUNTER == 1 :
-  #  print negatedList
-  #  tools.bp( __name__, inspect.stack()[0][3], "COUNTER = " + str( COUNTER ) )
-
   #####################################################################
   # NOTE :                                                            #
   # negatedList is an array of [ IDB goalName, parent rule id ] pairs #
   #####################################################################
   DMList   = []
   newRules = oldRuleMeta
+
+  # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> #
+  # remove duplicates
+  # alleviates some rule duplication in 
+  # rewritten programs.
+  #print 
+  #print "REMOVING DUPLICATES IN NEGATED LIST :"
+  #print "before : negatedList : " + str( negatedList )
+  relNameList = []
+  tmp         = []
+  for nameData in negatedList :
+    posName     = nameData[0]  # name of negated IDB subgoal
+    parentRID   = nameData[1]  # rid of parent rule
+    sidInParent = nameData[2]  # rid of parent rule
+    if not posName in relNameList :
+      tmp.append( nameData )
+      relNameList.append( posName )
+  negatedList = tmp
+  #print "after : negatedList : " + str( negatedList )
+  # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> #
+
   for nameData in negatedList :
 
-    posName   = nameData[0]  # name of negated IDB subgoal
-    parentRID = nameData[1]  # rid of parent rule
+    posName     = nameData[0]  # name of negated IDB subgoal
+    parentRID   = nameData[1]  # rid of parent rule
+    sidInParent = nameData[2]  # rid of parent rule
+
+    print "nameData    : " + str( nameData )
+    print "posName     : " + posName
+    print "parent rule : " + dumpers.reconstructRule( parentRID, cursor )
 
     # ............................................................... #
     # collect all rids for this IDB name
@@ -153,6 +161,7 @@ def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
 
     # build rule meta for provenance rewriter
     for rid in newArithRuleRIDList :
+      print ">>> arith rule : " + dumpers.reconstructRule( rid, cursor )
       newRule = Rule.Rule( rid, cursor )
       newRules.append( newRule )
 
@@ -167,19 +176,24 @@ def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
     newDMRIDList = applyDeMorgans( parentRID, posNameRIDs, cursor )
     DMList.append( [ newDMRIDList, posName ] )
 
+    print "//<< parent : " + dumpers.reconstructRule( parentRID, cursor )
+    for r in newDMRIDList :
+      print "//>> new DM rule : " + dumpers.reconstructRule( r, cursor )
+
     # build rule meta for provenance rewriter
     for rid in newDMRIDList :
       newRule = Rule.Rule( rid, cursor )
       newRules.append( newRule )
 
     # ............................................................... #
-    # add domain subgoals.
-    addDomainSubgoals( parentRID, posName, posNameRIDs, newDMRIDList, pResults, cursor )
+    # add domain rule and subgoals to new DM rules.
+    newRuleMeta = domainRewrites.domainRewrites( parentRID, sidInParent, posName, posNameRIDs, newDMRIDList, COUNTER, cursor )
+    newRules.append( newRuleMeta )
 
     # --------------------------------------------------- #
     # replace existential vars with wildcards.            #
     # --------------------------------------------------- #
-    setWildcards( EOT, newDMRIDList, cursor )
+    #setWildcards( EOT, newDMRIDList, cursor )
 
   # --------------------------------------------------- #
   # final checks
@@ -196,12 +210,16 @@ def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
   # ................................................... #
   # rewrite rules with negated EDBs containing          #
   # wildcards                                           #
+  # needed to make results readable by masking          #
+  # default values.                                     #
+  # Also, c4 doesn't properly handle negated subgoals   #
+  # with wildcards.                                     #
   # ................................................... #
-  additionalNewRules = rewriteNegativeEDBs.rewriteNegativeEDBs( cursor )
-  newRules.extend( additionalNewRules )
+  #additionalNewRules = rewriteNegativeSubgoalsWithWildcards.rewriteNegativeSubgoalsWithWildcards( cursor )
+  #newRules.extend( additionalNewRules )
 
-  if COUNTER == 1 :
-    tools.dumpAndTerm( cursor )
+  #if COUNTER == 1 :
+  #  tools.dumpAndTerm( cursor )
 
   # ................................................... #
   # branch on continued presence of negated IDBs
@@ -209,7 +227,8 @@ def setNegativeRules( EOT, oldRuleMeta, COUNTER, cursor ) :
   # recurse if rewritten program still contains rogue negated IDBs
   if not newDMRIDList == [] and stillContainsNegatedIDBs( newDMRIDList, cursor ) :
     COUNTER += 1
-    setNegativeRules( EOT, newRules, COUNTER, cursor )
+    new_original_program = c4_translator.c4datalog( cursor ) # assumes c4 evaluator
+    setNegativeRules( EOT, new_original_program, newRules, COUNTER, cursor )
 
   # otherwise, the program only has negated EDB subgoals.
   # get the hell out of here.
@@ -1143,7 +1162,7 @@ def arithOpSubgoalIDBWrites( oldRID, targetSID, newSubgoalName, oldSubgoalName, 
   rid         = newRID
   goalName    = newSubgoalName
   goalTimeArg = ""
-  rewritten   = "False"
+  rewritten   = "True"
   cursor.execute( "INSERT INTO Rule (rid, goalName, goalTimeArg, rewritten) VALUES ('" + rid + "','" + goalName + "','" + goalTimeArg + "','" + rewritten + "')" )
 
   # --------------------------------------------- #
@@ -1665,11 +1684,12 @@ def rewriteParentRule( rid, cursor ) :
   
       # .................................................... #
       # save for return data
-      negatedIDBNames.append( [ name, rid ] )
+      negatedIDBNames.append( [ name, rid, sid ] )
+
 
   # .................................................... #
   # remove duplicates
-  negatedIDBNames = removeDups( rid, negatedIDBNames )
+  #negatedIDBNames = removeDups( rid, negatedIDBNames )
 
   return negatedIDBNames
 

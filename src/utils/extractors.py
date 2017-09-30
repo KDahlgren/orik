@@ -116,6 +116,8 @@ def extractSubgoalList( parsedLine ) :
   # only take subgoals
   subgoalList = [ comp for comp in groupedComponents if ("(" in comp) and (")" in comp) ]
 
+  print "subgoalList = " + str( subgoalList )
+
   return subgoalList
 
 
@@ -154,8 +156,12 @@ def bodyParse( parsedLine ) :
   # (macabre language not intended.)
   body = "".join(body)
 
+  print "BEFORE body = " + body
+
   # remove all @ args to prevent headaches
-  body = re.sub( r'@[a-zA-Z0-9]', "", body )
+  #body = re.sub( r'@[a-zA-Z0-9]', "", body )
+
+  print "AFTER  body = " + body
 
   # split list on subgoal closed parens
   body = body.split( ")," )
@@ -193,6 +199,7 @@ def bodyParse( parsedLine ) :
   else :
     componentList = body
 
+  print "componentList : " + str( componentList )
   return componentList
 
 
@@ -215,6 +222,8 @@ def hasOp( substr ) :
 
 def extractTimeArg( parsedLine ) :
   timeArg = ""
+
+  print "parsedLine = " + str( parsedLine )
 
   # case list, which will occur for facts
   if type( parsedLine ) == list :
@@ -287,9 +296,9 @@ def extractAttList( parsedLine ) :
             attList = attList.split( "," )
 
             # .................................. #
-            if "@" in aString :
-              print "aString = " + str(aString)
-              tools.bp( __name__, inspect.stack()[0][3], "attList = " + str(attList) )
+            #if "@" in aString :
+            #  print "aString = " + str(aString)
+            #  tools.bp( __name__, inspect.stack()[0][3], "attList = " + str(attList) )
             # .................................. #
 
             return attList

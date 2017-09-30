@@ -38,8 +38,10 @@ class Core :
   #############
   #  ATTRIBS  #
   #############
-  argDict                 = None  # dictionary of commaned line args
-  cursor                  = None  # a reference to the IR database
+  argDict                  = None  # dictionary of commaned line args
+  cursor                   = None  # a reference to the IR database
+  original_prog_lines_only = None  # dictionary of the original lines of the c4 program
+                                   # sans any rewrites
 
   # --------------------------------- #
 
@@ -67,7 +69,9 @@ class Core :
     # ---------------------------------------------------------------- #
 
     # allProgramData := [ allProgramLines, tableListArray ]
-    allProgramData = self.dedalus_to_datalog( self.argDict, self.cursor )
+    programData                   = self.dedalus_to_datalog( self.argDict, self.cursor )
+    allProgramData                = programData[0]
+    self.original_prog_lines_only = programData[1]
 
     # ----------------------------------------------- #
     # 2. evaluate                                     #
@@ -218,8 +222,9 @@ class Core :
     #provTreeComplete.createGraph( None, iter_count )
     #tools.bp( __name__, inspect.stack()[0][3], "built prov tree and created graph." )
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
- 
-    provTreeComplete.createGraph( None, iter_count )
+
+    default_fmla_index = 0 
+    provTreeComplete.createGraph( None, default_fmla_index, iter_count )
     # ------------------------------------------------------------------------------ #
 
     return provTreeComplete

@@ -317,6 +317,11 @@ class Rule :
       if op in subgoalName :
         subgoalName = subgoalName.replace( op, "" )
 
+    #if self.getGoalName() == "pre" and subgoalName == "bcast" :
+    #  print "my name is pre"
+    #  print "subgoalTimeArg = " + str( subgoalTimeArg )
+    #  #tools.bp( __name__, inspect.stack()[0][3], "blah" )
+
     self.cursor.execute("INSERT INTO Subgoals VALUES ('" + self.rid + "','" + sid + "','" + subgoalName + "','" + subgoalTimeArg + "')")
 
 
@@ -558,6 +563,8 @@ class Rule :
   #
   def allAttTypeMapsDriver( self, head_atts, body_str ) :
 
+    print dumpers.reconstructRule( self.rid, self.cursor )
+
     subgoals_namesAndAtts = self.getInfo_subgoals_namesAndAtts( body_str )
 
     #if self.getGoalName() == "post" :
@@ -614,6 +621,9 @@ class Rule :
           subName  = sub[0]
           subattID = sub[1]
 
+          print "subName  : " + subName
+          print "subattID : " + str( subattID )
+
           if tools.isFact( subName, self.cursor ) :
             if DEBUG :
               print "subName = " + subName
@@ -635,11 +645,17 @@ class Rule :
 
             #print "here3."
             goalName = self.getGoalName()
+            print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
+            print " FINDING ATT TYPES FOR " + self.getGoalName() 
+            print "rule : " + dumpers.reconstructRule( self.rid, self.cursor )
+
             #if "log_log_" in goalName[0:8] and "_log_" in goalName[12:17] :
             #  print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
             #  print "rule : " + dumpers.reconstructRule( self.rid, self.cursor )
             #  print " FINDING ATT TYPES FOR " + self.getGoalName() 
+
             allAttTypeMaps[ hatt ] = self.allAttTypeMapsHelper( [ self.rid ], [], currSubName, currIndex )
+
             #if "log_log_" in goalName[0:8] and "_log_" in goalName[12:17] :
             #  print " CONCLUSION : allAttTypeMaps[ hatt ] = " + str( allAttTypeMaps[ hatt ] )
             #  print "___________________________________________"
@@ -653,11 +669,21 @@ class Rule :
   ##############################
   #  ALL ATT TYPE MAPS HELPER  #
   ##############################
+  # currRIDList        := the list of rule ids under consideration for deriving the type of 
+  #                       the targetted goal attribute
+  # prospectiveRIDList := the list of rids for IDBs corresponding to subgoals in the original rule
+  #                       which define the targeted goal attribute
+  # currSubName        := the name of the subgoal currently representing the authority 
+  #                       on the type of the targeted attribute
+  # currIndex          := the index of the attribute in currSubName from which to derive a type
   def allAttTypeMapsHelper( self, currRIDList, prospectiveRIDList, currSubName, currIndex ) :
 
+    print "//////////////////////////////////////"
     print "currRIDList = " + str( currRIDList )
     print "currSubName = " + str( currSubName )
     print "currIndex   = " + str( currIndex )
+    for r in currRIDList :
+      print dumpers.reconstructRule( r, self.cursor )
 
     if DEBUG :
       print "currRIDList = " + str(currRIDList) + "\ncurrSubName = " + str(currSubName) + "\ncurrIndex = " + str(currIndex)
@@ -666,6 +692,8 @@ class Rule :
     # BASE CASE : currSubName is a fact
     # grab data type at index currIndex
     if tools.isFact( currSubName, self.cursor ) :
+
+      print currSubName + " is an EDB!"
 
       # clock facts are easy
       clockSchema = [ 'string', 'string', 'int', 'int' ]
@@ -712,6 +740,8 @@ class Rule :
     # --------------------------------------------- #
     # RECURSIVE CASE
     else :
+      print currSubName + " is an IDB!"
+
       #print "currSubName = " + currSubName
 
       #goalName = self.getGoalName()
@@ -850,7 +880,8 @@ class Rule :
   ###################
   def getFactType( self, factName, attID ) :
 
-    #print "factName = " + factName
+    print "factName = " + factName
+    print "attID    = " + str( attID )
 
     # ....................................... #
     # clock is easy
@@ -865,7 +896,7 @@ class Rule :
     typeList = self.cursor.fetchall()
     typeList = tools.toAscii_list( typeList )
 
-    #print "typeList = " + str( typeList )
+    print "typeList = " + str( typeList )
 
     # ...................................... #
     # sanity check

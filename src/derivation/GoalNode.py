@@ -203,7 +203,6 @@ class GoalNode( Node ) :
     qInclusionBool = " AND simInclude=='True'"
 
     # erase query components as necessary
-    # EXISTING BUG TODO : does not work if _ in src --> need to handle ANDs more intelligently
     if "_" in src :
       qSRC = ""
     if "_" in dest :
@@ -213,11 +212,23 @@ class GoalNode( Node ) :
     if "_" in delivTime :
       qDELIVTIME = ""
 
+    # handle empty SRC
+    if qSRC == "" and not qDEST == "" :
+      qDEST = qDEST.replace( "AND", "" )
+    elif qSRC == "" and qDEST == "" and not qSNDTIME == "" :
+      qSNDTIME = qSNDTIME.replace( "AND", "" )
+    elif qSRC == "" and qDEST == "" and qSNDTIME == "" and not qDELIVTIME == "" :
+      qDELIVTIME = qDELIVTIME.replace( "AND", "" )
+    elif qSRC == "" and qDEST == "" and qSNDTIME == "" and qDELIVTIME == "" and not qInclusionBool == "" :
+      qInclusionBool = qInclusionBool.replace( "AND", "" )
+
     # set query
     query = "SELECT src,dest,sndTime,delivTime FROM Clock WHERE " + qSRC + qDEST + qSNDTIME + qDELIVTIME + qInclusionBool
 
     if DEBUG :
       print "query = " + str(query)
+
+    print query
 
     # execute query
     self.cursor.execute( query )

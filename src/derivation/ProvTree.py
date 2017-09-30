@@ -48,6 +48,22 @@ class ProvTree( ) :
     self.cursor        = cursor
 
 
+  ###############
+  #  COPY TREE  #
+  ###############
+  def copyTree( self ) :
+
+    newTree               = ProvTree( self.rootname, self.parsedResults, self.cursor )
+    newTree.rootname      = self.rootname
+    newTree.subtrees      = self.subtrees
+    newTree.parsedResults = self.parsedResults
+    newTree.cursor        = self.cursor
+    newTree.nodeset       = self.nodeset
+    newTree.edgeset       = self.edgeset
+
+    return newTree
+
+
   ######################
   #  IS ULTIMATE GOAL  #
   ######################
@@ -113,6 +129,8 @@ class ProvTree( ) :
     # grab the set of unique edges in the original
     # provenance tree.
     edges = self.getAllUniqueEdges()
+
+    #tools.bp( __name__, inspect.stack()[0][3], "num unique edges = " + str( len(edges) ) )
 
     # ------------------------------------------------ #
     # model the edges in a SimpTree object.
@@ -184,7 +202,7 @@ class ProvTree( ) :
   #  CREATE GRAPH  #
   ##################
   # save image file, no return value
-  def createGraph( self, addNameInfo, iter_count ) :
+  def createGraph( self, addNameInfo, fmla_index, iter_count ) :
 
     if DEBUG :
       print "... running createGraph ..."
@@ -194,7 +212,7 @@ class ProvTree( ) :
     graph = pydot.Dot( graph_type = 'digraph', strict=True ) # strict => ignore duplicate edges
 
     #path  = IMGSAVEPATH + "/provtree_render_" + str(time.strftime("%d-%m-%Y")) + "_" + str( time.strftime( "%H"+"hrs-"+"%M"+"mins-"+"%S" +"secs" )) + "_" + str(iter_count)
-    path  = IMGSAVEPATH + "/provtree_render_" + str(iter_count)
+    path  = IMGSAVEPATH + "/provtree_render_fmla" + str( fmla_index ) + "_iter" + str(iter_count)
 
     # example: add "_buggyGraph" to the end of the name
     if addNameInfo :
@@ -231,12 +249,26 @@ class ProvTree( ) :
     self.edgeset = edges
 
     # <><><><><><><><><><><><><><><><><><><><><><> #
+    # FOR DEBUGGING :
+    # print an audit of tree nodes and edges
     print
     print "/////////////////////////"
     print "rootname is " + self.rootname
     print "num subtrees = " + str( len(self.subtrees) )
     print "num nodes    = " + str( len(nodes) )
     print "num edges    = " + str( len(edges) )
+
+    #edgeCountMap = {}
+    #for edge in self.edgeset :
+    #  count = 0
+    #  for e in self.edgeset :
+    #    if e.to_string() == edge.to_string() :
+    #      count += 1
+    #  edgeCountMap[ edge.to_string() ] = count
+    #for edge in edgeCountMap :
+    #  print edge + " : " + str( edgeCountMap[edge] )
+
+    #print "-----------------------"
 
     #countMap = {}
     #for node in self.nodeset :
@@ -249,6 +281,7 @@ class ProvTree( ) :
     #  print node + " : " + str( countMap[node] )
 
     print "/////////////////////////"
+    #tools.bp( __name__, inspect.stack()[0][3], "stophere" )
     # <><><><><><><><><><><><><><><><><><><><><><> #
 
     # create graph
@@ -261,7 +294,7 @@ class ProvTree( ) :
 
     print "Saving prov tree render to " + str(path)
     graph.write_png( path + ".png" )
-
+    #tools.bp( __name__, inspect.stack()[0][3], "sanity check graph before proceeding." )
 
   ##################
   #  PROCESS TOPO  #
@@ -277,7 +310,7 @@ class ProvTree( ) :
     #  print "src  = " + str( edge.get_source() )
     #  print "dest =" + str( edge.get_destination() )
 
-    topology = self.suppressDomNodes( topology )
+    #topology = self.suppressDomNodes( topology )
 
     return topology
 
