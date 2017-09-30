@@ -33,6 +33,7 @@ arithOps = [ "+", "-", "*", "/" ]
 ###########################
 #  REWRITE NEGATIVE EDBS  #
 ###########################
+# why?????
 def rewriteNegativeEDBs( cursor ) :
 
   newRuleMeta = []
@@ -130,7 +131,7 @@ def rewriteRule( rid, sid, attData, cursor ) :
   cursor.execute( "UPDATE Subgoals SET subgoalName=='" + newSubgoalName + "' WHERE rid=='" + rid + "' AND sid=='" + sid + "'" )
 
   # ------------------------------------------- #
-  # delet old subgoal att data
+  # delete old subgoal att data
   arity = len( attData )
   for attID in range( 0, arity ) :
     cursor.execute( "DELETE FROM SubgoalAtt WHERE rid=='" + rid + "' AND sid=='" + sid + "' AND attID=='" + str( attID ) + "'"  )

@@ -40,8 +40,8 @@ class GoalNode( Node ) :
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
     print "in GoalNode.GoalNode : " + name
-    print "name = " + name
-    print "isNeg = " + str( isNeg )
+    print "name       = " + name
+    print "isNeg      = " + str( isNeg )
     print "seedRecord = " + str( seedRecord )
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
@@ -49,6 +49,7 @@ class GoalNode( Node ) :
     self.isNeg      = isNeg
     self.seedRecord = seedRecord
     self.results    = results
+
 
     #if self.name == "not_missing_log_from_post" :
     #  tools.bp( __name__, inspect.stack()[0][3], "generating goal node for not_missing_log_from_post" )
@@ -64,6 +65,10 @@ class GoalNode( Node ) :
     if self.name == "clock" :
       triggerRecordList = self.getClockTriggerRecordList()
 
+    elif self.isFactOnly( ) :
+      triggerRecordList = [ seedRecord ]
+      #tools.bp( __name__, inspect.stack()[0][3], "set descendant fact node with seed record after verifying seed record exists as a fact." )
+
     else :
       # ///////////////////////////////////////////////////////// #
       # get all id pairs ( original rid, provenance rid ) 
@@ -73,12 +78,16 @@ class GoalNode( Node ) :
       # ///////////////////////////////////////////////////////// #
       # for each original rid, map original goal atts to values
       # from the seed record.
-      oridList = [ aPair[0] for aPair in allIDPairs ]
+      oridList  = [ aPair[0] for aPair in allIDPairs ]
       ogattMaps = self.getGoalAttMaps( oridList )
 
-      if self.name == "a_table" :
-        print "self.name = " + str( self.name )
-        print "ogattMaps = " + str( ogattMaps )
+      #if self.name == "node" :
+      if self.name == "bcast" :
+        print "self.name  = " + str( self.name )
+        print "allIDPairs = " + str( allIDPairs )
+        print "ogattMaps  = " + str( ogattMaps )
+        #tools.bp( __name__, inspect.stack()[0][3], "why is node special??" )
+        # answer : b/c node is also defined by rules.
 
       # ///////////////////////////////////////////////////////// #
       # for each provenance rule id, use the corresponding orid map
@@ -92,6 +101,11 @@ class GoalNode( Node ) :
       # the provenance relation which may have triggered 
       # the appearance of the seed record in the original 
       # rule relation.
+
+      if self.name == "bcast" :
+        print "pgattMaps : " + str( pgattMaps )
+        #tools.bp( __name__, inspect.stack()[0][3], "why is pgattMaps empty????" )
+
       triggerRecordList = self.getAllTriggerRecords( pgattMaps )
 
       # -------------------------------------------------- #
@@ -135,6 +149,33 @@ class GoalNode( Node ) :
       return "goal->" + negStr + " " + self.name + "(" + str(self.record) + ")"
     else :
       return "goal->" + self.name + "(" + str(self.record) + ")"
+
+
+  ##################
+  #  IS FACT ONLY  #
+  ##################
+  # check if the name of the goal node references a fact only
+  def isFactOnly( self ) :
+
+    # check fact relation
+    self.cursor.execute( "SELECT fid FROM Fact WHERE name=='" + self.name + "'" )
+    fid = self.cursor.fetchone()
+
+    # check rule relation
+    self.cursor.execute( "SELECT rid FROM Rule WHERE goalName=='" + self.name + "'" )
+    rid = self.cursor.fetchone()
+
+    # CASE : rule is both a fact and a rule
+    if fid and rid :
+      return False
+
+    # CASE : relation is fact only
+    elif fid :
+      return True
+
+    # CASE : relation is rule only
+    else :
+      return False
 
 
   ###################
@@ -399,6 +440,12 @@ class GoalNode( Node ) :
       pgattMaps.append( [ prid, pattMapping ] )
       # ///////////////////////////////////////////////////////// #
 
+    if self.name == "bcast" :
+      print "allIDPairs = " + str( allIDPairs )
+      print "ogattMaps  = " + str( ogattMaps )
+      print "pgattMaps  = " + str( pgattMaps )
+      #tools.bp( __name__, inspect.stack()[0][3], "fucking with mergeMaps" )
+
     return pgattMaps
 
 
@@ -441,6 +488,9 @@ class GoalNode( Node ) :
   # appearance of the seed record in the original rule
   # relation.
   def getAllTriggerRecords( self, pgattMaps ) :
+
+    if self.name == "bcast" :
+      print "pgattMaps : " + str( pgattMaps )
 
     if self.name == "not_missing_log_from_post" :
       print "<><>pgattMaps = " + str( pgattMaps )
@@ -539,6 +589,20 @@ class GoalNode( Node ) :
 
       # ************************************************* #
       #                HANDLE OTHER FACTS                 #
+      #
+      # triggerRecordList := list of trigger records 
+      elif self.isFactOnly() :
+
+        print "self.name " + self.name
+        tools.bp( __name__, inspect.stack()[0][3], "heeeeereererere" )
+
+        # spawn a fact for each trigger record
+        for rec in triggerRecordList :
+          self.spawnFact( rec )
+
+      # ************************************************* #
+      #                HANDLE OTHER FACTS                 #
+      #               ALSO DEFINED BY RULES               #
       #
       # triggerRecordList := list of trinary lists 
       #     containing the prid, the prov att map, and

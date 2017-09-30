@@ -109,12 +109,13 @@ class DerivTree( ) :
     self.generateDerivTree( record )
 
     # -------------------------------------------------- #
-    # KD : bcast debugging session 6/21/17
+    # KD : bcast debugging session 9/18/17
     if self.name == "bcast" :
       print "self.root     = " + str( self.root )
       print "self.root.descendants :"
       #print self.root.descendants
       print "************************************** "
+      #tools.bp( __name__, inspect.stack()[0][3], "asdkjf" )
     # -------------------------------------------------- #
 
 
