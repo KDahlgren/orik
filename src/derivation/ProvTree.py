@@ -249,6 +249,8 @@ class ProvTree( ) :
     self.edgeset = edges
 
     # <><><><><><><><><><><><><><><><><><><><><><> #
+    # FOR DEBUGGING :
+    # print an audit of tree nodes and edges
     print
     print "/////////////////////////"
     print "rootname is " + self.rootname
@@ -256,27 +258,27 @@ class ProvTree( ) :
     print "num nodes    = " + str( len(nodes) )
     print "num edges    = " + str( len(edges) )
 
-    edgeCountMap = {}
-    for edge in self.edgeset :
-      count = 0
-      for e in self.edgeset :
-        if e.to_string() == edge.to_string() :
-          count += 1
-      edgeCountMap[ edge.to_string() ] = count
-    for edge in edgeCountMap :
-      print edge + " : " + str( edgeCountMap[edge] )
+    #edgeCountMap = {}
+    #for edge in self.edgeset :
+    #  count = 0
+    #  for e in self.edgeset :
+    #    if e.to_string() == edge.to_string() :
+    #      count += 1
+    #  edgeCountMap[ edge.to_string() ] = count
+    #for edge in edgeCountMap :
+    #  print edge + " : " + str( edgeCountMap[edge] )
 
-    print "-----------------------"
+    #print "-----------------------"
 
-    countMap = {}
-    for node in self.nodeset :
-      count = 0
-      for n in self.nodeset :
-        if n.to_string() == node.to_string() :
-          count += 1
-      countMap[ node.to_string() ] = count
-    for node in countMap :
-      print node + " : " + str( countMap[node] )
+    #countMap = {}
+    #for node in self.nodeset :
+    #  count = 0
+    #  for n in self.nodeset :
+    #    if n.to_string() == node.to_string() :
+    #      count += 1
+    #  countMap[ node.to_string() ] = count
+    #for node in countMap :
+    #  print node + " : " + str( countMap[node] )
 
     print "/////////////////////////"
     #tools.bp( __name__, inspect.stack()[0][3], "stophere" )
@@ -292,7 +294,7 @@ class ProvTree( ) :
 
     print "Saving prov tree render to " + str(path)
     graph.write_png( path + ".png" )
-
+    #tools.bp( __name__, inspect.stack()[0][3], "sanity check graph before proceeding." )
 
   ##################
   #  PROCESS TOPO  #
