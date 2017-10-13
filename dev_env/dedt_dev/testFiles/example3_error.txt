@@ -1,0 +1,4 @@
+
+ERROR: Invalid syntax in rule line : 
+      b(a):-!@$#@$;
+     Note rule attributes cannot have quotes.
