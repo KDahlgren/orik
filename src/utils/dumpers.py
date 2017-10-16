@@ -16,7 +16,7 @@ import tools
 #  GLOBALS  #
 #############
 #DUMPERS_DEBUG = tools.getConfig( "UTILS", "DUMPERS_DEBUG", bool )
-
+DUMPERS_DEBUG = False
 
 ##################
 #  PROGRAM DUMP  #

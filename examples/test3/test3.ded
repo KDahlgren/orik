@@ -1,0 +1,16 @@
+a( "s5", "s5" )@1 ;
+
+c( "s3", "s2" )@1 ;
+d( "s2", "s3" )@1 ;
+e( "s1" )@1 ;
+
+p( "s1", "s2" )@1 ;
+q( "s2", "s1" )@1 ;
+
+g(X,Y) :- a(X,Y), notin b(_,Y) ;
+b(X,Y) :- c(X,Z), d(Z,Y), notin e(Y) ;
+b(X,Y) :- p(X,T), q(T,Y) ;
+
+pre(X,Y) :- g(X,Y) ;
+post(X,Y) :- g(X,Y) ;
+

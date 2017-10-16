@@ -373,7 +373,9 @@ def setNewRules( parentName, ruleName, simplified_negFmla, predicateToID_map, cu
 
         # ----------------------------------------------------- #
         if attName == "_" :
-          pass
+          # insert
+          cursor.execute( "INSERT INTO SubgoalAtt VALUES ('" + newRID + "','" + newSID + "','" + str( attID ) + "','" + attName + "','" + attType + "')" )
+          continue
 
         if not attType == "UNDEFINEDTYPE" and not attName in goalAttNames :
           newGoalAtts.append( [ goalAttID, attName, attType ] )
@@ -382,6 +384,7 @@ def setNewRules( parentName, ruleName, simplified_negFmla, predicateToID_map, cu
           if not attType == "UNDEFINEDTYPE" :
             newGoalAtts.append( [ goalAttID, attName, attType ] )
           else :
+            print "origRule_typeMap : " + str( origRule_typeMap )
             attType = origRule_typeMap[ attName ]
             newGoalAtts.append( [ goalAttID, attName, attType ] )
 

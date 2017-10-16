@@ -513,6 +513,16 @@ def isFact( goalName, cursor ) :
 ########################
 #  CLEAN FACT RECORDS  #
 ########################
+# raw fact records :
+# [
+#   ['znzwasrngqcllywg', 0, '"a"', '1']
+#   ['znzwasrngqcllywg', 1, '"hello"', '1']
+#   ['znzwasrngqcllywg', 2, '1', '1']
+# ]
+#
+# return list of clean fact records :
+#   [ [ 'a', 'hello', 1 ] ]
+#
 def cleanFactRecords( factRecords_raw ) :
 
   pastIDs     = []
@@ -520,6 +530,11 @@ def cleanFactRecords( factRecords_raw ) :
   currRecord  = []  # list of strings
 
   for i in range(0, len(factRecords_raw)) :
+
+    #print "<><> factRecords_raw[" + str( i ) + "] = " + str( factRecords_raw[i] )
+    #print "<><> pastIDs    = " + str( pastIDs )
+    #print "<><> currRecord = " + str( currRecord )
+
     currRecord  = []
     currAtt     = factRecords_raw[i]
     currfid     = currAtt[0]
@@ -545,13 +560,22 @@ def cleanFactRecords( factRecords_raw ) :
 
         if currfid == nextfid :
           currRecord.append( nextAttName )
+          if j == len( factRecords_raw ) - 1 :
+            #currRecord.append( currTimeArg )
+            factRecords.append( currRecord )
+            currRecord = []
+            i = j
+            break
         else :
-          currRecord.append( currTimeArg )
+          #currRecord.append( currTimeArg )
           factRecords.append( currRecord )
+          currRecord = []
+          i = j
           break
 
-    pastIDs.append( currfid )
+      pastIDs.append( currfid )
 
+  #print "<><> factRecords = " + str( factRecords )
   return factRecords
 
 
@@ -560,6 +584,8 @@ def cleanFactRecords( factRecords_raw ) :
 ##################
 # check if the node should be a fact node
 def isFactNode( goalName, triggerRecordList, cursor ) :
+
+  print "runnin isFactNode on goalName = " + goalName 
 
   cursor.execute( "SELECT Fact.fid,attID,attName,timeArg FROM Fact,FactAtt WHERE Fact.fid==FactAtt.fid AND Fact.name=='" + str(goalName) + "'" )
   factRecords_raw = cursor.fetchall()
@@ -572,9 +598,10 @@ def isFactNode( goalName, triggerRecordList, cursor ) :
   factRecords = cleanFactRecords( factRecords_raw )
 
   print
-  print "factRecords :"
+  print "factRecords clean:"
   for r in factRecords :
     print r
+  print
 
   # has to be a fact
   if goalName == "clock" :
@@ -582,6 +609,7 @@ def isFactNode( goalName, triggerRecordList, cursor ) :
 
   elif isFact( goalName, cursor ) :
 
+    print "isFact is TRUE"
     print "goalName = " + str( goalName )
     print "triggerRecordList = " + str( triggerRecordList )
 
@@ -589,30 +617,60 @@ def isFactNode( goalName, triggerRecordList, cursor ) :
       return True
 
     if type( triggerRecordList[0][1] ) is list :
+      print "here1"
       flag = True
       for trig in triggerRecordList :
         print "trig = " + str( trig )
         trigRecList = trig[2]
         print "trigRecList = " + str( trigRecList )
         for trigRec in trigRecList :
+          print ">> trigRec : " + str( trigRec )
           if not trigRec in factRecords :
             return False
 
-      if flag :
-        return True
-      else :
-        return False
+      return flag
 
     else :
+      print "here2"
       for rec in triggerRecordList :
-        if not rec in factRecords :
-          print "RETURNING FALSE"
-          return False
-      print "RETURNING TRUE"
-      return True # otherwise
+        print "isFactNode returning : " + str( checkContains( rec, factRecords ) )
+        return checkContains( rec, factRecords )
 
   else :
+    print "isFact is FALSE"
     return False
+
+
+####################
+#  CHECK CONTAINS  #
+####################
+# check if list of records contains a particular record.
+# return True if yes, False otherwise.
+def checkContains( aRecord, recordList ) :
+
+  for rec in recordList :
+    if checkRecordEquivalence( rec, aRecord ) :
+      return True
+
+  return False
+
+
+##############################
+#  CHECK RECORD EQUIVALENCE  #
+##############################
+# rec1 is a list of data
+# rec2 is a list of data
+# iterate over both lists and make component-wise comparisons.
+# return true if rec1 is identical to rec2
+# return false otherwise.
+def checkRecordEquivalence( rec1, rec2 ) :
+
+  for i in range(0, len(rec1) ) :
+    if rec1[i] == rec2[i] or rec1[i] == "_" or rec2[i] == "_" :
+      continue
+    else :
+      return False
+  return True
 
 
 ######################

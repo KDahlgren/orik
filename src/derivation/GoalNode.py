@@ -604,8 +604,8 @@ class GoalNode( Node ) :
       # triggerRecordList := list of trigger records 
       elif self.isFactOnly() :
 
-        print "self.name " + self.name
-        tools.bp( __name__, inspect.stack()[0][3], "heeeeereererere" )
+        #print "self.name " + self.name
+        #tools.bp( __name__, inspect.stack()[0][3], "heeeeereererere" )
 
         # spawn a fact for each trigger record
         for rec in triggerRecordList :
@@ -644,6 +644,11 @@ class GoalNode( Node ) :
     #   CASE goal is a rule
     else :
 
+      print ">>> self.name = " + str( self.name )
+      print ">>> self.isNeg = " + str( self.isNeg )
+      print ">>> self.seedRecord = " + str( self.seedRecord )
+      print ">> triggerRecordList : " + str( triggerRecordList )
+
       for trigRec in triggerRecordList :
         provID     = trigRec[0]
         provAttMap = trigRec[1]
@@ -668,8 +673,48 @@ class GoalNode( Node ) :
   #  SPAWN FACT  #
   ################
   def spawnFact( self, trigRec ) :
-    print "spawning fact with trigFac '" + str( trigRec ) + "'"
-    self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, trigRec, self.results, self.cursor ) )
+
+    # check if trig rec has wildcards. if so, collect all valid records aligning with the wildcards.
+    recList = []
+    for d in trigRec :
+      if d == "_" :
+        recList = self.getRecsFromWildcardRec( trigRec )
+
+    if recList == [] :
+      print "spawning fact with trigFac '" + str( trigRec ) + "'"
+      self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, trigRec, self.results, self.cursor ) )
+
+    else :
+      for rec in recList :
+        print "spawning fact with rec '" + str( rec ) + "'"
+        self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, rec, self.results, self.cursor ) )
+
+
+  ################################
+  #  GET RECS FROM WILDCARD REC  #
+  ################################
+  # given record containing wildcards
+  # return list of records aligning with the wildcard record
+  def getRecsFromWildcardRec( self, trigRec ) :
+
+    targetRelation = self.results[ self.name ]
+
+    recList = [] # list of records aligning with the trig rec containing wildcards
+
+    for tup in targetRelation :
+      validRec = True
+      for i in range(0,len(tup)) :
+        if tup[i] == trigRec[i] or trigRec[i] == "_" :
+          continue
+        else :
+          validRec = False
+
+      if validRec :
+        recList.append( tup )
+      else :
+        continue
+
+    return recList
 
 
   ################
