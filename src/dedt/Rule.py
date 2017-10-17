@@ -513,6 +513,10 @@ class Rule :
             completeAttTypeMap[ att ] = "int"
             #tools.bp( __name__, inspect.stack()[0][3], "eqnList = " + str( eqnList ) )
 
+          # CASE : direct string input
+          elif att.startswith( '"' ) and att.endswith( '"' ) :
+            tools.bp( __name__, inspect.stack()[0][3], "sheesh" )
+
           # CASE : could not find att in any subgoals or eqns for this rule
           else :
             tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : rule head contains attribute not appearing in any subgoal: \nUnresolved attribute '" + att + "' in the head of rule:\n" + self.display() + "\nAborting..." )
@@ -661,7 +665,22 @@ class Rule :
             #  print "___________________________________________"
 
       else :
-        tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : rule head contains attribute not appearing in any subgoal: \nUnresolved attribute '" + hatt + "' in the head of rule:\n" + self.display() + "\nAborting..." )
+
+        # CASE : direct string input in head
+        if hatt.startswith( '"' ) and hatt.endswith( '"' ) :
+          allAttTypeMaps[ hatt ] = "string"
+          #tools.bp( __name__, inspect.stack()[0][3], "sheesh" )
+        elif hatt.startswith( "'" ) and hatt.endswith( "'" ) :
+          allAttTypeMaps[ hatt ] = "string"
+          #tools.bp( __name__, inspect.stack()[0][3], "sheesh" )
+
+        # CASE : direct integer input in head
+        elif hatt.isdigit() :
+          allAttTypeMaps[ hatt ] = "int"
+
+        # CASE : WTF???
+        else :
+          tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : rule head contains attribute not appearing in any subgoal: \nUnresolved attribute '" + hatt + "' in the head of rule:\n" + self.display() + "\nAborting..." )
 
     return allAttTypeMaps
 
@@ -779,8 +798,8 @@ class Rule :
       if not chosenRID :
         chosenRID = prospectiveRIDList.pop()
 
-      #print "++++++"
-      #print dumpers.reconstructRule( chosenRID, self.cursor )
+      print "++++++"
+      print dumpers.reconstructRule( chosenRID, self.cursor )
 
       # ..................................... #
       # no chosen RID means cannot resolve the attribute to a fact component.
@@ -802,6 +821,15 @@ class Rule :
 
       #print "attStr = " + attStr
       attStr = self.cleanAttStr( attStr )
+
+      # ..................................... #
+      # check if att str is actually data
+      print "<><> attStr : " + attStr
+      if attStr.startswith( '"' ) and attStr.endswith( '"' ) :
+        return "string"
+
+      elif attStr.isdigit() :
+        return "int"
 
       # ..................................... #
       # get first subgoal of chosen rule referencing the target attribute
@@ -840,14 +868,14 @@ class Rule :
                 #else :
                 #  tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : unrecognized data type in lhs '" + str( lhs ) + "' of eqn : " + eqn_str + " in rule " + dumpers.reconstructRule( chosenRID, self.cursor ) )
 
-      #print "goalName    = " + self.getGoalName()
-      #print "currRIDLIST = " + str( currRIDList )
-      #print "currSubName = " + currSubName
-      #print "currIndex   = " + str( currIndex )
-      #print "attStr      = " + str( attStr    )
-      #print "chosenRID   = " + str( chosenRID )
-      #print "info        = " + str( info )
-      #print "++++++"
+      print "goalName    = " + self.getGoalName()
+      print "currRIDLIST = " + str( currRIDList )
+      print "currSubName = " + currSubName
+      print "currIndex   = " + str( currIndex )
+      print "attStr      = " + str( attStr    )
+      print "chosenRID   = " + str( chosenRID )
+      print "info        = " + str( info )
+      print "++++++"
 
       targetSub  = info[0]
       newSubName = targetSub[0]

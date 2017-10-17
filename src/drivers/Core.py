@@ -21,7 +21,7 @@ if not os.path.abspath( __file__ + "/../.." ) in sys.path :
 from dedt           import dedt, dedalusParser
 from derivation     import ProvTree
 from utils          import parseCommandLineInput, tools
-from evaluators     import c4_evaluator, evalTools
+from evaluators     import c4_evaluator
 
 # **************************************** #
 
