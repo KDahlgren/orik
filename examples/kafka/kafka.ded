@@ -1,0 +1,81 @@
+//timeout_svc.ded
+// a reusable logical timeout service.  send a message to it with an identifier and a # of
+// transitions, and it sends you a timeout later.
+
+timer_state(H, I, T-1)@next :- timer_svc(H, I, T);
+timer_state(H, I, T-1)@next :- timer_state(H, I, T), notin timer_cancel(H, I), T > 1;
+timeout(H, I) :- timer_state(H, I, 1);
+
+
+//fake_zk.ded
+//include "util/timeout_svc.ded";
+
+timer_svc(Z, Z, 2) :- zookeeper(Z, Z)@1;
+
+// "establish ZK membership" as a replica
+member(Z, M)@async :- begin(M), zookeeper(M, Z);
+clients(Z, C)@async :- client(C), zookeeper(M, Z);
+
+member(Z, M)@next :- member(Z, M);
+leader(Z, L)@next :- leader(Z, L);
+clients(Z, C)@next :- clients(Z, C);
+zookeeper(M, Z)@next :- zookeeper(M, Z);
+
+// periodically tell clients and replicas about membership and leadership
+member(C, M)@async :- member(Z, M), clients(Z, C), zookeeper(Z,Z), timeout(Z, Z);
+member(A, M)@async :- member(Z, A), member(Z, M), zookeeper(Z,Z), timeout(Z, Z);
+leader(M, L)@async :- leader(Z, L), member(Z, M), zookeeper(Z, Z), timeout(Z, Z);
+leader(M, L)@async :- leader(Z, L), clients(Z, M), zookeeper(Z,Z), timeout(Z, Z);
+
+// kafka.ded
+//include "fake_zk.ded";
+// replicas
+write(Next, Data, Origin)@async :- write(Origin, Data, Prev), member(Origin, Next), leader(Origin, Origin), notin ack_int(Origin, Data, Next);
+ack_int(Origin, Data, Acker)@async :- write(Acker, Data, Origin), notin leader(Acker, Acker);
+ack(O,D,A)@next :- ack(O,D,A);
+ack_int(O,D,A)@next :- ack_int(O,D,A);
+write(N,D,O)@next :- write(N, D, O);
+ack(Origin, Data, Acker)@async :- leader(Acker, Acker), write(Acker, Data, Origin), Origin != Acker, notin missing_ack(Acker, Data, _);
+missing_ack(Leader, Data, Other) :- write(Leader, Data, _), member(Leader, Other),  Leader != Other, notin ack_int(Leader, Data, Other);
+
+// client
+write(M, D, O)@async :- write_req(O, D), leader(O, M);
+
+
+// replica init
+zookeeper("a", "Z")@1;
+zookeeper("b", "Z")@1;
+zookeeper("c", "Z")@1;
+zookeeper("C", "Z")@1;
+zookeeper("Z", "Z")@1;
+begin("a")@1;
+begin("b")@1;
+begin("c")@1;
+
+// client init
+client("C")@1;
+
+// bogus stuff
+leader("Z", "a")@1;
+member("Z", "a")@1;
+
+
+// write stream
+write_req("C", "Data1")@2;
+write_req("C", "Data1")@3;
+write_req("C", "Data1")@4;
+
+
+// assertions
+tried(C, D)@next :- tried(C, D);
+tried(C, D) :- write_req(C, D);
+
+good(D) :- ack("C", D, _), write(R, D, _), notin crash(R, R, _);
+good(D) :- tried(C, D), notin ack(C, D, _);
+
+// a pathological case that occurs due to our "preordination" of a as leader
+good(D) :- tried(C, D), leader(C, L), notin member(C, L);
+//good(D) :- member(D, _);
+
+pre(X) :- ack(_, X, _);
+post(X) :- ack(_, X, _), write(R, X, _), notin crash(R, R, _);
