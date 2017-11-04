@@ -1,0 +1,242 @@
+
+// ================================= //
+// elastic_assert.ded
+// ================================= //
+
+//DURABILITY INVARIANT
+pre("Durability", X, Value) :- group(G, G), notin crash(G, G, _), ack(C, X, _, Value), clients(C);
+post("Durability", X, Value2) :- group(G, G), notin crash(G, G, _), ack(C, X, _, Value1), clients(C), member(G, Node), Node != G, nodeid(G, Node, Nodeid), min_nodeid(G, Nodeid), max_node_val(Node, Value2), Value2 == Value1;
+post("Durability", X, Value1) :- group(G, G), notin crash(G, G, _), ack(C, X, _, Value1), clients(C), member(G, Node), Node != G, nodeid(G, Node, Nodeid), min_nodeid(G, Nodeid), max_node_val(Node, Value2), Value2 > Value1;
+
+//AGREEMENT INVAIRANT
+pre("Consistency", X, Value) :- log_max(Node, X, Value), member(G, Node), Node != G, notin clients(Node), group(G, G);
+post("Consistency", X, Value) :- log_max(Node, X, Value), group(G, G), member(G, Node), Node != G, notin clients(Node), notin no_match_exists(Node, X, Value);
+no_match_exists(Node, X, Value) :- log_max(Node, X, Value), member(Node, Node), member(Node, Other), Node != Other, notin log_max(Other, X, Value), Node != "G", Other != "G", notin clients(Node), notin clients(Other);
+
+// ================================= //
+// elastic_edb.ded
+// ================================= //
+
+// replica init
+// The "group" relation specifies all prcesses that can ever be part of the group
+group("a", "G")@1;
+group("b", "G")@1;
+group("c", "G")@1;
+group("C", "G")@1;
+group("G", "G")@1;
+group(M, G)@next :- group(M, G);
+group(M, "G") :- cchange(M, "A", "G"), notin group(M, "G");
+
+begin("a")@1;
+begin("b")@1;
+begin("c")@1;
+begin("G")@1;
+
+// Nodes are assigned nodeids at the beginning of each run
+nodeid("G", "a", 1)@1;
+nodeid("G", "b", 2)@1;
+nodeid("G", "c", 3)@1;
+nodeid("a", "a", 1)@1;
+nodeid("a", "b", 2)@1;
+nodeid("a", "c", 3)@1;
+nodeid("b", "a", 1)@1;
+nodeid("b", "b", 2)@1;
+nodeid("b", "c", 3)@1;
+nodeid("c", "a", 1)@1;
+nodeid("c", "b", 2)@1;
+nodeid("c", "c", 3)@1;
+nodeid(Node1, Node2, Nodeid)@next :- nodeid(Node1, Node2, Nodeid);
+
+// client init
+clients("C")@1;
+clients(C)@next :- clients(C);
+
+// "primary" designates the primary in the cluster.
+// "member" represents the in-sync replica set at any instant of time
+primary("G", "c")@1;
+primary("a", "c")@1;
+primary("b", "c")@1;
+primary("c", "c")@1;
+primary("C", "c")@1;
+
+member("G", "c")@1;
+
+// write stream.  
+write_req("C", "Data1", "b", 1)@1;
+write_req("C", "Data2", "c", 2)@1;
+
+//Maintain "now" relation
+now("G", 1)@1;
+now("a", 1)@1;
+now("b", 1)@1;
+now("c", 1)@1;
+now("C", 1)@1;
+now(Node, Time+1)@next :- now(Node, Time);
+
+//Initialization logic - some @async are dropped here
+// "establish in-sync replica set membership" as a replica
+member(G, M) :- begin(M), group(M, G);
+
+// Propagate the in-sync replica info to other replicas
+member(M, N) :- group(G, G), member(G, M), member(G, N), M != G, N != G, notin propagate(G, M, N);
+propagate(G, M, N)@next :- group(G, G), member(G, M), member(G, N), M != G;
+
+// Propagate the in-sync replica info to client
+member(C, M) :- group(G, G), member(G, M), client(G, C), notin propagate(G, C, M);
+propagate(G, C, M)@next :- group(G, G), member(G, M), client(G, C);
+
+
+// ================================= //
+// group.ded
+// ================================= //
+
+// When a node crashes, the global process "G" peeks into the crash table and sends out a view change
+// message. The member list is only updated on receiving a view_change message. Else, the member list 
+// is maintained as is.
+view_change(G, M)@next :- group(G, G), member(G, M), M != G, now(G, Now), crash(G, Other, Time), Now == Time, notin crash(G, M, Time);
+member(G, M)@next :- view_change(G, M);
+member(G, M)@next :- group(G, G), member(G, M), notin view_change(G, _);
+
+// view_change_message is the mechanism in which non-global processes learn about changes to the
+// in-sync replica set
+view_change_message(M, N)@async :- group(G, G), view_change(G, M), view_change(G, N), M != G, N != G;
+view_change_message(C, M)@async :- group(G, G), view_change(G, M), client(G, C), M != G;
+member(M, N)@next :- view_change_message(M, N);
+member(M, N)@next :- member(M, N), M != "G",  notin view_change_message(M, _);
+
+// "update_primary" is used to reflect primary promotion
+update_primary(M, Node)@async :- group(G, G), uncrashed_nodes(G, M), promote(G, Node), notin update_primary_sent(G, M);
+update_primary_sent(G, M)@next :- group(G, G), uncrashed_nodes(G, M), promote(G, Node);
+update_primary(C, Node)@async :- group(G, G), client(G, C), promote(G, Node), notin update_primary_sent(G, C);
+update_primary_sent(G, C)@next :- group(G, G), client(G, C), promote(G, Node);
+update_primary_sent(G, M)@next :- update_primary_sent(G, M);
+
+// Maintain knowledge of primary across time
+primary(M, L)@next :- primary(M, L), notin update_primary(M, _), notin crash(M, M, _);
+primary(M, L)@next :- primary(M, L), notin update_primary(M, _), crash(M, M, Time), now(M, Now), Now < Time;
+primary(M, Node)@next :- update_primary(M, Node);
+
+// Clients known to the group "G"
+client(G, C) :- clients(C), group(C, G), notin client_reg(C, G);
+client_reg(C, G)@next :- clients(C), group(C, G);
+client(G, C)@next :- client(G, C), notin crash(G, C, _);
+client(G, C)@next :- client(G, C), crash(G, C, Time), now(G, Now), Now < Time;
+
+client_known(M, C) :- clients(C), member(C, M), notin client_known_reg(C, M);
+client_known_reg(C, M)@next :- clients(C), member(C, M);
+client_known(M, C)@next :- client_known(M, C), notin crash(M, C, _);
+client_known(M, C)@next :- client_known(M, C), crash(M, C, Time), now(G, Now), Now < Time;
+
+// Primry promotion, with the node with the max nodieid being promoted.
+// This is the reverse order to the order in which staggered replica 
+// writes are propagated.
+promote(G, Node) :- group(G, G), max_nodeid(G, Nodeid), nodeid(G, Node, Nodeid), primary(G, Primary), Primary !=Node;
+promote(G, Node) :- group(G, G), max_nodeid(G, Nodeid), nodeid(G, Node, Nodeid), notin primary(G, Node);
+
+// ================================= //
+// elastic_search_simplified.ded
+// ================================= //
+
+// General comments: 
+// Queueing logic : Queuing logic has been employed in a couple of places to stagger writes and handle concurrent
+// client writes
+// _sent tables are typically maintaine dso a message is not sent repeatedly even if the relation that derive it 
+// persist across time. They ensure that there is no retry at any stage.
+// "G" is a global process that has a view of system state that other process do not.
+// group is a global relation which maintains all the processes the could have ever been part of the cluster.
+// member relation maintains the current in-sync replica set of the system.
+// "primary" relation has an entry for each process, which identifies the primary node to each.
+
+// Utilities
+//
+uncrashed_nodes(G, Node)@next :- group(G, G), member(G, Node), Node != G, notin crash(G, Node, _);
+uncrashed_nodes(G, Node)@next :- group(G, G), member(G, Node), Node != G, crash(G, Node, Time), now(G, Now), Now < Time;
+min_val( Node, min<Value>) :- write_queue(Node, _, _, Value);
+min_nodeid(G, min<Nodeid>) :- group(G, G), uncrashed_nodes(G, Node), nodeid(G, Node, Nodeid);
+max_nodeid(G, max<Nodeid>) :- group(G, G), uncrashed_nodes(G, Node), nodeid(G, Node, Nodeid);
+
+// Find max Value on the node with minimum nodeid
+max_node_val(Node, max<Value>) :- member(Node, Node), Node != "G", log(Node, _, _, Value);
+max_node_val(Node, 0) :- member(Node, Node), Node != "G", notin log(Node, _, _, _);
+
+// Find the maximum log value on a particular node
+log_max(Node, X, max<Value>) :- log(Node, X, _, Value);
+
+// WRITE QUEUE TO PROCESS CONCURRENT WRITES
+//
+// This ensures that a message goes out from client to one of the replicas
+write_req_msg(Node, Data, Client, Value)@async :- write_req(Client, Data, Node, Value), clients(Client);
+write_queue(Node, Data, Client, Value) :- write_req_msg(Node, Data, Client, Value);
+write_queue(Node, Data, Origin, Value)@next :- write_queue(Node, Data, Origin, Value), notin write_dequeue(Node, Data, Origin, Value);
+write_request(Node, Data, Origin, Value) :- write_queue(Node, Data, Origin, Value), min_val(Node, Value);
+write_dequeue(Node, Data, Origin, Value) :- write_request(Node, Data, Origin, Value);
+write_dequeue(Node, Data, Origin, Value)@next :- write_dequeue(Node, Data, Origin, Value);
+
+// ROUTE TO PRIMARY 
+// When a request on a non-primary, it is forwarded on to the primary. Since there is no retry logic, we keep track of acknowledgements 
+// have been sent out(chain_ack_sent) in order to send out each acknowledgement exactly once. 
+// 
+write_request(Primary, Data, M, Value)@async :- write_request(M, Data, Origin, Value), primary(M, Primary), Primary != M;
+send_ack_to(M, Origin, Value)@next :- write_request(M, Data, Origin, Value), primary(M, Primary), Primary != M;
+send_ack_to(M, Origin, Value)@next :- send_ack_to(M, Origin, Value);
+
+//
+// PRIMARY TO REPLICAS.
+//
+//When a write_request appears on the primary, for every other replica alive in the system, add to the "replica_write_queue".
+replica_write_queue(Primary, Data, Other, Value, Nodeid) :- write_request(Primary, Data, _, Value), member(Primary, Other), Other != Primary, primary(Primary, Primary), nodeid(Primary, Other, Nodeid);
+
+// NEW PRIMARY TO REPLICAS - in case of primary promotion
+// In case of a primary promotion, all writes logged on the new primary are propagated to all in-sync replicas
+replica_write_queue(Node, Data, Other, Value, Nodeid) :- log(Node, Data, _, Value), member(Node, Other), Other != Node, primary_to_be(Node), nodeid(Node, Other, Nodeid);
+primary_to_be(Node)@async :- promote(G, Node), member(G, Node), notin promoted(G, Node);
+promoted(G, Node)@next :- promote(G, Node), member(G, Node);
+promoted(G, Node)@next :- promoted(G, Node), notin primary(G, Node);
+
+// Replica writes are staggered.
+// This is a priority queue implementation
+
+// Process the write_request with smallest value first, followed by write with smallest nodeid
+min_replica_val(Node, min<Value>) :- member(Node, Node), replica_write_queue(Node, _, _, Value, _);
+min_replica_val(Node, 0) :- member(Node, Node), notin replica_write_queue(Node, _, _, _, _);
+min_replica_node( Node, min<Nodeid>) :- member(Node, Node), min_replica_val(Node, Value), Value != 0, replica_write_queue(Node, _, _, Value, Nodeid);
+min_replica_node( Node, 0) :- member(Node, Node), min_replica_val(Node, Value), Value == 0;
+replica_write(Other, Data, Primary, Value, Nodeid)@async :- replica_write_queue(Primary, Data, Other, Value, Nodeid), min_replica_val(Primary, Value), primary(Primary, Primary), min_replica_node(Primary, Nodeid);
+
+// Based on the request selected for processing, dequeue appropriately. 
+replica_write_dequeue(Primary, Data, Other, Value, Nodeid) :- replica_write_queue(Primary, Data, Other, Value, Nodeid), min_replica_val(Primary, Value), primary(Primary, Primary), min_replica_node(Primary, Nodeid);
+// This rule in particular is to purge all replica writes cached when the primary node changes/fails
+//
+replica_write_dequeue(Node, Data, Origin, Value, Nodeid)@next :- replica_write_queue(Node, Data, Origin, Value, Nodeid), notin primary(Node, Node), Node != "G";
+replica_write_dequeue(Node, Data, Origin, Value, Nodeid)@next :- replica_write_dequeue(Node, Data, Origin, Value, Nodeid);
+
+// The request queue consists all queued requests excluding the ones that have been dequeued
+replica_write_queue(Node, Data, Origin, Value, Nodeid)@next :- replica_write_queue(Node, Data, Origin, Value, Nodeid), notin replica_write_dequeue(Node, Data, Origin, Value, Nodeid);
+
+// LOGGING WRITES
+// A write is logged at the primary at the same time replica writes are queued and at the replicas when the replica_write is received.
+//
+log(Node, Data, Origin, Value) :- replica_write(Node, Data, Origin, Value, _);
+log(Node, Data, Origin, Value) :- write_request(Node, Data, Origin, Value), primary(Node, Node);
+log(Node, Data, Origin, Value)@next :- log(Node, Data, Origin, Value);
+
+//
+// ACKNOWLEDGEMENT LOGIC
+//
+// As soon as a replica_write is received from primary, it is acknowledged. 
+ack_int(Origin, Data, Replica, Value)@async :- replica_write(Replica, Data, Origin, Value, _), primary(Replica, Origin);
+
+// Before a primary can acknowledge a write, it must receive acknowledgements from all replicas. The following 3 rules ensure the same.
+missing_ack(Primary, Data, Other, Value) :- log(Primary, Data, _, Value), primary(Primary, Primary), member(Primary, Other), Primary != Other, notin ack_int(Primary, Data, Other, Value);
+chain_ack(Origin, Data, Acker, Value)@async :- primary(Acker, Acker), log(Acker, Data, Origin, Value), notin missing_ack(Acker, Data, _, Value), notin chain_ack_sent(Acker, Data, Origin, Value);
+chain_ack_sent(Acker, Data, Origin, Value)@next :- primary(Acker, Acker), log(Acker, Data, Origin, Value), notin missing_ack(Acker, Data, _, Value);
+
+// Acknowledgement retrace the forwarding path of the write request
+chain_ack(Origin, Data, Acker, Value)@async :- log(Acker, Data, _, Value), chain_ack(Acker, Data, _, Value), notin primary(Acker, Acker), send_ack_to(Acker, Origin, Value), notin chain_ack_sent(Acker, Data, Origin, Value);
+chain_ack_sent(Acker, Data, Origin, Value)@next :- log(Acker, Data, _, Value), chain_ack(Acker, Data, _, Value), notin primary(Acker, Acker), send_ack_to(Ackr, Origin, Value);
+
+// Acknowledgements persist across time. If a chain_ack is received at a client, the write is acknowledged.
+ack(Origin, Data, Acker, Value) :- chain_ack(Origin, Data, Acker, Value), clients(Origin); 
+chain_ack(Origin, Data, Acker, Value)@next :- chain_ack(Origin, Data, Acker, Value);
+ack_int(Origin, Data, Acker, Value)@next :- ack_int(Origin, Data, Acker, Value);
+ack(Origin, Data, Acker, Value)@next :- ack(Origin, Data, Acker, Value);

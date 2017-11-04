@@ -233,6 +233,17 @@ def c4datalog( cursor ) :
     print "c4_translator: clockFactList = " + str( clockFactList )
 
   # ----------------------------------------------------------- #
+  # add crash facts
+
+  crashFactList = dumpers_c4.dump_crash( cursor )
+
+  print crashFactList
+  tools.bp( __name__, inspect.stack()[0][3], "blah" )
+
+  if C4_TRANSLATOR_DEBUG :
+    print "c4_translator: crashFactList = " + str( crashFactList )
+
+  # ----------------------------------------------------------- #
   # add rules
 
   cursor.execute( "SELECT rid FROM Rule" )
@@ -282,7 +293,8 @@ def c4datalog( cursor ) :
     print "ruleList :"
     print ruleList
 
-  listOfStatementLists = [ definesList, factList, ruleList, clockFactList ]
+  #listOfStatementLists = [ definesList, factList, ruleList, clockFactList ]
+  listOfStatementLists = [ definesList, factList, ruleList, clockFactList, crashFactList ]
   program              = tools.combineLines( listOfStatementLists )
 
   # break down into list of individual statements

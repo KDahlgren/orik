@@ -71,7 +71,7 @@ def dedToIR( filename, cursor ) :
   # iterate over parsed lines
   for line in parsedLines :
 
-    print "^^ PROCESSING LINE : " + str( line )
+    print ">> PROCESSING LINE : " + str( line )
 
     # ----------------------------------------------- #
     #                     FACTS                       #

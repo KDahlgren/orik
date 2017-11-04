@@ -124,6 +124,8 @@ class Fact :
   # return the ordered type list for all data in a fact
   def getTypeList( self, allDataList ) :
 
+    print "allDataList = " + str( allDataList )
+
     typeList = []
 
     for data in allDataList :

@@ -465,6 +465,9 @@ def isFact_only( goalName, cursor ) :
 
     if goalName == "clock" or len( fidList ) > 0 :
       isEDB = True
+    elif goalName == "crash" or len( fidList ) > 0 :
+      isEDB = True
+
 
     # return true if the goal name corresponds to an EDB
     if isEDB and not isIDB :
@@ -500,6 +503,8 @@ def isFact( goalName, cursor ) :
     fidList = toAscii_multiList( fidList )
 
     if goalName == "clock" or len( fidList ) > 0 :
+      isEDB = True
+    elif goalName == "crash" or len( fidList ) > 0 :
       isEDB = True
 
     # return true if the goal name corresponds to an EDB

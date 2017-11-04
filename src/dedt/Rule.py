@@ -19,7 +19,9 @@ from utils import dumpers, extractors, tools
 DEBUG = tools.getConfig( "DEDT", "RULE_DEBUG", bool )
 
 opList   = [ "notin" ] # TODO: make this configurable
-arithOps = [ "+", "-", "*", "/", "==" ]
+arithOps = [ "+", "-", "*", "/", "==", "!=" ]
+intOps   = [ "+", "-", "*", "/" ]
+aggOps = [ "min<", "max<", "sum<", "avg<", "count<" ]
 
 class Rule :
 
@@ -515,11 +517,20 @@ class Rule :
 
           # CASE : direct string input
           elif att.startswith( '"' ) and att.endswith( '"' ) :
-            tools.bp( __name__, inspect.stack()[0][3], "sheesh" )
+            completeAttTypeMap[ att ] = "string"
+            #tools.bp( __name__, inspect.stack()[0][3], "sheesh" )
 
           # CASE : could not find att in any subgoals or eqns for this rule
           else :
-            tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : rule head contains attribute not appearing in any subgoal: \nUnresolved attribute '" + att + "' in the head of rule:\n" + self.display() + "\nAborting..." )
+
+            flag = False
+            for op in intOps :
+              if op in att :
+                flag = True
+                completeAttTypeMap[ att ] = "int"
+
+            if not flag :
+              tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR1 : rule head contains attribute not appearing in any subgoal: \nUnresolved attribute '" + att + "' in the head of rule:\n" + self.display() + "\nAborting..." )
 
     return completeAttTypeMap
 
@@ -680,7 +691,19 @@ class Rule :
 
         # CASE : WTF???
         else :
-          tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : rule head contains attribute not appearing in any subgoal: \nUnresolved attribute '" + hatt + "' in the head of rule:\n" + self.display() + "\nAborting..." )
+
+          # check if att contains an integer operator or contains an aggregate call
+          flag = False
+          for op in intOps :
+            if op in hatt :
+              flag = True
+              allAttTypeMaps[ hatt ] = "int"
+            elif self.isAggregate( hatt )  :
+              flag = True
+              allAttTypeMaps[ hatt ] = "int"
+
+          if not flag :
+            tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR2 : rule head contains attribute not appearing in any subgoal: \nUnresolved attribute '" + hatt + "' in the head of rule:\n" + self.display() + "\nAborting..." )
 
     return allAttTypeMaps
 
@@ -701,6 +724,7 @@ class Rule :
     print "currRIDList = " + str( currRIDList )
     print "currSubName = " + str( currSubName )
     print "currIndex   = " + str( currIndex )
+
     for r in currRIDList :
       print dumpers.reconstructRule( r, self.cursor )
 
@@ -778,7 +802,7 @@ class Rule :
 
       prospectiveRIDList.extend( allRIDs )
 
-      #print "allRIDs = " + str( allRIDs ), "currRIDList = " + str( currRIDList ), "prospectiveRIDs = " + str( prospectiveRIDList )
+      print "allRIDs = " + str( allRIDs ), "currRIDList = " + str( currRIDList ), "prospectiveRIDs = " + str( prospectiveRIDList )
 
       if DEBUG :
         print "allRIDs = " + str(allRIDs)
@@ -829,6 +853,11 @@ class Rule :
         return "string"
 
       elif attStr.isdigit() :
+        return "int"
+
+      # ..................................... #
+      # check if att str is actually an aggregate
+      elif self.isAggregate( attStr ) :
         return "int"
 
       # ..................................... #
@@ -889,6 +918,17 @@ class Rule :
       return self.allAttTypeMapsHelper( currRIDList, prospectiveRIDList, newSubName, newIndex )
 
 
+  ##################
+  #  IS AGGREGATE  #
+  ##################
+  # check if the input string contains one of the aggregate operators.
+  def isAggregate( self, attStr ) :
+    for op in aggOps :
+      if op in attStr :
+        return True
+    return False
+
+
   ###################
   #  CLEAN ATT STR  #
   ###################
@@ -915,6 +955,12 @@ class Rule :
     # clock is easy
     if factName == "clock" :
       typeList = [ 'string', 'string', 'int', 'int' ]
+      return typeList[ attID ]
+
+    # ....................................... #
+    # crash is easy
+    if factName == "crash" :
+      typeList = [ 'string', 'string', 'int' ]
       return typeList[ attID ]
 
     # ....................................... #
@@ -968,6 +1014,12 @@ class Rule :
     # --------------------------------------------------- #
     elif subname == 'clock' :
       atts_inRuleBody_typeMap = self.mapTypes_raw( atts_inRuleBody, [ 'string', 'string', 'int', 'int' ] )
+
+    # --------------------------------------------------- #
+    #     BASE CASE 3 !!! => subgoal references a fact
+    # --------------------------------------------------- #
+    elif subname == 'crash' :
+      atts_inRuleBody_typeMap = self.mapTypes_raw( atts_inRuleBody, [ 'string', 'string', 'int' ] )
 
     # --------------------------------------------------- #
     #     RECURSIVE CASE !!! => subgoal is an idb
