@@ -57,7 +57,7 @@ def setAPR( path ) :
   newCmd = 'set(APR_INCLUDES "' + path + '")'
   cmd = "(head -48 " + C4_FINDAPR_PATH + "; " + "echo '" + newCmd + "'; " + "tail -n +49 " + C4_FINDAPR_PATH + ")" + " > temp ; mv temp " + C4_FINDAPR_PATH + ";"
   os.system( cmd )
-  os.system( "make c4" )
+  os.system( "make -f Makefile.orig c4" )
 
 
 ##########################
@@ -96,10 +96,10 @@ def main() :
   print "Running orik setup with args : \n" + str(sys.argv)
 
   # clean any existing libs
-  os.system( "make clean" )
+  os.system( "make -f Makefile.orig clean" )
 
   # download submodules
-  os.system( "make get-submodules" )
+  os.system( "make -f Makefile.orig get-submodules" )
 
   # ---------------------------------------------- #
   # run make for c4

@@ -28,9 +28,22 @@ class C4Wrapper( object ) :
   #  INIT  #
   ##########
   def __init__( self ) :
+    libc4dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+	"../../lib/c4/src/libc4")
+    c4libnames = ["libc4.dylib", "libc4.so"]
+    c4libpaths = map(lambda fn: os.path.join(libc4dir, fn), c4libnames)
+    self.lib = None
+    for path in c4libpaths:
+        try:
+	    self.lib = cdll.LoadLibrary(path)
+            break
+        except:
+            pass
+        pass
+    if not self.lib:
+        raise Exception("could not load c4 library")
 
-    c4_lib_loc                     = os.path.abspath( __file__ + '/../../../lib/c4/build/src/libc4/libc4.dylib' )
-    self.lib                       = cdll.LoadLibrary( c4_lib_loc )
     self.lib.c4_make.restype       = POINTER(c_char)
     self.lib.c4_dump_table.restype = c_char_p   # c4_dump_table returns a char*
 
