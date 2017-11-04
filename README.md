@@ -3,7 +3,7 @@ A provenance tree generator for recursive datalog with negation (and Dedalus).
 
 # Installation
 
-After cloning the repository, run "python setup.py" from the top directory. 
+After cloning the repository, run "python setup.py" from the top directory. <br>
 If c4 compiles to 100%, then you're good to go!
 
 # Code Attribution
