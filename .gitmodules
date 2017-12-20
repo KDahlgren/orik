@@ -2,3 +2,7 @@
 	path = lib/c4
 	url = https://github.com/bloom-lang/c4.git
         ignore = dirty
+[submodule "lib/iapyx"]
+	path = lib/iapyx
+	url = https://github.com/KDahlgren/iapyx.git
+        ignore = dirty

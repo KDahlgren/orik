@@ -2,13 +2,17 @@
 
 all: deps
 
-deps: get-submodules c4
+deps: get-submodules c4 orik
 
 clean:
 	rm -r lib/c4/build
+	rm -r lib/orik/
 
 cleanc4:
 	rm -r lib/c4/build
+
+cleanorik:
+	rm -r lib/orik/
 
 c4: lib/c4/build/src/libc4/libc4.dylib
 
@@ -17,6 +21,9 @@ lib/c4/build/src/libc4/libc4.dylib:
 	cd lib/c4 && mkdir -p build
 	cd lib/c4/build && cmake ..
 	( cd lib/c4/build && make ) 2>&1 | tee c4_out.txt;
+
+orik:
+	python setup.py
 
 get-submodules:
 	git submodule init
