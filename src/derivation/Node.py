@@ -2,16 +2,14 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import os, sys
+import logging, os, sys
 
-if not os.path.abspath( __file__ + "/../.." ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
 
 from utils import tools
 
 # **************************************** #
-
-DEBUG = tools.getConfig( "DERIVATION", "NODE_DEBUG", bool )
 
 class Node( object ) :
 

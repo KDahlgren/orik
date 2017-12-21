@@ -6,21 +6,17 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, os, sys
+import inspect, logging, os, sys
 
 import DerivTree, RuleNode, FactNode, provTools
 
-if not os.path.abspath( __file__ + "/.." ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/.." ) )
-if not os.path.abspath( __file__ + "/../.." ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
 
 from utils import tools
 from Node import Node
 
 # **************************************** #
-
-DEBUG = tools.getConfig( "DERIVATION", "GOALNODE_DEBUG", bool )
 
 class GoalNode( Node ) :
 
@@ -38,21 +34,17 @@ class GoalNode( Node ) :
   #################
   def __init__( self, name, isNeg, seedRecord, results, cursor ) :
 
-    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-    print "in GoalNode.GoalNode : " + name
-    print "name       = " + name
-    print "isNeg      = " + str( isNeg )
-    print "seedRecord = " + str( seedRecord )
-    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
+    logging.debug( "in GoalNode.GoalNode : " + name )
+    logging.debug( "name       = " + name )
+    logging.debug( "isNeg      = " + str( isNeg ) )
+    logging.debug( "seedRecord = " + str( seedRecord ) )
+    logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
 
     self.name       = name
     self.isNeg      = isNeg
     self.seedRecord = seedRecord
     self.results    = results
-
-
-    #if self.name == "not_missing_log_from_post" :
-    #  tools.bp( __name__, inspect.stack()[0][3], "generating goal node for not_missing_log_from_post" )
 
     # ///////////////////////////////////////////////////////// #
     # NODE CONSTRUCTOR: treeType, name, isNeg, record, program results, dbcursor
@@ -63,38 +55,52 @@ class GoalNode( Node ) :
     #                      HANDLE CLOCK GOALS
     #
     if self.name == "clock" :
+
+      logging.debug( "  GOAL NODE : hit a clock" )
+
       triggerRecordList = self.getClockTriggerRecordList()
 
+    # ***************************************************************** #
+    # ***************************************************************** #
+    #                      HANDLE NON-CLOCK GOALS
+    #
     elif self.isFactOnly( ) :
+
+      logging.debug( "  GOAL NODE : hit a non-clock edb" )
+
       triggerRecordList = [ seedRecord ]
-      #tools.bp( __name__, inspect.stack()[0][3], "set descendant fact node with seed record after verifying seed record exists as a fact." )
 
     else :
+
+      logging.debug( "  GOAL NODE : hit an idb" )
+
       # ///////////////////////////////////////////////////////// #
       # get all id pairs ( original rid, provenance rid ) 
       # for this name
+
       allIDPairs = self.getAllIDPairs()
+
+      logging.debug( "  GOAL NODE : allIDPairs = " + str( allIDPairs ) )
 
       # ///////////////////////////////////////////////////////// #
       # for each original rid, map original goal atts to values
       # from the seed record.
+
       oridList  = [ aPair[0] for aPair in allIDPairs ]
       ogattMaps = self.getGoalAttMaps( oridList )
 
-      #if self.name == "node" :
-      if self.name == "bcast" :
-        print "self.name  = " + str( self.name )
-        print "allIDPairs = " + str( allIDPairs )
-        print "ogattMaps  = " + str( ogattMaps )
-        #tools.bp( __name__, inspect.stack()[0][3], "why is node special??" )
-        # answer : b/c node is also defined by rules.
+      logging.debug( "  GOAL NODE : oridList  = " + str( oridList ) )
+      logging.debug( "  GOAL NODE : ogattMaps = " + str( ogattMaps ) )
 
       # ///////////////////////////////////////////////////////// #
       # for each provenance rule id, use the corresponding orid map
       # for goal atts to seed record values to map provenance rule 
       # goal atts to seed record values or None.
       # Map WILDCARDs to None.
+
       pgattMaps = self.mergeMaps( allIDPairs, ogattMaps )
+
+      logging.debug( "  GOAL NODE : pgattMaps = " + str( pgattMaps ) )
 
       # ///////////////////////////////////////////////////////// #
       # for each prid, grabs the full set of records from 
@@ -102,18 +108,7 @@ class GoalNode( Node ) :
       # the appearance of the seed record in the original 
       # rule relation.
 
-      if self.name == "bcast" :
-        print "pgattMaps : " + str( pgattMaps )
-        #tools.bp( __name__, inspect.stack()[0][3], "why is pgattMaps empty????" )
-
       triggerRecordList = self.getAllTriggerRecords( pgattMaps )
-
-      # -------------------------------------------------- #
-      # KD : bcast debugging session 6/21/17
-      if self.name == "bcast" :
-        print self.__str__() + " : pgattMaps         = " + str( pgattMaps )
-        print self.__str__() + " : triggerRecordList = " + str( triggerRecordList )
-      # -------------------------------------------------- #
 
     # ***************************************************************** #
     # ***************************************************************** #
@@ -123,20 +118,11 @@ class GoalNode( Node ) :
     #
     # Need to make sure descendants list is empty or else
     # pyDot creates WAAAAAAAAY too many edges for some reason??? <.<
+
+    logging.debug( "  GOAL NODE : triggerRecordList = " + str( triggerRecordList ) )
+
     self.descendants = []
-
-    # TODO: support negative provenance ...
-    if self.isNeg :
-      pass
-    else :
-      self.setDescendants( triggerRecordList )
-
-      # -------------------------------------------------- #
-      # KD : bcast debugging session 6/21/17
-      if self.name == "bcast" :
-        print self.__str__() + " : self.descendants  = " + str( self.descendants )
-        #tools.bp( __name__, inspect.stack()[0][3], "hit a bcast" )
-      # -------------------------------------------------- #
+    self.setDescendants( triggerRecordList )
 
 
   #############
@@ -225,10 +211,7 @@ class GoalNode( Node ) :
     # set query
     query = "SELECT src,dest,sndTime,delivTime FROM Clock WHERE " + qSRC + qDEST + qSNDTIME + qDELIVTIME + qInclusionBool
 
-    if DEBUG :
-      print "query = " + str(query)
-
-    print query
+    logging.debug( "query = " + str(query) )
 
     # execute query
     self.cursor.execute( query )
@@ -245,7 +228,10 @@ class GoalNode( Node ) :
   # there exists only one prov rule per original rule.
   # return a list of binary lists connecting original rule ids and 
   # corresponding provenance rule ids.
+
   def getAllIDPairs( self ) :
+
+    logging.debug( "  GET ALL ID PAIRS : running process..." )
 
     # ---------------------------------------------------------- #
     #                      ORIG RULE DATA                        #
@@ -253,13 +239,12 @@ class GoalNode( Node ) :
     # get all original rule ids associated with the name
     self.cursor.execute( "SELECT rid FROM Rule WHERE goalName='" + self.name + "'" )
     origIDs = self.cursor.fetchall()
-    origIDs = tools.toAscii_multiList( origIDs )
+    origIDs = tools.toAscii_list( origIDs )
 
     # get the complete attList and subgoalList associated with each original rule
     # store as arrays in an array [ rid, [attList], [subgoalList] ]
     origInfo = []
     for orid in origIDs :
-      orid = orid[0] # origIDs is a list of singular lists
 
       # get attList
       self.cursor.execute( "SELECT attID,attName FROM SubgoalAtt WHERE rid='" + orid + "'" )
@@ -273,11 +258,14 @@ class GoalNode( Node ) :
 
       origInfo.append( [ orid, attList, subgoalList ] )
 
+    logging.debug( "  GET ALL ID PAIRS : origInfo = " + str( origInfo ) )
+
     # ---------------------------------------------------------- #
     #                      PROV RULE DATA                        #
     # ---------------------------------------------------------- #
     # get all provenance rule ids associated with the name
     # first, get all rule id, rule name pairs
+
     self.cursor.execute( "SELECT rid,goalName FROM Rule" )
     idNamePairs = self.cursor.fetchall()
     idNamePairs = tools.toAscii_multiList( idNamePairs )
@@ -289,6 +277,8 @@ class GoalNode( Node ) :
       currName = idName[1]
       if currName.startswith( self.name + "_prov" ) :
         provIDs.append( currID )
+
+    logging.debug( "  GET ALL ID PAIRS : provIDs = " + str( provIDs ) )
 
     # get the complete attList and subgoalList associated with each original rule
     # store as arrays in an array [ rid, [attList], [subgoalList] ]
@@ -306,11 +296,14 @@ class GoalNode( Node ) :
 
       provInfo.append( [ prid, attList, subgoalList ] )
 
+    logging.debug( "  GET ALL ID PAIRS : provInfo = " + str( provInfo ) )
+
     # ---------------------------------------------------------- #
     #                         MATCH                              #
     # ---------------------------------------------------------- #
     # match original rids with provenance rids by matching
     # attLists and subgoals.
+
     idPairs = []
     for origIDInfo in origInfo :
       orid     = origIDInfo[0]
@@ -325,6 +318,8 @@ class GoalNode( Node ) :
         if self.checkListEquality( oAttList, pAttList ) and self.checkListEquality( oSubList, pSubList ) :
           idPairs.append( [ orid, prid ] ) # save pair
 
+    logging.debug( "  GET ALL ID PAIRS : idPairs = " + str( idPairs ) )
+
     return idPairs
 
 
@@ -334,20 +329,27 @@ class GoalNode( Node ) :
   # check list equality
   # 1. list lengths must be equal
   # 2. all elements in each list must appear in the other list
+
   def checkListEquality( self, list1, list2 ) :
 
+    logging.debug( "  CHECK LIST EQUALITY : running process..." )
+    logging.debug( "  CHECK LIST EQUALITY : list1 = " + str( list1 ) )
+    logging.debug( "  CHECK LIST EQUALITY : list2 = " + str( list2 ) )
+
+    flag = True
+
     # check length equality
-    if len( list1 ) == len( list2 ) :
-      pass
-    else :
-      return False
+    if not len( list1 ) == len( list2 ) :
+      flag = False
 
     # check contents equality
     for item in list1 :
       if not item in list2 :
-        return False
+        flag = False
+        break
   
-    return True
+    logging.debug( "  CHECK LIST EQUALITY : returning " + str( flag ) )
+    return flag
 
 
   #######################
@@ -451,12 +453,6 @@ class GoalNode( Node ) :
       pgattMaps.append( [ prid, pattMapping ] )
       # ///////////////////////////////////////////////////////// #
 
-    if self.name == "bcast" :
-      print "allIDPairs = " + str( allIDPairs )
-      print "ogattMaps  = " + str( ogattMaps )
-      print "pgattMaps  = " + str( pgattMaps )
-      #tools.bp( __name__, inspect.stack()[0][3], "fucking with mergeMaps" )
-
     return pgattMaps
 
 
@@ -498,13 +494,10 @@ class GoalNode( Node ) :
   # provenance record which may have triggered the
   # appearance of the seed record in the original rule
   # relation.
+
   def getAllTriggerRecords( self, pgattMaps ) :
 
-    if self.name == "bcast" :
-      print "pgattMaps : " + str( pgattMaps )
-
-    if self.name == "not_missing_log_from_post" :
-      print "<><>pgattMaps = " + str( pgattMaps )
+    logging.debug( "  GET ALL TRIGGER RECORDS : pgattMaps = " + str( pgattMaps ) )
 
     pTrigRecs = []
 
@@ -526,16 +519,8 @@ class GoalNode( Node ) :
       validRecList = []
       for rec in resultsTable :
 
-        if self.name == "not_missing_log_from_post" :
-          print "rec = " + str( rec )
-          print "mapping = " + str( mapping )
-
         if self.checkAgreement( mapping, rec ) :
           validRecList.append( rec )
-
-      if self.name == "not_missing_log_from_post" :
-        print "pname = " + pname
-        print "validRecList = " + str( validRecList )
 
       pTrigRecs.append( [ prid, mapping, validRecList ] )
 
@@ -576,24 +561,22 @@ class GoalNode( Node ) :
   # and when multiple firing records exist for the particular.
   def setDescendants( self, triggerRecordList ) :
 
-    if self.name == "node" :
-      print ">>>> " + self.__str__() + " : " +  str( triggerRecordList )
+    logging.debug( "  SET DESCENDANTS : running process..." )
 
     # ==================================================== #
     # ==================================================== #
     #   CASE goal is a fact node
-    if tools.isFactNode( self.name, triggerRecordList, self.cursor ) :
-
-      if self.name == "clock" :
-        print "PRINTING TRIGGER RECORD LIST"
-        for t in triggerRecordList :
-          print "t = " + str( t )
+    if tools.isFact( self.name, self.cursor ) :
 
       # ************************************************* #
       #                HANDLE CLOCK FACTS                 #
       #
       # triggerRecordList := list of trigger records 
+
       if self.name == "clock" :
+
+        logging.debug( "  SET DESCENDANTS : hit a clock" )
+
         # spawn a fact for each trigger record
         for rec in triggerRecordList :
           self.spawnFact( rec )
@@ -602,10 +585,10 @@ class GoalNode( Node ) :
       #                HANDLE OTHER FACTS                 #
       #
       # triggerRecordList := list of trigger records 
+
       elif self.isFactOnly() :
 
-        #print "self.name " + self.name
-        #tools.bp( __name__, inspect.stack()[0][3], "heeeeereererere" )
+        logging.debug( "  SET DESCENDANTS : hit a non-clock edb" )
 
         # spawn a fact for each trigger record
         for rec in triggerRecordList :
@@ -618,7 +601,11 @@ class GoalNode( Node ) :
       # triggerRecordList := list of trinary lists 
       #     containing the prid, the prov att map, and
       #     the list of trigger records.
+
       else :
+
+        logging.debug( "  SET DESCENDANTS : hit an edb/idb" )
+
         # get complete list of trigger records
         trigList = []
         for trigRec in triggerRecordList :
@@ -634,33 +621,24 @@ class GoalNode( Node ) :
           else :
             trigList.extend( trigRec[2] )
 
-        #tools.bp( __name__, inspect.stack()[0][3], "trigList = " + str(trigList) )
-
         # spawn a fact for each trigger record
         for rec in trigList :
           self.spawnFact( rec )
 
     # ==================================================== #
     #   CASE goal is a rule
+
     else :
 
-      print ">>> self.name = " + str( self.name )
-      print ">>> self.isNeg = " + str( self.isNeg )
-      print ">>> self.seedRecord = " + str( self.seedRecord )
-      print ">> triggerRecordList : " + str( triggerRecordList )
+      logging.debug( ">>> self.name = " + str( self.name ) )
+      logging.debug( ">>> self.isNeg = " + str( self.isNeg ) )
+      logging.debug( ">>> self.seedRecord = " + str( self.seedRecord ) )
+      logging.debug( ">> triggerRecordList : " + str( triggerRecordList ) )
 
       for trigRec in triggerRecordList :
         provID     = trigRec[0]
         provAttMap = trigRec[1]
         recList    = trigRec[2]
-
-        # --------------------------------------- #
-        # KD : bcast debugging session 6/21/17
-        print "trigRec    = " + str( trigRec )
-        print "provID     = " + str( provID )
-        print "provAttMap = " + str( provAttMap )
-        print "recList    = " + str( recList )
-        # --------------------------------------- #
 
         # spawn a rule for each valid record
         for rec in recList :
@@ -668,6 +646,7 @@ class GoalNode( Node ) :
 
     # ==================================================== #
     # ==================================================== #
+
 
   ################
   #  SPAWN FACT  #
@@ -681,12 +660,12 @@ class GoalNode( Node ) :
         recList = self.getRecsFromWildcardRec( trigRec )
 
     if recList == [] :
-      print "spawning fact with trigFac '" + str( trigRec ) + "'"
+      logging.debug( "spawning fact with trigFac '" + str( trigRec ) + "'" )
       self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, trigRec, self.results, self.cursor ) )
 
     else :
       for rec in recList :
-        print "spawning fact with rec '" + str( rec ) + "'"
+        logging.debug( "spawning fact with rec '" + str( rec ) + "'" )
         self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, rec, self.results, self.cursor ) )
 
 
@@ -721,9 +700,6 @@ class GoalNode( Node ) :
   #  SPAWN RULE  #
   ################
   def spawnRule( self, rid, provAttMap, seedRecord ) :
-
-    #if self.name == "not_missing_log_from_post" :
-    #  tools.bp( __name__, inspect.stack()[0][3], "here!" )
 
     self.descendants.append( DerivTree.DerivTree( self.name, rid, "rule", False, provAttMap, seedRecord, self.results, self.cursor ) )
 

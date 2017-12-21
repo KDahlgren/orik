@@ -6,21 +6,17 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, os, sys
+import inspect, logging, os, sys
 
 import DerivTree, provTools, GoalNode, FactNode
 
-if not os.path.abspath( __file__ + "/.." ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/.." ) )
-if not os.path.abspath( __file__ + "/../.." ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
 
 from utils import tools
 from Node import Node
 
 # **************************************** #
-
-DEBUG = tools.getConfig( "DERIVATION", "RULENODE_DEBUG", bool )
 
 class RuleNode( Node ) :
 
@@ -76,10 +72,9 @@ class RuleNode( Node ) :
     self.descendants = [] # needed or else pyDot creates WAAAAAAAAY too many edges for some reason??? <.<
     self.setDescendants( subgoalSeedRecords )
 
-    if DEBUG :
-      print "RULE NODE " + str( self.name ) + str(self.record) + " has " + str( len( self.descendants ) ) + " descendants.>"
-      for d in self.descendants :
-        print "   d = " + str( d.root )
+    logging.debug( "RULE NODE " + str( self.name ) + str(self.record) + " has " + str( len( self.descendants ) ) + " descendants.>" )
+    for d in self.descendants :
+      logging.debug( "   d = " + str( d.root ) )
 
 
   #############
@@ -163,7 +158,7 @@ class RuleNode( Node ) :
       attList = [ idNamePair[1] for idNamePair in attList ]
 
       # get the isNeg information
-      self.cursor.execute( "SELECT argName FROM SubgoalAddArgs WHERE rid=='" + self.prid + "' AND sid=='" + sid + "'" )
+      self.cursor.execute( "SELECT subgoalPolarity FROM Subgoals WHERE rid=='" + self.prid + "' AND sid=='" + sid + "'" )
       isNeg = self.cursor.fetchone()
       if isNeg :
         isNeg = tools.toAscii_str( isNeg )

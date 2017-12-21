@@ -6,7 +6,7 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, os, string, sys
+import inspect, logging, os, string, sys
 import pydot
 
 # ------------------------------------------------------ #
@@ -14,15 +14,13 @@ import GoalNode, RuleNode, FactNode, provTools
 
 # ------------------------------------------------------ #
 
-if not os.path.abspath( __file__ + "/../.." ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
 
 from utils import tools, dumpers
 
 # **************************************** #
 
-
-DEBUG = tools.getConfig( "DERIVATION", "DERIVTREE_DEBUG", bool )
 
 # --------------------------------------------------- #
 #                   DERIV TREE CLASS                  #
@@ -79,68 +77,14 @@ class DerivTree( ) :
     self.provAttMap     = provAttMap
     self.record         = record
 
-    if self.name == "not_missing_log_from_post" :
-      print " spawning DerivTree with goal node not_missing_log_from_post"
-      print "self.name           = " + self.name
-      print "self.rid            = " + str( self.rid )
-      print "self.treeType       = " + self.treeType
-      print "self.isNeg          = " + str( self.isNeg )
-      print "self.programResults = " + str( self.programResults )
-      print "self.provAttMap     = " + str( self.provAttMap )
-      print "***record              = " + str( record )
-
-    if DEBUG :
-      print "=================================="
-      print "       CREATING NEW DERIV TREE"
-      print " self.name     = " + str( self.name )
-      print " self.treeType = " + str( self.treeType )
-      print " self.isNeg    = " + str( self.isNeg )
-      print "=================================="
-
-    # -------------------------------------------------- #
-    # KD : bcast debugging session 6/21/17
-    #if self.name == "bcast" :
-    #  print "************************************** "
-    #  print "self.name     = " + self.name
-    #  print "self.treeType = " + self.treeType
-    #  print "record        = " + str( record )
-    # -------------------------------------------------- #
+    logging.debug( "==================================" )
+    logging.debug( "       CREATING NEW DERIV TREE" )
+    logging.debug( " self.name     = " + str( self.name ) )
+    logging.debug( " self.treeType = " + str( self.treeType ) )
+    logging.debug( " self.isNeg    = " + str( self.isNeg ) )
+    logging.debug( "==================================" )
 
     self.generateDerivTree( record )
-
-    # -------------------------------------------------- #
-    # KD : not_b_from_g debugging session 27Sep2017
-    #if self.name == "not_b_from_g" and self.treeType == "rule" :
-    #  print
-    #  print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
-    #  print "DERIV TREE :"
-    #  print "rule                  : " + dumpers.reconstructRule( self.rid, cursor )
-    #  print "self.name             : " + self.name
-    #  print "self.treeType         : " + self.treeType
-    #  print "self.root             : " + str( self.root )
-    #  print "self.root.descendants : " + str(  self.root.descendants )
-    #  for des in self.root.descendants :
-    #    print "DESCENDANT DATA :"
-    #    print "descedant name             : " + des.name
-    #    print "descendant treeType        : " + des.treeType
-    #    print "descendant descendant list : " + str( des.root.descendants )
-    #    print "PRINTING DESCENDANT DESCENDANTS :"
-    #    for de in des.root.descendants :
-    #      print de.name
-    #      print de.treeType
-    #  print "************************************** "
-    #  tools.bp( __name__, inspect.stack()[0][3], "blah" )
-    # -------------------------------------------------- #
-
-    # -------------------------------------------------- #
-    # KD : bcast debugging session 6/21/17
-    #if self.name == "bcast" :
-    #  print "self.root     = " + str( self.root )
-    #  print "self.root.descendants :"
-    #  #print self.root.descendants
-    #  print "************************************** "
-    # -------------------------------------------------- #
-
 
   # ------------------------------------------ #
   #########################
@@ -149,13 +93,6 @@ class DerivTree( ) :
   def generateDerivTree( self, record ) :
 
     if self.treeType == "goal" :
-
-      if self.name == "not_missing_log_from_post" :
-        print "self.name = " + str( self.name )
-        print "self.isNeg = " + str( self.isNeg ) 
-        print "record = " + str( record )
-        #tools.bp( __name__, inspect.stack()[0][3], "stuff" )
-
       self.root = GoalNode.GoalNode( self.name, self.isNeg, record, self.programResults, self.cursor )
 
     elif self.treeType == "rule" :
@@ -172,7 +109,6 @@ class DerivTree( ) :
   #  GET TOPOLOGY SIMPLIFIED  #
   #############################
   def getTopology_simplified( self ) :
-
     return None
 
 
@@ -182,26 +118,15 @@ class DerivTree( ) :
   ##################
   def getTopology( self ) :
 
-    #if self.name == "not_b_from_g" :
-
-    #  print "printing here"
-    #  print "self.name           = " + self.name
-    #  #print "self.rid            = " + self.rid
-    #  print "self.treeType       = " + self.treeType
-    #  print "self.isNeg          = " + str( self.isNeg )
-    #  print "self.programResults = " + str( self.programResults )
-    #  print "self.provAttMap     = " + str( self.provAttMap )
-
-    #  #tools.bp( __name__, inspect.stack()[0][3], "shit" )
+    logging.debug( "  GET TOPOLOGY : running process..." )
 
     nodes = []
     edges = []
 
-    if DEBUG :
-      print "***************************************"
-      print "self.root.treeType = " + self.root.treeType
-      print "str(self.root)     = " + str( self.root )
-      print "***************************************"
+    logging.debug( "  GET TOPOLOGY : ***************************************" )
+    logging.debug( "  GET TOPOLOGY : self.root.treeType = " + self.root.treeType )
+    logging.debug( "  GET TOPOLOGY : str(self.root)     = " + str( self.root ) )
+    logging.debug( "  GET TOPOLOGY : ***************************************" )
 
     thisNode = provTools.createNode( self.root ) # prepare this node.
     nodes.append( thisNode )                # add this node to the topology
@@ -212,6 +137,8 @@ class DerivTree( ) :
       # ----------------------------------- #
       # case goal
       if self.root.treeType == "goal" :
+
+        logging.debug( "  GET TOPOLOGY : len( self.root.descendants ) = " + str( len( self.root.descendants)  ) )
 
         if not self.root.descendants == [] :
           desc = self.root.descendants
@@ -225,11 +152,10 @@ class DerivTree( ) :
         desc = self.root.descendants    # rules have one or many descendants
 
       # ----------------------------------- #
-      if DEBUG :
-        print "desc = " + str(desc)
-        for d in desc :
-          print "d.root.name     = " + str( d.root.name )
-          print "d.root.treeType = " + str( d.root.treeType )
+      logging.debug( "desc = " + str(desc) )
+      for d in desc :
+        logging.debug( "  GET TOPOLOGY : d.root.name     = " + str( d.root.name ) )
+        logging.debug( "  GET TOPOLOGY : d.root.treeType = " + str( d.root.treeType ) )
 
       # ----------------------------------- #
       # iterate over descendants
@@ -247,48 +173,13 @@ class DerivTree( ) :
         edges.extend( topo[1] )
 
     # <><><><><><><><><><><><><><><><><><><><><><> #
-    print
-    print "/////////////////////////"
-    print "root name   is " + self.root.name
-    print "root type   is " + self.root.treeType
-    print "root record is " + str( self.root.record )
-    print "num nodes    = " + str( len(nodes) )
-    print "num edges    = " + str( len(edges) )
-
-    if self.root.name == "not_b_from_g" :
-      print "nodes in subtree : "
-      for node in nodes :
-        print node.to_string()
-      print "edges in subtree : "
-      for edge in edges :
-        print "src = " + edge.get_source() + ", des = " + edge.get_destination()
-      #tools.bp( __name__, inspect.stack()[0][3], "blee" )
-
-    #if self.root.name == "not_missing_log_from_post" :
-    #  print "nodes in subtree : "
-    #  for node in nodes :
-    #    print node.to_string()
-    #  print "edges in subtree : "
-    #  for edge in edges :
-    #    print "src = " + edge.get_source() + ", des = " + edge.get_destination()
-
-    #if self.root.name == "clock" :
-    #  print "nodes in subtree : "
-    #  for node in nodes :
-    #    print node.to_string()
-    #  print "edges in subtree : "
-    #  for edge in edges :
-    #    print "src = " + edge.get_source() + ", des = " + edge.get_destination()
-
-    #if self.root.name == "log" :
-    #  print "nodes in subtree : "
-    #  for node in nodes :
-    #    print node.to_string()
-    #  print "edges in subtree : "
-    #  for edge in edges :
-    #    print "src = " + edge.get_source() + ", des = " + edge.get_destination()
-
-    print "/////////////////////////"
+    logging.debug( "  GET TOPOLOGY : /////////////////////////" )
+    logging.debug( "  GET TOPOLOGY : root name   is " + self.root.name )
+    logging.debug( "  GET TOPOLOGY : root type   is " + self.root.treeType )
+    logging.debug( "  GET TOPOLOGY : root record is " + str( self.root.record ) )
+    logging.debug( "  GET TOPOLOGY : num nodes    = " + str( len(nodes) ) )
+    logging.debug( "  GET TOPOLOGY : num edges    = " + str( len(edges) ) )
+    logging.debug( "  GET TOPOLOGY : /////////////////////////" )
     # <><><><><><><><><><><><><><><><><><><><><><> #
 
     return ( nodes, edges )

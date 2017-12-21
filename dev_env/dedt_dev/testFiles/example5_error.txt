@@ -1,4 +1,0 @@
-
-ERROR: Invalid syntax in rule line : 
-      a(X):-;
-     Note rule attributes cannot have quotes.

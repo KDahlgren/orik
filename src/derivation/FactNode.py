@@ -6,19 +6,15 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, os, sys
+import inspect, logging, os, sys
 
-if not os.path.abspath( __file__ + "/.." ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/.." ) )
-if not os.path.abspath( __file__ + "/../.." ) in sys.path :
-  sys.path.append( packagePath2 )
+if not os.path.abspath( __file__ + "/../../../lib/iapyx/src") in sys.path :
+  sys.path.append( "/../../../lib/iapyx/src" )
 
 from utils import tools
 from Node import Node
 
 # **************************************** #
-
-DEBUG = tools.getConfig( "DERIVATION", "FACTNODE_DEBUG", bool )
 
 class FactNode( Node ) :
 

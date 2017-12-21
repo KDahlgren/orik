@@ -2,17 +2,17 @@
 
 all: deps
 
-deps: get-submodules c4 orik
+deps: get-submodules c4 iapyx
 
 clean:
 	rm -r lib/c4/build
-	rm -r lib/orik/
+	rm -r lib/iapyx
 
 cleanc4:
 	rm -r lib/c4/build
 
-cleanorik:
-	rm -r lib/orik/
+cleaniapyx:
+	rm -r lib/iapyx
 
 c4: lib/c4/build/src/libc4/libc4.dylib
 
@@ -22,10 +22,9 @@ lib/c4/build/src/libc4/libc4.dylib:
 	cd lib/c4/build && cmake ..
 	( cd lib/c4/build && make ) 2>&1 | tee c4_out.txt;
 
-orik:
-	python setup.py
+iapyx:
+	cd lib/iapyx ; python setup.py ;
 
 get-submodules:
 	git submodule init
 	git submodule update
-

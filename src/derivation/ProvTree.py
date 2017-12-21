@@ -6,7 +6,7 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, os, string, sys, time
+import inspect, logging, os, string, sys, time
 import pydot
 
 # ------------------------------------------------------ #
@@ -14,13 +14,12 @@ import pydot
 import DerivTree, GoalNode, RuleNode, FactNode, provTools
 import SimpTree
 
-if not os.path.abspath( __file__ + "/../.." ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/.." ) )
+if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
 from utils import tools
 
 # **************************************** #
 
-DEBUG       = tools.getConfig( "DERIVATION", "PROVTREE_DEBUG", bool )
 IMGSAVEPATH = os.path.abspath( os.getcwd() ) + "/data"
 
 # --------------------------------------------------- #
@@ -204,10 +203,9 @@ class ProvTree( ) :
   # save image file, no return value
   def createGraph( self, addNameInfo, fmla_index, iter_count ) :
 
-    if DEBUG :
-      print "... running createGraph ..."
-      print "subtrees   = " + str( self.subtrees )
-      print "iter_count = " + str( iter_count )
+    logging.debug( "... running createGraph ..." )
+    logging.debug( "subtrees   = " + str( self.subtrees ) )
+    logging.debug( "iter_count = " + str( iter_count ) )
   
     graph = pydot.Dot( graph_type = 'digraph', strict=True ) # strict => ignore duplicate edges
 
@@ -235,28 +233,25 @@ class ProvTree( ) :
       nodes.extend( topology[0] )
       edges.extend( topology[1] )
 
-    if DEBUG :
-      print "... in createGraph :" 
-      print "nodes : " + str(len(nodes))
-      for i in range(0,len(nodes)) :
-        print "node#" + str(i) + " : " + str(nodes[i])
-      print "edges : " + str(len(edges))
-      for i in range(0,len(edges)) :
-        print "edge#" + str(i) + " : " + str(edges[i])
+    logging.debug( "... in createGraph :"  )
+    logging.debug( "nodes : " + str(len(nodes)) )
+    for i in range(0,len(nodes)) :
+      logging.debug( "node#" + str(i) + " : " + str(nodes[i]) )
+    logging.debug( "edges : " + str(len(edges)) )
+    for i in range(0,len(edges)) :
+      logging.debug( "edge#" + str(i) + " : " + str(edges[i]) )
 
     # set attributes
     self.nodeset = nodes
     self.edgeset = edges
 
     # <><><><><><><><><><><><><><><><><><><><><><> #
-    # FOR DEBUGGING :
     # print an audit of tree nodes and edges
-    print
-    print "/////////////////////////"
-    print "rootname is " + self.rootname
-    print "num subtrees = " + str( len(self.subtrees) )
-    print "num nodes    = " + str( len(nodes) )
-    print "num edges    = " + str( len(edges) )
+    logging.debug( "/////////////////////////" )
+    logging.debug( "rootname is " + self.rootname )
+    logging.debug( "num subtrees = " + str( len(self.subtrees) ) )
+    logging.debug( "num nodes    = " + str( len(nodes) ) )
+    logging.debug( "num edges    = " + str( len(edges) ) )
 
     #edgeCountMap = {}
     #for edge in self.edgeset :
@@ -280,7 +275,7 @@ class ProvTree( ) :
     #for node in countMap :
     #  print node + " : " + str( countMap[node] )
 
-    print "/////////////////////////"
+    logging.debug( "/////////////////////////" )
     #tools.bp( __name__, inspect.stack()[0][3], "stophere" )
     # <><><><><><><><><><><><><><><><><><><><><><> #
 
@@ -292,7 +287,7 @@ class ProvTree( ) :
     for e in edges :
       graph.add_edge( e )
 
-    print "Saving prov tree render to " + str(path)
+    logging.info( "Saving prov tree render to " + str( path ) )
     graph.write_png( path + ".png" )
     #tools.bp( __name__, inspect.stack()[0][3], "sanity check graph before proceeding." )
 
@@ -301,14 +296,14 @@ class ProvTree( ) :
   ##################
   def processTopo( self, topology ) :
 
-    #print "topology    = " + str( topology )
-    #print "topology[0] = " + str( topology[0] )
-    #print "topology[1] = " + str( topology[1] )
-    #for node in topology[0] :
-    #  print str( node.get_name() )
-    #for edge in topology[1] :
-    #  print "src  = " + str( edge.get_source() )
-    #  print "dest =" + str( edge.get_destination() )
+    logging.debug( "topology    = " + str( topology ) )
+    logging.debug( "topology[0] = " + str( topology[0] ) )
+    logging.debug( "topology[1] = " + str( topology[1] ) )
+    for node in topology[0] :
+      logging.debug( str( node.get_name() ) )
+    for edge in topology[1] :
+      logging.debug( "src  = " + str( edge.get_source() ) )
+      logging.debug( "dest =" + str( edge.get_destination() ) )
 
     #topology = self.suppressDomNodes( topology )
 
@@ -355,9 +350,8 @@ class ProvTree( ) :
   # grab the complete list of edges for a prov tree
   # use for equality comparisons
   def getEdgeSet( self ) :
-    if DEBUG :
-      print "... running getEdgeSet ..."
-      print "subtrees = " + str( self.subtrees )
+    logging.debug( "... running getEdgeSet ..." )
+    logging.debug( "subtrees = " + str( self.subtrees ) )
 
     edgeSet = []
 

@@ -11,22 +11,23 @@ Core.py
 #  IMPORTS  #
 #############
 # standard python packages
-import ast, inspect, itertools, os, sqlite3, string, sys, time
+import inspect, itertools, logging, os, sqlite3, string, sys, time
 
 # ------------------------------------------------------ #
 # import sibling packages HERE!!!
-if not os.path.abspath( __file__ + "/../.." ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
 
 from dedt           import dedt, dedalusParser
-from derivation     import ProvTree
 from utils          import parseCommandLineInput, tools
 from evaluators     import c4_evaluator
 
+if not os.path.abspath( __file__ + "/../.." ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+
+from derivation     import ProvTree
+
 # **************************************** #
-
-
-DEBUG = True
 
 
 ####################
@@ -58,27 +59,25 @@ class Core :
   ##################
   def run_workflow( self ) :
 
-    if DEBUG :
-     print "*******************************************************"
-     print "                   RUNNING ORIK CORE"
-     print "*******************************************************"
-     print
+    logging.debug( "*******************************************************" )
+    logging.debug( "                   RUNNING ORIK CORE" )
+    logging.debug( "*******************************************************" )
 
     # ---------------------------------------------------------------- #
     # 1. build c4 datalog program                                      #
     # ---------------------------------------------------------------- #
 
     # allProgramData := [ allProgramLines, tableListArray ]
-    programData                   = self.dedalus_to_datalog( self.argDict, self.cursor )
-    allProgramData                = programData[0]
-    self.original_prog_lines_only = programData[1]
+    allProgramData = self.dedalus_to_datalog( self.argDict, self.cursor )
+    program_lines  = allProgramData[0]
+    table_array    = allProgramData[1]
 
     # ----------------------------------------------- #
     # 2. evaluate                                     #
     # ----------------------------------------------- #
 
     # use c4 wrapper 
-    parsedResults = self.evaluate( allProgramData )
+    parsedResults = self.evaluate( self.argDict, allProgramData )
 
     # ----------------------------------------------- #
     # 3. get provenance tree                          #
@@ -100,10 +99,10 @@ class Core :
   ##############
   # evaluate the datalog program using some datalog evaluator
   # return some data structure or storage location encompassing the evaluation results.
-  def evaluate( self, allProgramData ) :
+  def evaluate( self, argDict, allProgramData ) :
 
     # inject custom faults here.
-    allProgramData = injectCustomFaults( allProgramData )
+    allProgramData = self.injectCustomFaults( argDict, allProgramData )
 
     results_array = c4_evaluator.runC4_wrapper( allProgramData )
 
@@ -137,6 +136,8 @@ class Core :
   ###############################
   def eval_results_dump_to_file( self, results_array, eval_results_dump_dir ) :
 
+    logging.debug( "  EVAL RESULTS DUMP TO FILE : running process..." )
+
     eval_results_dump_file_path = eval_results_dump_dir + "eval_dump_0.txt"
 
     # save new contents
@@ -145,8 +146,7 @@ class Core :
     for line in results_array :
       
       # output to stdout
-      if DEBUG :
-        print line
+      logging.debug( "line = " + str( line ) )
 
       # output to file
       f.write( line + "\n" )
@@ -161,6 +161,8 @@ class Core :
   # return a provenance tree instance
   def buildProvTree( self, parsedResults, eot, iter_count, irCursor ) :
   
+    logging.debug( "  BUILD PROV TREE : running process..." )
+
     if parsedResults :
       # 000000000000000000000000000000000000000000000000000000000000000000 #
       # grab the set of post records at EOT.
@@ -171,22 +173,19 @@ class Core :
       postrecords_all = parsedResults[ "post" ]
       postrecords_eot = []
     
-      if DEBUG :
-        print "postrecords_all = " + str(postrecords_all)
+      logging.debug( "postrecords_all = " + str(postrecords_all) )
     
       for rec in postrecords_all :
     
-        if DEBUG :
-          print "rec     = " + str(rec)
-          print "rec[-1] = " + str(rec[-1])
-          print "eot     = " + str(eot)
+        logging.debug( "rec     = " + str(rec) )
+        logging.debug( "rec[-1] = " + str(rec[-1]) )
+        logging.debug( "eot     = " + str(eot) )
     
         # collect eot post records only
         if int( rec[-1] ) == int( eot ) :
           postrecords_eot.append( rec )
     
-      if DEBUG :
-        print "postrecords_eot = " + str(postrecords_eot)
+      logging.debug( "postrecords_eot = " + str(postrecords_eot) )
     
       # !!! BREAK EARLY IF POST CONTAINS NO EOT RECORDS !!!
       if len( postrecords_eot ) < 1 :
@@ -200,8 +199,7 @@ class Core :
   
     # ------------------------------------------------------------------------------ #
     # there exist results and eot post records.
-    if DEBUG :
-      print "\n~~~~ BUILDING PROV TREE ~~~~"
+    logging.debug( "\n~~~~ BUILDING PROV TREE ~~~~" )
   
     # ------------------------------------------------------------------------------ #
     # initialize provenance tree structure
@@ -210,10 +208,9 @@ class Core :
     # ------------------------------------------------------------------------------ #
     # populate prov tree
     for seedRecord in postrecords_eot :
-      if DEBUG :
-        print " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
-        print "           NEW POST RECORD "
-        print "seedRecord = " + str( seedRecord )
+      logging.debug( " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" )
+      logging.debug( "           NEW POST RECORD " )
+      logging.debug( "seedRecord = " + str( seedRecord ) )
       provTreeComplete.generateProvTree( "post", seedRecord )
     # ------------------------------------------------------------------------------ #
 
@@ -230,37 +227,36 @@ class Core :
     return provTreeComplete
   
  
-##########################
-#  INJECT CUSTOM FAULTS  #
-##########################
-# example :
-#   [CORE]
-#   CUSTOM_FAULT = ['clock("str","str",2,2)']
-# use double quotes for str data in clock tuples and single quotes around clock facts.
-
-def injectCustomFaults( allProgramData ) :
-
-
-  # grab the custom fault, which is a list of clock fact strings, with quotes,
-  # to remove from full clock relation
-  customFaultList = tools.getConfig( "CORE", "CUSTOM_FAULT", list )
-
-  if customFaultList :
-    # delete specified clock facts from program
-    faultyProgramLines = []
-    programLines       = allProgramData[0]
-    tableList          = allProgramData[1]
-    for line in programLines :
-      line = line.replace( ";", "" )
-      if line in customFaultList :
-        pass
-      else :
-        faultyProgramLines.append( line + ";" )
-
-    return [ faultyProgramLines, tableList ]
-
-  else :
-    return allProgramData
+  ##########################
+  #  INJECT CUSTOM FAULTS  #
+  ##########################
+  # example :
+  #   [CORE]
+  #   CUSTOM_FAULT = ['clock("str","str",2,2)']
+  # use double quotes for str data in clock tuples and single quotes around clock facts.
+  
+  def injectCustomFaults( self, argDict, allProgramData ) :
+  
+    # grab the custom fault, which is a list of clock fact strings, with quotes,
+    # to remove from full clock relation
+    customFaultList = tools.getConfig( argDict[ "settings" ], "CORE", "CUSTOM_FAULT", list )
+  
+    if customFaultList :
+      # delete specified clock facts from program
+      faultyProgramLines = []
+      programLines       = allProgramData[0]
+      tableList          = allProgramData[1]
+      for line in programLines :
+        line = line.replace( ";", "" )
+        if line in customFaultList :
+          pass
+        else :
+          faultyProgramLines.append( line + ";" )
+  
+      return [ faultyProgramLines, tableList ]
+  
+    else :
+      return allProgramData
  
 #########
 #  EOF  #

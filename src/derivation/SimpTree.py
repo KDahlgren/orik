@@ -6,15 +6,15 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, os, string, sys
+import inspect, logging, os, string, sys
 
 # ------------------------------------------------------ #
 import SimpNode
 
 # ------------------------------------------------------ #
 
-if not os.path.abspath( __file__ + "/../.." ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/../.." ) )
+if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
 
 from utils import tools
 

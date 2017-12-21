@@ -132,6 +132,8 @@ def main() :
       sys.exit( "failed to install C4. No fully functioning APR found." )
   # ---------------------------------------------- #
 
+  os.system( "make iapyx" )
+
 
 ##############################
 #  MAIN THREAD OF EXECUTION  #
