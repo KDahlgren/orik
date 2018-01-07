@@ -1,11 +1,15 @@
-*.png
-lib/c4/*
-.DS_Store
-*.swp
-examples/**/*.txt
-examples/**/*.db
-examples/**/*.db-*
+**/iapyx_prog_from_driver.olg
+**/complete_dedalus_program.ded
 examples/**/data/*
+*.png
+.DS_Store
+qa/IR*
+src/drivers/IR.db
+*.swp
+examples/omissionProblem/data/*
+examples/delayProblem/data/*
+examples/simplog/data/*
+examples/**/*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
