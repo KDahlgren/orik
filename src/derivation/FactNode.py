@@ -35,10 +35,24 @@ class FactNode( Node ) :
     # get trigger record
     self.triggerRecord = self.extractTrigger()
 
+    # ---------------------------------------------------------------------------------- #
     # check to make sure the record exists as a fact
-    if not self.verifyTriggerRecord() :
-      #print ">>> WARNING! triggerRecord " + str( record ) + " does not exist in the results: " + str( results ) + "\nCreating FactNode anyway..."
-      tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : self.triggerRecord = " + str(self.triggerRecord) + " is not a fact in the '" + str(self.name) + "' table results:\n" + str(self.results[self.name]) )
+
+    # CASE : verification failed and is a positive fact node. terminate immediately.
+    if not self.verifyTriggerRecord() and self.isNeg == False :
+      tools.bp( __name__, inspect.stack()[0][3], "FactNode __INIT__ : FATAL ERROR : self.triggerRecord = " + str(self.triggerRecord) + " is not a fact in the '" + str(self.name) + "' table results:\n" + str(self.results[self.name]) )
+
+    # CASE : verification failed and is a negative fact node. create the node.
+    elif not self.verifyTriggerRecord() and self.isNeg == True :
+      logging.debug( " FactNode __INIT__ : creating fact node for negative fact." )
+
+    # CASE : verification passed and is a negative fact node. wtf????
+    elif self.verifyTriggerRecord() and self.isNeg == True :
+      tools.bp( __name__, inspect.stack()[0][3], "  FactNode __INIT__ : FATAL ERROR : self.triggerRecord = " + str(self.triggerRecord) + " should _NOT_ be a fact in the '" + str(self.name) + "' table results:\n" + str(self.results[self.name]) )
+
+    # CASE : everything's good. create the node.
+    else :
+      logging.debug( " FactNode __INIT__ : creating fact node for positive fact." )
 
 
   #############
