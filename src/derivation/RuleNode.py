@@ -28,16 +28,16 @@ class RuleNode( Node ) :
   prid          = None
   provAttMap    = None
   triggerRecord = None
+  level         = None
 
   # --------------------------------- #
 
   #################
   #  CONSTRUCTOR  #
   #################
-  def __init__( self, name, prid, provAttMap, record, results, cursor ) :
+  def __init__( self, name, prid, provAttMap, record, results, level, cursor ) :
 
-    if self.name == "not_missing_log_from_post" :
-      tools.bp( __name__, inspect.stack()[0][3], "hit not_missing_log_from_post rule call!" )
+    self.level = level
 
     # ///////////////////////////////////////////////////////// #
     # NODE CONSTRUCTOR: treeType, name, isNeg, record, program results, db cursor
@@ -53,8 +53,6 @@ class RuleNode( Node ) :
     # fill in provenance attribute mapping Nones with data from 
     # the trigger record.
     fullProvMap = self.getFullMap()
-
-    #tools.bp( __name__, inspect.stack()[0][3], "fullProvMap = " + str(fullProvMap) )
 
     # ///////////////////////////////////////////////////////// #
     # get all subgoal info:
@@ -240,14 +238,8 @@ class RuleNode( Node ) :
   ################
   def spawnNode( self, subName, isNeg, seedRecord ) :
 
-    if subName == "not_missing_log_from_post" :
-       print ">>> spawning descendant goal node for not_missing_log_from_post"
-    #  tools.bp( __name__, inspect.stack()[0][3], "stop here in Rule" )
+    self.descendants.append( DerivTree.DerivTree( subName, None, "goal", isNeg, None, seedRecord, self.results, self.level+1, self.cursor ) )
 
-    self.descendants.append( DerivTree.DerivTree( subName, None, "goal", isNeg, None, seedRecord, self.results, self.cursor ) )
-
-    #if subName == "not_missing_log_from_post" :
-    #  tools.bp( __name__, inspect.stack()[0][3], "hit this." )
 
 #########
 #  EOF  #

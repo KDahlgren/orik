@@ -35,6 +35,7 @@ class ProvTree( ) :
   cursor        = None
   nodeset       = None
   edgeset       = None
+  level         = 0
 
 
   #################
@@ -91,7 +92,7 @@ class ProvTree( ) :
   # populates self.subtrees
   # DerivTree Constructor Fields : ( name, rid, treeType, isNeg, provAttMap, record, results, cursor )
   def generateProvTree( self, name, seedRecord ) :
-    newSubTree = DerivTree.DerivTree( name, None, "goal", False, None, seedRecord, self.parsedResults, self.cursor )
+    newSubTree = DerivTree.DerivTree( name, None, "goal", False, None, seedRecord, self.parsedResults, self.level, self.cursor )
     self.subtrees.append( newSubTree )
 
 

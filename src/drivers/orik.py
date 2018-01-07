@@ -11,7 +11,7 @@ driver1.py
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, logging, os, sqlite3, sys, time
+import inspect, logging, os, resource, sqlite3, sys, time
 
 # ------------------------------------------------------ #
 # import sibling packages HERE!!!
@@ -67,7 +67,10 @@ def orik() :
 #########################
 #  THREAD OF EXECUTION  #
 #########################
-orik()
+if __name__ == '__main__' :
+  print resource.getrlimit(resource.RLIMIT_STACK)
+  print "get recursion limit = " + str( sys.getrecursionlimit() )
+  orik()
 
 
 #########

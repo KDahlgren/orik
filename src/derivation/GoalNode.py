@@ -28,11 +28,12 @@ class GoalNode( Node ) :
   isNeg       = None
   seedRecord  = None
   results     = []
+  level       = None
 
   #################
   #  CONSTRUCTOR  #
   #################
-  def __init__( self, name, isNeg, seedRecord, results, cursor ) :
+  def __init__( self, name, isNeg, seedRecord, results, level, cursor ) :
 
     logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
     logging.debug( "in GoalNode.GoalNode : " + name )
@@ -45,6 +46,7 @@ class GoalNode( Node ) :
     self.isNeg      = isNeg
     self.seedRecord = seedRecord
     self.results    = results
+    self.level      = level
 
     # ///////////////////////////////////////////////////////// #
     # NODE CONSTRUCTOR: treeType, name, isNeg, record, program results, dbcursor
@@ -636,12 +638,16 @@ class GoalNode( Node ) :
       logging.debug( ">> triggerRecordList : " + str( triggerRecordList ) )
 
       for trigRec in triggerRecordList :
+
+        logging.debug( "  SET DESCENANTS ( GOAL NODE ) : trigRec = " + str( trigRec ) )
+
         provID     = trigRec[0]
         provAttMap = trigRec[1]
         recList    = trigRec[2]
 
         # spawn a rule for each valid record
         for rec in recList :
+          logging.debug( "  SET DESCENANTS ( GOAL NODE ) : spawning rule on rec = " + str( rec ) )
           self.spawnRule( provID, provAttMap, rec )
 
     # ==================================================== #
@@ -661,12 +667,12 @@ class GoalNode( Node ) :
 
     if recList == [] :
       logging.debug( "spawning fact with trigFac '" + str( trigRec ) + "'" )
-      self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, trigRec, self.results, self.cursor ) )
+      self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, trigRec, self.results, self.level+1, self.cursor ) )
 
     else :
       for rec in recList :
         logging.debug( "spawning fact with rec '" + str( rec ) + "'" )
-        self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, rec, self.results, self.cursor ) )
+        self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, rec, self.results, self.level+1, self.cursor ) )
 
 
   ################################
@@ -701,7 +707,10 @@ class GoalNode( Node ) :
   ################
   def spawnRule( self, rid, provAttMap, seedRecord ) :
 
-    self.descendants.append( DerivTree.DerivTree( self.name, rid, "rule", False, provAttMap, seedRecord, self.results, self.cursor ) )
+    logging.debug( "  SPAWN RULE : provAttMap = " + str( provAttMap ) )
+    logging.debug( "  SPAWN RULE : seedRecord = " + str( seedRecord ) )
+
+    self.descendants.append( DerivTree.DerivTree( self.name, rid, "rule", False, provAttMap, seedRecord, self.results, self.level+1, self.cursor ) )
 
 
 #########

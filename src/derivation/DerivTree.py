@@ -40,6 +40,7 @@ class DerivTree( ) :
   provAttMap     = None
   idPair         = None
   record         = None
+  level          = None # the level of the current deriv tree root
 
   ####################
   #  IS FINAL STATE  #
@@ -66,7 +67,7 @@ class DerivTree( ) :
   #################
   #  CONSTRUCTOR  #
   #################
-  def __init__( self, name, rid, treeType, isNeg, provAttMap, record, results, cursor ) :
+  def __init__( self, name, rid, treeType, isNeg, provAttMap, record, results, level, cursor ) :
 
     self.name           = name
     self.rid            = rid
@@ -76,6 +77,7 @@ class DerivTree( ) :
     self.cursor         = cursor
     self.provAttMap     = provAttMap
     self.record         = record
+    self.level          = level
 
     logging.debug( "==================================" )
     logging.debug( "       CREATING NEW DERIV TREE" )
@@ -92,11 +94,13 @@ class DerivTree( ) :
   #########################
   def generateDerivTree( self, record ) :
 
+    logging.debug( "  GENERATE DERIV TREE : attempting to generate new DerivTree at level = " + str( self.level+1 ) )
+
     if self.treeType == "goal" :
-      self.root = GoalNode.GoalNode( self.name, self.isNeg, record, self.programResults, self.cursor )
+      self.root = GoalNode.GoalNode( self.name, self.isNeg, record, self.programResults, self.level, self.cursor )
 
     elif self.treeType == "rule" :
-      self.root = RuleNode.RuleNode( self.name, self.rid, self.provAttMap, record, self.programResults, self.cursor )
+      self.root = RuleNode.RuleNode( self.name, self.rid, self.provAttMap, record, self.programResults, self.level, self.cursor )
 
     elif self.treeType == "fact" :
       self.root = FactNode.FactNode( self.name, self.isNeg, record, self.programResults, self.cursor )
