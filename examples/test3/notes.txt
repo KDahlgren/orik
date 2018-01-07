@@ -1,0 +1,4 @@
+These tests allowing experimentations with the correctness of the newest incarnation of the domain rewrite approach.
+
+test3.ded triggers a wilcard rewrite.
+test3_v1.ded does not trigger a wildcard rewrite, which produces a smaller and more readable example of the domain subgoal definition approach.

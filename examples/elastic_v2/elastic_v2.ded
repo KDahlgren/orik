@@ -25,7 +25,6 @@ group("c", "G")@1;
 group("C", "G")@1;
 group("G", "G")@1;
 group(M, G)@next :- group(M, G);
-group(M, "G") :- cchange(M, "A", "G"), notin group(M, "G");
 
 begin("a")@1;
 begin("b")@1;
@@ -125,7 +124,7 @@ client(G, C)@next :- client(G, C), crash(G, C, Time), now(G, Now), Now < Time;
 client_known(M, C) :- clients(C), member(C, M), notin client_known_reg(C, M);
 client_known_reg(C, M)@next :- clients(C), member(C, M);
 client_known(M, C)@next :- client_known(M, C), notin crash(M, C, _);
-client_known(M, C)@next :- client_known(M, C), crash(M, C, Time), now(G, Now), Now < Time;
+client_known(M, C)@next :- client_known(M, C), crash(M, C, Time), now(M, Now), Now < Time;
 
 // Primry promotion, with the node with the max nodieid being promoted.
 // This is the reverse order to the order in which staggered replica 
@@ -233,7 +232,7 @@ chain_ack_sent(Acker, Data, Origin, Value)@next :- primary(Acker, Acker), log(Ac
 
 // Acknowledgement retrace the forwarding path of the write request
 chain_ack(Origin, Data, Acker, Value)@async :- log(Acker, Data, _, Value), chain_ack(Acker, Data, _, Value), notin primary(Acker, Acker), send_ack_to(Acker, Origin, Value), notin chain_ack_sent(Acker, Data, Origin, Value);
-chain_ack_sent(Acker, Data, Origin, Value)@next :- log(Acker, Data, _, Value), chain_ack(Acker, Data, _, Value), notin primary(Acker, Acker), send_ack_to(Ackr, Origin, Value);
+chain_ack_sent(Acker, Data, Origin, Value)@next :- log(Acker, Data, _, Value), chain_ack(Acker, Data, _, Value), notin primary(Acker, Acker), send_ack_to(Acker, Origin, Value);
 
 // Acknowledgements persist across time. If a chain_ack is received at a client, the write is acknowledged.
 ack(Origin, Data, Acker, Value) :- chain_ack(Origin, Data, Acker, Value), clients(Origin); 
