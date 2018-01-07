@@ -221,7 +221,7 @@ class Core :
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     default_fmla_index = 0 
-    provTreeComplete.createGraph( None, default_fmla_index, iter_count )
+    provTreeComplete.createGraph( None, default_fmla_index, iter_count, self.argDict )
     # ------------------------------------------------------------------------------ #
 
     return provTreeComplete

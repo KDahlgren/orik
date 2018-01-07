@@ -202,7 +202,7 @@ class ProvTree( ) :
   #  CREATE GRAPH  #
   ##################
   # save image file, no return value
-  def createGraph( self, addNameInfo, fmla_index, iter_count ) :
+  def createGraph( self, addNameInfo, fmla_index, iter_count, argDict ) :
 
     logging.debug( "... running createGraph ..." )
     logging.debug( "subtrees   = " + str( self.subtrees ) )
@@ -280,7 +280,9 @@ class ProvTree( ) :
     #tools.bp( __name__, inspect.stack()[0][3], "stophere" )
     # <><><><><><><><><><><><><><><><><><><><><><> #
 
-    # create graph
+    # -------------------------------------------------------- #
+    # create graph png
+
     # add nodes :
     for n in nodes :
       graph.add_node( n )
@@ -291,6 +293,24 @@ class ProvTree( ) :
     logging.info( "Saving prov tree render to " + str( path ) )
     graph.write_png( path + ".png" )
     #tools.bp( __name__, inspect.stack()[0][3], "sanity check graph before proceeding." )
+
+    # -------------------------------------------------------- #
+    # save graph data to file
+
+    if tools.getConfig( argDict[ "settings" ], "DEFAULT", "SERIAL_GRAPH", bool ) == True :
+
+      serial_path  = IMGSAVEPATH + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + ".txt"
+      logging.info( "Saving prov tree graph data to " + str( serial_path ) )
+
+      fo = open( serial_path, "w" )
+      fo.write( "[NODES]\n" )
+      for n in nodes :
+        fo.write( "pydot.Node(" + str( n.get_name() ) + ")\n" )
+      fo.write( "[EDGES]\n" )
+      for e in edges :
+        fo.write( "pydot.Edge(" + str( e.get_source() ) + "," + str( e.get_destination() ) + "\n" )
+      fo.close()
+
 
   ##################
   #  PROCESS TOPO  #
