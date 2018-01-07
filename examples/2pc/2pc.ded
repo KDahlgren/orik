@@ -1,4 +1,6 @@
 
+// from https://github.com/palvaro/molly/tree/master/src/test/resources/examples_ft/commit
+
 // 2pc.ded
 // coordinator logic
 //prepare(Agent, Coord, Xact)@async :- begin(Coord, Xact), agent(Coord, Agent);

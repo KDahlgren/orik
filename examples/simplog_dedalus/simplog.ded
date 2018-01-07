@@ -1,3 +1,6 @@
+
+// from https://github.com/palvaro/molly/tree/master/src/test/resources/examples_ft/delivery
+
 // broadcast a message to all neighbors. neighbors save message content in log.
 // based on simplog.ded
 

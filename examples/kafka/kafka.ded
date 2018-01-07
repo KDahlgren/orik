@@ -1,3 +1,6 @@
+
+// from https://github.com/palvaro/molly/tree/master/src/test/resources/examples_ft
+
 //timeout_svc.ded
 // a reusable logical timeout service.  send a message to it with an identifier and a # of
 // transitions, and it sends you a timeout later.
