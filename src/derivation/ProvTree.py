@@ -325,17 +325,107 @@ class ProvTree( ) :
 
       fo.write( "[NODES]\n" )
       for n in nodes :
-        serial_node = "pydot.Node(" + str( n.get_name() ) + ")\n"
+        serial_node = "pydot.Node(" + str( n.get_name() ) + ")"
         self.serial_nodes.append( serial_node )
-        fo.write( serial_node )
+        fo.write( serial_node + "\n" )
 
       fo.write( "[EDGES]\n" )
       for e in edges :
-        serial_edge = "pydot.Edge(" + str( e.get_source() ) + "," + str( e.get_destination() ) + "\n"
+        serial_edge = "pydot.Edge(" + str( e.get_source() ) + "," + str( e.get_destination() ) + ")"
         self.serial_edges.append( serial_edge )
-        fo.write( serial_edge )
+        fo.write( serial_edge + "\n" )
 
       fo.close()
+
+
+  #####################
+  #  GET TREE HEIGHT  #
+  #####################
+  # input pydot edgeset, which is a list of pydot node maps
+  # output the height of tree
+  def get_tree_height( self ) :
+
+    logging.debug( "  GET TREE HEIGHT : running getHeight..." )
+
+    edgeset = self.get_edges()
+
+    rootName    = edgeset[0][0] # first edge in pydot has src root.
+    tree_height = self.get_tree_height_helper( rootName, edgeset )
+
+    return tree_height
+
+
+  ############################
+  #  GET TREE HEIGHT HELPER  #
+  ############################
+  def get_tree_height_helper( self, rootName, edgeset ) :
+
+    logging.debug( "  GET TREE HEIGHT HELPER : running process..." )
+    logging.debug( "  GET TREE HEIGHT HELPER : rootName = " + rootName )
+
+    # check if rootName is a leaf
+    rootNameAppearsAsSrc = False
+    for edge in edgeset :
+      src = edge[0]
+      if rootName == src :
+        rootNameAppearsAsSrc = True
+
+    # leaf subgraphs 
+    if not rootNameAppearsAsSrc :
+      return 1
+
+    else :
+      desList = []
+      for edge in edgeset :
+        src = edge[0]
+        des = edge[1]
+        if rootName == src :
+          desList.append( des )
+
+      heightMap = []
+      for des in desList :
+        des_height = self.get_tree_height_helper( des, edgeset )
+        heightMap.append( [ des, des_height ] )
+
+      maxDepth = 0
+      for h in heightMap :
+        if h[1] > maxDepth :
+          maxDepth = h[1]
+
+      if rootName == "FinalState" :
+        return maxDepth
+
+      else :
+        return maxDepth + 1
+
+
+  ###############
+  #  GET EDGES  #
+  ###############
+  # extract the edges from string representation.
+  # return an array of binary arrays.
+  def get_edges( self ) :
+
+    logging.debug( "  GET EDGES : running process..." )
+
+    edge_list = []
+
+    for e in self.serial_edges :
+      e = e.replace( "pydot.Edge(", "" )
+      e = e[:-1]
+      e = e.replace( '"', "" )
+
+      if e.startswith( "FinalState," ) :
+        src = "FinalState"
+        des = e[11:]
+      else :
+        src = e.split( ")," )[0] + ")"
+        des = e.split( ")," )[1]
+
+      logging.debug( "  GET EDGES : adding edge  : " + str( [ src, des ] ) )
+      edge_list.append( [ src, des ] )
+
+    return edge_list
 
 
   ##################
