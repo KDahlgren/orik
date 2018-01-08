@@ -36,6 +36,8 @@ class ProvTree( ) :
   nodeset       = None
   edgeset       = None
   level         = 0
+  serial_nodes   = []
+  serial_edges   = []
 
 
   #################
@@ -84,6 +86,20 @@ class ProvTree( ) :
   # a non-empty provenance tree will never be a leaf.
   def isLeaf( self ) :
     return False
+
+
+  ###################
+  #  POPULATE TREE  #
+  ###################
+  def populateTree( self, post_eot ) :
+
+    for seedRecord in post_eot :
+
+      logging.debug( " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" )
+      logging.debug( "           NEW POST RECORD" )
+      logging.debug( "seedRecord = " + str( seedRecord ) )
+
+      self.generateProvTree( "post", seedRecord )
 
 
   ########################
@@ -299,16 +315,26 @@ class ProvTree( ) :
 
     if tools.getConfig( argDict[ "settings" ], "DEFAULT", "SERIAL_GRAPH", bool ) == True :
 
+      self.serial_nodes = []
+      self.serial_edges = []
+
       serial_path  = IMGSAVEPATH + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + ".txt"
       logging.info( "Saving prov tree graph data to " + str( serial_path ) )
 
       fo = open( serial_path, "w" )
+
       fo.write( "[NODES]\n" )
       for n in nodes :
-        fo.write( "pydot.Node(" + str( n.get_name() ) + ")\n" )
+        serial_node = "pydot.Node(" + str( n.get_name() ) + ")\n"
+        self.serial_nodes.append( serial_node )
+        fo.write( serial_node )
+
       fo.write( "[EDGES]\n" )
       for e in edges :
-        fo.write( "pydot.Edge(" + str( e.get_source() ) + "," + str( e.get_destination() ) + "\n" )
+        serial_edge = "pydot.Edge(" + str( e.get_source() ) + "," + str( e.get_destination() ) + "\n"
+        self.serial_edges.append( serial_edge )
+        fo.write( serial_edge )
+
       fo.close()
 
 

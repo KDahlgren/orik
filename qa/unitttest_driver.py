@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import logging, os, string, sys, unittest
-import Test_dedt, Test_dml, Test_vs_molly
+import logging, os, unittest
+import Test_derivation
 
 #####################
 #  UNITTEST DRIVER  #
@@ -9,9 +9,9 @@ import Test_dedt, Test_dml, Test_vs_molly
 def unittest_driver() :
 
   print
-  print "***********************************"
-  print "*   RUNNING TEST SUITE FOR ORIK   *"
-  print "***********************************"
+  print "***************************************"
+  print "*  RUNNING TEST SUITE FOR DERIVATION  *"
+  print "***************************************"
   print
 
   # make absolutely sure no leftover IR files exist.
@@ -19,9 +19,8 @@ def unittest_driver() :
     os.system( "rm ./IR.db" )
     logging.info( "  UNIT TEST DRIVER : deleted rogue IR.db file." )
 
-
-  # run Test_orik tests
-  suite = unittest.TestLoader().loadTestsFromTestCase( Test_dedt.Test_dedt )
+  # run Test_derivation tests
+  suite = unittest.TestLoader().loadTestsFromTestCase( Test_derivation.Test_derivation )
   unittest.TextTestRunner( verbosity=2, buffer=True ).run( suite )
 
 

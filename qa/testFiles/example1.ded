@@ -1,0 +1,9 @@
+
+b("a")@1 ;
+c("a")@1 ;
+
+a( X ) :- b(X), c(X) ;
+a( X )@next :- a(X) ;
+
+pre(X) :- a(X) ;
+post(X) :- pre(X) ;
