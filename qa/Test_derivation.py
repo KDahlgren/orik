@@ -70,7 +70,18 @@ class Test_derivation( unittest.TestCase ) :
     serial_nodes_path = "./testFiles/example1_nodes.txt"
     serial_edges_path = "./testFiles/example1_edges.txt"
 
-    self.comparison_provenance_graph_workflow( inputfile, serial_nodes_path, serial_edges_path, cursor )
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.comparison_provenance_graph_workflow( inputfile, serial_nodes_path, serial_edges_path, cursor )
+
+    # --------------------------------------------------------------- #
+    # compare the actual and expected tree dimensions
+
+    expected_dimensions = [ 14 ]
+
+    self.comparison_provenance_tree_dimensions( provTree, expected_dimensions )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -79,12 +90,30 @@ class Test_derivation( unittest.TestCase ) :
     os.remove( testDB )
 
 
+  ###########################################
+  #  COMPARISON PROVENANCE TREE DIMENSIONS  #
+  ###########################################
+  def comparison_provenance_tree_dimensions( self, provTree, expected_dimensions ) :
+
+    expected_tree_height = expected_dimensions[ 0 ]
+    #
+
+    # --------------------------------------------------------------- #
+    # check tree heights
+
+    if expected_tree_height :
+      actual_tree_height = provTree.get_tree_height()
+      logging.debug( " actual_tree_height   = " + str( actual_tree_height ) )
+      logging.debug( " expected_tree_height = " + str( expected_tree_height ) )
+      self.assertEqual( actual_tree_height, expected_tree_height )
+
+
   ##########################################
   #  COMPARISON PROVENANCE GRAPH WORKFLOW  #
   ##########################################
   # specifies the steps for generating and comparing the provenance graphs of
   # input specs with expected results.
-  # returns nothing.
+  # returns the actual provenance tree instance.
   def comparison_provenance_graph_workflow( self, inputfile, serial_nodes_path, serial_edges_path, cursor ) :
 
     # --------------------------------------------------------------- #
@@ -112,11 +141,11 @@ class Test_derivation( unittest.TestCase ) :
     if self.PRINT_STOP :
 
       if serial_nodes_path :
-        for n in serial_nodes :
+        for n in actual_serial_nodes :
           logging.debug( "  n = " + n.rstrip() )
 
       if serial_nodes_path :
-        for e in serial_edges :
+        for e in actual_serial_edges :
           logging.debug( "  e = " + e.rstrip() )
 
       tools.bp( __name__, inspect.stack()[0][3], "print stop." )
@@ -131,6 +160,8 @@ class Test_derivation( unittest.TestCase ) :
     if serial_edges_path :
       expected_serial_edges = self.get_serial( serial_edges_path )
       self.assertEqual( actual_serial_edges, expected_serial_edges )
+
+    return provTreeComplete
 
 
   ###################
@@ -187,7 +218,7 @@ class Test_derivation( unittest.TestCase ) :
 
     fo = open( path, "r" )
     for line in fo :
-      serial.append( line )
+      serial.append( line.rstrip() )
     fo.close()
 
     return serial
