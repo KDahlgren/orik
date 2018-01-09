@@ -39,15 +39,16 @@ class Test_derivation( unittest.TestCase ) :
 
   PRINT_STOP = False
 
-  ###############
-  #  EXAMPLE 1  #
-  ###############
-  # tests the generation of a simple ded program execution.
+
+  #################
+  #  SIMPLOG DML  #
+  #################
+  # tests simplog provenance graph generation without dml
   #@unittest.skip( "working on different example" )
-  def test_example1( self ) :
+  def test_simplog_dml( self ) :
 
     # --------------------------------------------------------------- #
-    # set up test.
+    # set up test
 
     if os.path.exists( "./IR.db" ) :
       os.remove( "./IR.db" )
@@ -66,22 +67,194 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # specify input file paths
 
-    inputfile = "./testFiles/example1.ded"
-    serial_nodes_path = "./testFiles/example1_nodes.txt"
-    serial_edges_path = "./testFiles/example1_edges.txt"
+    inputfile         = "./testFiles/simplog.ded"
+    serial_nodes_path = "./testFiles/simplog_nodes_dml.txt"
+    serial_edges_path = "./testFiles/simplog_edges_dml.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "settings" ] = "./settings_dml.ini"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
     # provenance graph
 
-    provTree = self.comparison_provenance_graph_workflow( inputfile, serial_nodes_path, serial_edges_path, cursor )
+    provTree = self.compare_provenance_graph_workflow( argDict, inputfile, serial_nodes_path, serial_edges_path, cursor )
 
     # --------------------------------------------------------------- #
     # compare the actual and expected tree dimensions
 
-    expected_dimensions = [ 14 ]
+    tree_height               = 12
+    total_number_serial_nodes = 80
 
-    self.comparison_provenance_tree_dimensions( provTree, expected_dimensions )
+    expected_dimensions = [ tree_height, \
+                            total_number_serial_nodes ]
+
+    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+
+    # --------------------------------------------------------------- #
+    # sanity checks
+
+    logging.debug( " total_number_of_descendants = " + str( provTree.get_total_number_of_descendants() ) )
+    for n in provTree.get_total_descendant_list() :
+      logging.debug( "    >> descendant node       = " + n )
+
+    logging.debug( " len( serial_nodes )         = " + str( len( provTree.serial_nodes ) ) )
+    for n in provTree.serial_nodes :
+      logging.debug( "    >> node                  = " + n )
+    logging.debug( " num_duplicate_serial_nodes  = " + str( len( provTree.get_duplicated_nodes() ) ) )
+    for n in provTree.get_duplicated_nodes() :
+      logging.debug( "    >> duplicated node       = " + str( n ) )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+
+  #############
+  #  SIMPLOG  #
+  #############
+  # tests simplog provenance graph generation without dml
+  #@unittest.skip( "working on different example" )
+  def test_simplog( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    if os.path.exists( "./data/" ) :
+      os.system( "rm -rf ./data/" )
+    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/simplog.ded"
+    serial_nodes_path = "./testFiles/simplog_nodes.txt"
+    serial_edges_path = "./testFiles/simplog_edges.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, inputfile, serial_nodes_path, serial_edges_path, cursor )
+
+    # --------------------------------------------------------------- #
+    # compare the actual and expected tree dimensions
+
+    tree_height               = 12
+    total_number_serial_nodes = 80
+
+    expected_dimensions = [ tree_height, \
+                            total_number_serial_nodes ]
+
+    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+
+    # --------------------------------------------------------------- #
+    # sanity checks
+
+    logging.debug( " total_number_of_descendants = " + str( provTree.get_total_number_of_descendants() ) )
+    for n in provTree.get_total_descendant_list() :
+      logging.debug( "    >> descendant node       = " + n )
+
+    logging.debug( " len( serial_nodes )         = " + str( len( provTree.serial_nodes ) ) )
+    for n in provTree.serial_nodes :
+      logging.debug( "    >> node                  = " + n )
+    logging.debug( " num_duplicate_serial_nodes  = " + str( len( provTree.get_duplicated_nodes() ) ) )
+    for n in provTree.get_duplicated_nodes() :
+      logging.debug( "    >> duplicated node       = " + str( n ) )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+
+  ###############
+  #  EXAMPLE 1  #
+  ###############
+  # tests the generation of a simple ded program execution.
+  #@unittest.skip( "working on different example" )
+  def test_example1( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    if os.path.exists( "./data/" ) :
+      os.system( "rm -rf ./data/" )
+    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/example1.ded"
+    serial_nodes_path = "./testFiles/example1_nodes.txt"
+    serial_edges_path = "./testFiles/example1_edges.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, inputfile, serial_nodes_path, serial_edges_path, cursor )
+
+    # --------------------------------------------------------------- #
+    # compare the actual and expected tree dimensions
+
+    tree_height               = 14
+    total_number_serial_nodes = 35
+
+    expected_dimensions = [ tree_height, \
+                            total_number_serial_nodes ]
+
+    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+
+    # --------------------------------------------------------------- #
+    # sanity checks
+
+    logging.debug( " total_number_of_descendants = " + str( provTree.get_total_number_of_descendants() ) )
+    for n in provTree.get_total_descendant_list() :
+      logging.debug( "    >> descendant node       = " + n )
+
+    logging.debug( " len( serial_nodes )         = " + str( len( provTree.serial_nodes ) ) )
+    for n in provTree.serial_nodes :
+      logging.debug( "    >> node                  = " + n )
+    logging.debug( " num_duplicate_serial_nodes  = " + str( len( provTree.get_duplicated_nodes() ) ) )
+    for n in provTree.get_duplicated_nodes() :
+      logging.debug( "    >> duplicated node       = " + str( n ) )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -93,19 +266,26 @@ class Test_derivation( unittest.TestCase ) :
   ###########################################
   #  COMPARISON PROVENANCE TREE DIMENSIONS  #
   ###########################################
-  def comparison_provenance_tree_dimensions( self, provTree, expected_dimensions ) :
+  def compare_provenance_tree_dimensions( self, provTree, expected_dimensions ) :
 
-    expected_tree_height = expected_dimensions[ 0 ]
-    #
+    expected_tree_height               = expected_dimensions[ 0 ]
+    expected_total_number_serial_nodes = expected_dimensions[ 1 ]
 
     # --------------------------------------------------------------- #
     # check tree heights
 
-    if expected_tree_height :
-      actual_tree_height = provTree.get_tree_height()
-      logging.debug( " actual_tree_height   = " + str( actual_tree_height ) )
-      logging.debug( " expected_tree_height = " + str( expected_tree_height ) )
-      self.assertEqual( actual_tree_height, expected_tree_height )
+    actual_tree_height = provTree.get_tree_height()
+    logging.debug( " actual_tree_height   = " + str( actual_tree_height ) )
+    logging.debug( " expected_tree_height = " + str( expected_tree_height ) )
+    self.assertEqual( actual_tree_height, expected_tree_height )
+
+    # --------------------------------------------------------------- #
+    # check total number of serial nodes
+
+    actual_tree_height = provTree.get_tree_height()
+    logging.debug( " actual_tree_height   = " + str( actual_tree_height ) )
+    logging.debug( " expected_tree_height = " + str( expected_tree_height ) )
+    self.assertEqual( actual_tree_height, expected_tree_height )
 
 
   ##########################################
@@ -114,12 +294,7 @@ class Test_derivation( unittest.TestCase ) :
   # specifies the steps for generating and comparing the provenance graphs of
   # input specs with expected results.
   # returns the actual provenance tree instance.
-  def comparison_provenance_graph_workflow( self, inputfile, serial_nodes_path, serial_edges_path, cursor ) :
-
-    # --------------------------------------------------------------- #
-    # get argDict
-
-    argDict = self.getArgDict( inputfile )
+  def compare_provenance_graph_workflow( self, argDict, inputfile, serial_nodes_path, serial_edges_path, cursor ) :
 
     # --------------------------------------------------------------- #
     # convert dedalus into c4 datalog and evaluate
