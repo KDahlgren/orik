@@ -26,6 +26,7 @@ from utils import parseCommandLineInput, tools
 # **************************************** #
 
 logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.DEBUG )
+#logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.INFO )
 
 #############
 #  GLOBALS  #
@@ -42,7 +43,7 @@ os.system( "rm " + os.path.abspath( __file__ + "/../../.." ) + "/save_data/graph
 ##########
 def orik() :
 
-  os.system( "rm IR.db" ) # delete db from previous run, if appicable
+  os.system( "rm IR.db*" ) # delete db from previous run, if appicable
 
   # get dictionary of commandline arguments.
   # exits here if user provides invalid inputs.
@@ -59,7 +60,7 @@ def orik() :
   # run orik on given spec (in file provided in argDict)
   c.run_workflow()
 
-  os.system( "rm IR.db" ) # delete db from previous run, if appicable
+  os.system( "rm IR.db*" ) # delete db from previous run, if appicable
 
   logging.info( "PROGRAM ENDED SUCESSFULLY." )
 
@@ -68,8 +69,8 @@ def orik() :
 #  THREAD OF EXECUTION  #
 #########################
 if __name__ == '__main__' :
-  print resource.getrlimit(resource.RLIMIT_STACK)
-  print "get recursion limit = " + str( sys.getrecursionlimit() )
+  #print resource.getrlimit(resource.RLIMIT_STACK)
+  #print "get recursion limit = " + str( sys.getrecursionlimit() )
   orik()
 
 
