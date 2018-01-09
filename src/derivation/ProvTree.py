@@ -13,6 +13,7 @@ import pydot
 # import sibling packages HERE!!!
 import DerivTree, GoalNode, RuleNode, FactNode, provTools
 import SimpTree
+import global_data
 
 if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
   sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
@@ -102,12 +103,51 @@ class ProvTree( ) :
       self.generateProvTree( "post", seedRecord )
 
 
+  ##########################
+  #  GET DUPLICATED NODES  #
+  ##########################
+  # collect the list of nodes duplicated in the serial_nodes array.
+  def get_duplicated_nodes( self ) :
+
+    dup_nodes = []
+
+    for i in range( 0, len( self.serial_nodes ) ) :
+      for j in range( 0, len( self.serial_nodes ) ) :
+        if self.serial_nodes[ i ] == self.serial_nodes[ j ] and not i == j :
+          if not self.serial_nodes[ i ] in dup_nodes : # avoid duplicates in dup_nodes
+            dup_nodes.append( self.serial_nodes[ i ] )
+
+    return dup_nodes
+
+
+  #####################################
+  #  GET TOTAL NUMBER OF DESCENDANTS  #
+  #####################################
+  def get_total_number_of_descendants( self ) :
+    return global_data.total_number_of_descendants
+
+
+  ###############################
+  #  GET TOTAL DESCENDANT LIST  #
+  ###############################
+  def get_total_descendant_list( self ) :
+    return global_data.total_descendant_list
+
+
   ########################
   #  GENERATE PROV TREE  #
   ########################
   # populates self.subtrees
   # DerivTree Constructor Fields : ( name, rid, treeType, isNeg, provAttMap, record, results, cursor )
   def generateProvTree( self, name, seedRecord ) :
+
+    global_data.total_number_of_descendants += 1
+    logging.debug( "  SPAWN GOAL : spawning descendant number " + str( global_data.total_number_of_descendants ) )
+
+    descendant_str = "goal->" + name + "(" + str( seedRecord ) + ")"
+    global_data.total_descendant_list.append( descendant_str )
+    logging.debug( "  SPAWN GOAL : spawning descendant " + descendant_str )
+
     newSubTree = DerivTree.DerivTree( name, None, "goal", False, None, seedRecord, self.parsedResults, self.level, self.cursor )
     self.subtrees.append( newSubTree )
 
@@ -461,7 +501,7 @@ class ProvTree( ) :
     # nodes are pydot objects.
     # get_name also pulls quotation marks.
     for node in orig_nodeset :
-      if not "goal->dom_" in node.get_name()[1:11] :
+      if not node.get_name().startswith( "goal->dom_" ) and not destinationNode.startswith( "goal->domcomp__" ) :
         processed_nodeset.append( node )
       else :
         #print "<><><>deleted node " + str( node.get_name() )
@@ -472,7 +512,7 @@ class ProvTree( ) :
     for edge in orig_edgeset :
       sourceNode      = edge.get_source()
       destinationNode = edge.get_destination()
-      if not "goal->dom_" in sourceNode[1:11] and not "goal->dom_" in destinationNode[1:11] :
+      if not sourceNode.startswith( "goal->dom_" ) :
         processed_edgeset.append( edge )
       else :
         #print "<><><>deleted edge (" + sourceNode + "," + destinationNode + ")"

@@ -11,6 +11,7 @@ import pydot
 
 # ------------------------------------------------------ #
 import GoalNode, RuleNode, FactNode, provTools
+import global_data
 
 # ------------------------------------------------------ #
 
@@ -68,6 +69,8 @@ class DerivTree( ) :
   #  CONSTRUCTOR  #
   #################
   def __init__( self, name, rid, treeType, isNeg, provAttMap, record, results, level, cursor ) :
+
+    logging.debug( "  DERIV TREE : running constructor..." )
 
     self.name           = name
     self.rid            = rid

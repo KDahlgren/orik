@@ -15,6 +15,7 @@ if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
 
 from utils import tools
 from Node import Node
+import global_data
 
 # **************************************** #
 
@@ -237,6 +238,36 @@ class RuleNode( Node ) :
   #  SPAWN NODE  #
   ################
   def spawnNode( self, subName, isNeg, seedRecord ) :
+
+    # ==================================================== #
+    # do not build provenance under domain nodes.
+
+    if subName.startswith( "dom_" ) or subName.startswith( "domcomp_" ) :
+      return None
+
+    # ==================================================== #
+    # update global data
+
+    global_data.total_number_of_descendants += 1
+    logging.debug( "  SPAWN NODE : spawning descendant number " + str( global_data.total_number_of_descendants ) )
+
+    if self.isNeg :
+      descendant_str = "goal->" + "_NOT_" + subName + "(" + str( seedRecord ) + ")"
+    else :
+      descendant_str = "goal->" + subName + "(" + str( seedRecord ) + ")"
+
+    global_data.total_descendant_list.append( descendant_str )
+    logging.debug( "  SPAWN NODE : spawning descendant " + descendant_str )
+
+    # ==================================================== #
+    # break if approximating recursion limit
+
+    if global_data.total_number_of_descendants >= 535 :
+      return None
+      #sys.exit( "why recusrion shitty?" ) # can't use tools.bp here????
+
+    # ==================================================== #
+    # update global data
 
     self.descendants.append( DerivTree.DerivTree( subName, None, "goal", isNeg, None, seedRecord, self.results, self.level+1, self.cursor ) )
 

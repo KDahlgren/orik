@@ -6,7 +6,7 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, logging, os, sys
+import copy, inspect, logging, os, sys
 
 import DerivTree, RuleNode, FactNode, provTools
 
@@ -15,6 +15,7 @@ if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
 
 from utils import tools
 from Node import Node
+import global_data
 
 # **************************************** #
 
@@ -659,11 +660,35 @@ class GoalNode( Node ) :
   ################
   def spawnFact( self, trigRec ) :
 
+    # ==================================================== #
+
+    global_data.total_number_of_descendants += 1
+    logging.debug( "  SPAWN FACT : spawning descendant number " + str( global_data.total_number_of_descendants ) )
+
+    if self.isNeg :
+      descendant_str = "fact->" + "_NOT_" + self.name + "(" + str( trigRec ) + ")"
+    else :
+      descendant_str = "fact->" + self.name + "(" + str( trigRec ) + ")"
+
+    global_data.total_descendant_list.append( descendant_str )
+    logging.debug( "  SPAWN FACT : spawning descendant " + descendant_str )
+
     # check if trig rec has wildcards. if so, collect all valid records aligning with the wildcards.
     recList = []
     for d in trigRec :
       if d == "_" :
         recList = self.getRecsFromWildcardRec( trigRec )
+
+    # ==================================================== #
+    # sanity checks
+
+    # break if approximating the recursion limit
+    if global_data.total_number_of_descendants >= 1217 :
+      return None
+      #sys.exit( "why recusrion shitty?" ) # can't use tools.bp here????
+
+    # ==================================================== #
+    # perform descendant spawns
 
     if recList == [] :
       logging.debug( "spawning fact with trigFac '" + str( trigRec ) + "'" )
@@ -707,10 +732,47 @@ class GoalNode( Node ) :
   ################
   def spawnRule( self, rid, provAttMap, seedRecord ) :
 
+    # ==================================================== #
+    # do not build provenance under domain nodes.
+
+    if self.name.startswith( "dom_" ) or self.name.startswith( "domcomp_" ) :
+      return None
+
+    # ==================================================== #
+    # update global data
+
     logging.debug( "  SPAWN RULE : provAttMap = " + str( provAttMap ) )
     logging.debug( "  SPAWN RULE : seedRecord = " + str( seedRecord ) )
 
+    global_data.total_number_of_descendants += 1
+    logging.debug( "  SPAWN RULE : spawning descendant number " + str( global_data.total_number_of_descendants ) )
+
+    if self.isNeg :
+      descendant_str = "rule->" + "_NOT_" + self.name + "(" + str( seedRecord ) + ")"
+    else :
+      descendant_str = "rule->" + self.name + "(" + str( seedRecord ) + ")"
+
+    global_data.total_descendant_list.append( descendant_str )
+    logging.debug( "  SPAWN RULE : spawning descendant " + descendant_str )
+
+    # ==================================================== #
+    # sanity checks
+
+    logging.debug( "after : global_data.total_number_of_descendants == 535 = " + str( global_data.total_number_of_descendants == 535 ) )
+
+    # break if approximating the recursion limit
+    if global_data.total_number_of_descendants >= 311 :
+      return None
+      #sys.exit( "why recusrion shitty?" ) # can't use tools.bp here????
+
+    # ==================================================== #
+    # call spawn procedure
+
+    logging.debug( "  SPAWN RULE : len( self.descendants ) = " + str( self.descendants ) )
+
     self.descendants.append( DerivTree.DerivTree( self.name, rid, "rule", False, provAttMap, seedRecord, self.results, self.level+1, self.cursor ) )
+
+    logging.debug( "  SPAWN RULE : ...done" )
 
 
 #########
