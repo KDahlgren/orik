@@ -6,53 +6,61 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, logging, os, sys
+import copy, inspect, logging, os, sys
+from Node import Node
 
-if not os.path.abspath( __file__ + "/../../../lib/iapyx/src") in sys.path :
-  sys.path.append( "/../../../lib/iapyx/src" )
+if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
+  sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
 
 from utils import tools
-from Node import Node
 
 # **************************************** #
 
 class FactNode( Node ) :
 
-  ########################
-  #  SPECIAL ATTRIBUTES  #
-  ########################
-  triggerRecord = None
+  #####################
+  #  SPECIAL ATTRIBS  #
+  #####################
+
+  treeType    = "fact"
 
 
   #################
   #  CONSTRUCTOR  #
   #################
-  def __init__( self, name, isNeg, record, results, cursor ) :
+  def __init__( self, name="DEFAULT", isNeg=None, record=[], parsedResults={}, cursor=None ) :
 
-    # NODE CONSTRUCTOR: treeType, name, isNeg, record, program results, dbcursor
-    Node.__init__( self, "fact", name, isNeg, record, results, cursor )
+    logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
+    logging.debug( "in FactNode.FactNode : " + name )
+    logging.debug( "  name   = " + name )
+    logging.debug( "  isNeg  = " + str( isNeg ) )
+    logging.debug( "  record = " + str( record ) )
+    logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
 
-    # get trigger record
-    self.triggerRecord = self.extractTrigger()
+    self.name          = name
+    self.isNeg         = isNeg
+    self.record        = record
+    self.parsedResults = parsedResults
+    self.cursor        = cursor
 
-    # ---------------------------------------------------------------------------------- #
-    # check to make sure the record exists as a fact
 
-    # CASE : verification failed and is a positive fact node. terminate immediately.
-    if not self.verifyTriggerRecord() and self.isNeg == False :
-      tools.bp( __name__, inspect.stack()[0][3], "FactNode __INIT__ : FATAL ERROR : self.triggerRecord = " + str(self.triggerRecord) + " is not a fact in the '" + str(self.name) + "' table results:\n" + str(self.results[self.name]) )
+    # -------------------------------- #
+    # make sure this is actually a 
+    # fact.
 
-    # CASE : verification failed and is a negative fact node. create the node.
-    elif not self.verifyTriggerRecord() and self.isNeg == True :
-      logging.debug( " FactNode __INIT__ : creating fact node for negative fact." )
+    if not self.is_fact() :
+      tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : relation '" + self.name + "' does not reference a fact. aborting." )
 
-    # CASE : verification passed and is a negative fact node. wtf????
-    elif self.verifyTriggerRecord() and self.isNeg == True :
-      tools.bp( __name__, inspect.stack()[0][3], "  FactNode __INIT__ : FATAL ERROR : self.triggerRecord = " + str(self.triggerRecord) + " should _NOT_ be a fact in the '" + str(self.name) + "' table results:\n" + str(self.results[self.name]) )
 
-    # CASE : everything's good. create the node.
-    else :
-      logging.debug( " FactNode __INIT__ : creating fact node for positive fact." )
+    # -------------------------------- #
+    # initialize node object
+
+    Node.__init__( self, self.treeType, \
+                         self.name, \
+                         self.isNeg, \
+                         self.record, \
+                         self.parsedResults, \
+                         self.cursor )
 
 
   #############
@@ -60,43 +68,65 @@ class FactNode( Node ) :
   #############
   # the string representation of a FactNode
   def __str__( self ) :
+
     if self.isNeg :
       negStr = "_NOT_"
-      return "fact->" + negStr + " " + self.name + "(" + str(self.triggerRecord) + ")"
+      return "fact->" + negStr + self.name + "(" + str(self.record) + ")"
+
     else :
-      return "fact->" + self.name + "(" + str(self.triggerRecord) + ")"
+      return "fact->" + self.name + "(" + str(self.record) + ")"
 
 
-  #####################
-  #  EXTRACT TRIGGER  #
-  #####################
-  # assume attributes added to the definitions of rules maifesting facts 
-  # are added to the left of the list of existing original attributes
-  # contributing to the definition of the fact schema.
-  # Accordingly, the original fact constitutes the leftmost data items
-  # of the seed record up to the arity of the original fact schema.
-  def extractTrigger( self ) :
+  #############
+  #  IS FACT  #
+  #############
+  # make sure this is actually a fact in the database.
+  def is_fact( self ) :
 
-    # get arity of fact table results
-    res     = self.results[self.name]
-    arity   = len( res[0] )
-
-    # get this record
-    thisRec = self.record[ : arity ]
-    thisRec = [ str(r) for r in thisRec ]  # transform all data items to strings to avoid migraines.
-
-    return thisRec
-
-
-  ###########################
-  #  VERIFY TRIGGER RECORD  #
-  ###########################
-  def verifyTriggerRecord( self ) :
-
-    if self.triggerRecord in self.results[ self.name ] :
+    if self.name == "clock" or self.name == "next_clock" or self.name == "crash" :
       return True
+
+    self.cursor.execute( "SELECT fid \
+                          FROM   Fact \
+                          WHERE  name=='" + self.name + "'" )
+    fid_list = self.cursor.fetchall()
+    fid_list = tools.toAscii_list( fid_list )
+
+    logging.debug( "  IS FACT : fid_list = " + str( fid_list ) )
+
+    # if this is a negative fact, just make sure the relation exists
+    if self.isNeg :
+      if len( fid_list ) > 0 :
+        return True
+      else :
+        return False
+
     else :
-      return False
+      for fid in fid_list :
+        self.cursor.execute( "SELECT dataID,data,dataType \
+                              FROM   FactData \
+                              WHERE  fid=='" + fid + "'" )
+        data_list = self.cursor.fetchall()
+        data_list = tools.toAscii_multiList( data_list )
+        fact      = []
+        for d in data_list :
+          data     = d[1]
+          dataType = d[2]
+          if dataType == "int" :
+            fact.append( data )
+          else :
+            data = data.replace( "'", "" )
+            data = data.replace( '"', '' )
+            fact.append( data )
+  
+        logging.debug( "fact        = " + str( fact ) )
+        logging.debug( "self.record = " + str( self.record ) )
+        logging.debug( "fact == self.record is" + str( fact == self.record ) )
+  
+        if fact == self.record :
+          return True
+
+    return False # otherwise, return false
 
 
 #########

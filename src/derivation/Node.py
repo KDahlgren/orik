@@ -1,13 +1,12 @@
+#!/usr/bin/env python
+
+# **************************************** #
+
 #############
 #  IMPORTS  #
 #############
 # standard python packages
-import logging, os, sys
-
-if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
-  sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
-
-from utils import tools
+import inspect, logging, os, pydot, sys
 
 # **************************************** #
 
@@ -23,10 +22,17 @@ class Node( object ) :
   results  = None
   cursor   = None
 
+
   #################
   #  CONSTRUCTOR  #
   #################
-  def __init__( self, treeType, name, isNeg, record, results, cursor ) :
+  def __init__( self, treeType = None, \
+                      name     = None, \
+                      isNeg    = None, \
+                      record   = [], \
+                      results  = {}, \
+                      cursor   = cursor ) :
+
     self.treeType = treeType
     self.name     = name
     self.isNeg    = isNeg

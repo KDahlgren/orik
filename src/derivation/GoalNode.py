@@ -7,15 +7,12 @@
 #############
 # standard python packages
 import copy, inspect, logging, os, sys
-
-import DerivTree, RuleNode, FactNode, provTools
+from Node import Node
 
 if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
   sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
 
 from utils import tools
-from Node import Node
-import global_data
 
 # **************************************** #
 
@@ -24,108 +21,66 @@ class GoalNode( Node ) :
   #####################
   #  SPECIAL ATTRIBS  #
   #####################
-  descendants = []
-  name        = None
-  isNeg       = None
-  seedRecord  = None
-  results     = []
-  level       = None
+
+  treeType    = "goal"
+
 
   #################
   #  CONSTRUCTOR  #
   #################
-  def __init__( self, name, isNeg, seedRecord, results, level, cursor ) :
+  def __init__( self, name="DEFAULT", isNeg=None, record=[], parsedResults={}, cursor=None ) :
 
     logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
     logging.debug( "in GoalNode.GoalNode : " + name )
-    logging.debug( "name       = " + name )
-    logging.debug( "isNeg      = " + str( isNeg ) )
-    logging.debug( "seedRecord = " + str( seedRecord ) )
+    logging.debug( "  name            = " + name )
+    logging.debug( "  isNeg           = " + str( isNeg ) )
+    logging.debug( "  record          = " + str( record ) )
+
+    self.name            = name
+    self.isNeg           = isNeg
+    self.record          = record
+    self.parsedResults   = parsedResults
+    self.cursor          = cursor
+
+    # dictionary of metadata for node descendants.
+    # { prov_rid : { 'goalName'    : <string>,
+    #                'triggerData' : <array of strings/ints> }, ... }
+    self.descendant_meta = {} # make sure this is empty
+
+    logging.debug( "  descendant_meta = " + str( self.descendant_meta ) )
     logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
 
-    self.name       = name
-    self.isNeg      = isNeg
-    self.seedRecord = seedRecord
-    self.results    = results
-    self.level      = level
+    # -------------------------------- #
+    # make sure record exists in the 
+    # eval results for this relation
 
-    # ///////////////////////////////////////////////////////// #
-    # NODE CONSTRUCTOR: treeType, name, isNeg, record, program results, dbcursor
-    Node.__init__( self, "goal", name, isNeg, seedRecord, results, cursor )
+    if not self.name == "FinalState"                 and \
+       not self.name == "__KD__TESTNODE__KD__"       and \
+       not "_" in self.record                        and \
+       not self.record in parsedResults[ self.name ] and \
+       self.isNeg == False :
 
-    # ***************************************************************** #
-    # ***************************************************************** #
-    #                      HANDLE CLOCK GOALS
-    #
-    if self.name == "clock" :
+      tools.bp( __name__, inspect.stack()[0][3], \
+                "  GOAL CONSTRUCTOR : FATAL ERROR : record '" + str( record ) + "'" + \
+                " does not appear in the results for relation '" + self.name + \
+                "' :\n" + str( self.parsedResults[ self.name ] ) )
 
-      logging.debug( "  GOAL NODE : hit a clock" )
+    # -------------------------------- #
+    # initialize node object
 
-      triggerRecordList = self.getClockTriggerRecordList()
+    Node.__init__( self, treeType = self.treeType, \
+                         name     = self.name, \
+                         isNeg    = self.isNeg, \
+                         record   = self.record, \
+                         results  = self.parsedResults, \
+                         cursor   = self.cursor )
 
-    # ***************************************************************** #
-    # ***************************************************************** #
-    #                      HANDLE NON-CLOCK GOALS
-    #
-    elif self.isFactOnly( ) :
+    # -------------------------------- #
+    # generate descendant metadata
 
-      logging.debug( "  GOAL NODE : hit a non-clock edb" )
-
-      triggerRecordList = [ seedRecord ]
-
-    else :
-
-      logging.debug( "  GOAL NODE : hit an idb" )
-
-      # ///////////////////////////////////////////////////////// #
-      # get all id pairs ( original rid, provenance rid ) 
-      # for this name
-
-      allIDPairs = self.getAllIDPairs()
-
-      logging.debug( "  GOAL NODE : allIDPairs = " + str( allIDPairs ) )
-
-      # ///////////////////////////////////////////////////////// #
-      # for each original rid, map original goal atts to values
-      # from the seed record.
-
-      oridList  = [ aPair[0] for aPair in allIDPairs ]
-      ogattMaps = self.getGoalAttMaps( oridList )
-
-      logging.debug( "  GOAL NODE : oridList  = " + str( oridList ) )
-      logging.debug( "  GOAL NODE : ogattMaps = " + str( ogattMaps ) )
-
-      # ///////////////////////////////////////////////////////// #
-      # for each provenance rule id, use the corresponding orid map
-      # for goal atts to seed record values to map provenance rule 
-      # goal atts to seed record values or None.
-      # Map WILDCARDs to None.
-
-      pgattMaps = self.mergeMaps( allIDPairs, ogattMaps )
-
-      logging.debug( "  GOAL NODE : pgattMaps = " + str( pgattMaps ) )
-
-      # ///////////////////////////////////////////////////////// #
-      # for each prid, grabs the full set of records from 
-      # the provenance relation which may have triggered 
-      # the appearance of the seed record in the original 
-      # rule relation.
-
-      triggerRecordList = self.getAllTriggerRecords( pgattMaps )
-
-    # ***************************************************************** #
-    # ***************************************************************** #
-
-    # ///////////////////////////////////////////////////////// #
-    # set the descendants of this goal node.
-    #
-    # Need to make sure descendants list is empty or else
-    # pyDot creates WAAAAAAAAY too many edges for some reason??? <.<
-
-    logging.debug( "  GOAL NODE : triggerRecordList = " + str( triggerRecordList ) )
-
-    self.descendants = []
-    self.setDescendants( triggerRecordList )
+    if not self.name == "FinalState" and \
+       not self.name == "__KD__TESTNODE__KD__" :
+      self.generate_descendant_meta()
 
 
   #############
@@ -133,646 +88,118 @@ class GoalNode( Node ) :
   #############
   # the string representation of a GoalNode
   def __str__( self ) :
+
     if self.isNeg :
       negStr = "_NOT_"
-      return "goal->" + negStr + " " + self.name + "(" + str(self.record) + ")"
+      return "goal->" + negStr + self.name + "(" + str(self.record) + ")"
+
     else :
       return "goal->" + self.name + "(" + str(self.record) + ")"
 
 
-  ##################
-  #  IS FACT ONLY  #
-  ##################
-  # check if the name of the goal node references a fact only
-  def isFactOnly( self ) :
-
-    # check fact relation
-    self.cursor.execute( "SELECT fid FROM Fact WHERE name=='" + self.name + "'" )
-    fid = self.cursor.fetchone()
-
-    # check rule relation
-    self.cursor.execute( "SELECT rid FROM Rule WHERE goalName=='" + self.name + "'" )
-    rid = self.cursor.fetchone()
-
-    # CASE : rule is both a fact and a rule
-    if fid and rid :
-      return False
-
-    # CASE : relation is fact only
-    elif fid :
-      return True
-
-    # CASE : relation is rule only
-    else :
-      return False
-
-
-  ###################
-  #  GET CLOCK MAP  #
-  ###################
-  def getClockTriggerRecordList( self ) :
-
-    # sanity check
-    # all clock records adhere to the same arity-4 schema: src, dest, SndTime, DelivTime
-    if not len(self.record) == 4 :
-      tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : clock record does not adhere to clock schema(src,dest,SndTime,DelivTime) : \nself.record = " + str(self.record) )
-
-    # get clock record data
-    src       = self.record[0]
-    dest      = self.record[1]
-    sndTime   = self.record[2]
-    delivTime = self.record[3]
-
-    # get all matching (or partially matching, in the case of '_') clock records
-    # optimistic by default
-    qSRC           = "src=='" + src + "'"
-    qDEST          = " AND dest=='" + dest + "'"
-    qSNDTIME       = " AND sndTime==" + sndTime + ""
-    qDELIVTIME     = " AND delivTime==" + delivTime + ""
-    qInclusionBool = " AND simInclude=='True'"
-
-    # erase query components as necessary
-    if "_" in src :
-      qSRC = ""
-    if "_" in dest :
-      qDEST = ""
-    if "_" in sndTime :
-      qSNDTIME = ""
-    if "_" in delivTime :
-      qDELIVTIME = ""
-
-    # handle empty SRC
-    if qSRC == "" and not qDEST == "" :
-      qDEST = qDEST.replace( "AND", "" )
-    elif qSRC == "" and qDEST == "" and not qSNDTIME == "" :
-      qSNDTIME = qSNDTIME.replace( "AND", "" )
-    elif qSRC == "" and qDEST == "" and qSNDTIME == "" and not qDELIVTIME == "" :
-      qDELIVTIME = qDELIVTIME.replace( "AND", "" )
-    elif qSRC == "" and qDEST == "" and qSNDTIME == "" and qDELIVTIME == "" and not qInclusionBool == "" :
-      qInclusionBool = qInclusionBool.replace( "AND", "" )
-
-    # set query
-    query = "SELECT src,dest,sndTime,delivTime FROM Clock WHERE " + qSRC + qDEST + qSNDTIME + qDELIVTIME + qInclusionBool
-
-    logging.debug( "query = " + str(query) )
-
-    # execute query
-    self.cursor.execute( query )
-    triggerRecordList = self.cursor.fetchall()
-    triggerRecordList = tools.toAscii_multiList( triggerRecordList )
-
-    return triggerRecordList
-
-
-  ######################
-  #  GET ALL ID PAIRS  #
-  ######################
-  # match the ids of oiginal rules to the ids of the associated derived provenance rules.
-  # there exists only one prov rule per original rule.
-  # return a list of binary lists connecting original rule ids and 
-  # corresponding provenance rule ids.
-
-  def getAllIDPairs( self ) :
-
-    logging.debug( "  GET ALL ID PAIRS : running process..." )
-
-    # ---------------------------------------------------------- #
-    #                      ORIG RULE DATA                        #
-    # ---------------------------------------------------------- #
-    # get all original rule ids associated with the name
-    self.cursor.execute( "SELECT rid FROM Rule WHERE goalName='" + self.name + "'" )
-    origIDs = self.cursor.fetchall()
-    origIDs = tools.toAscii_list( origIDs )
-
-    # get the complete attList and subgoalList associated with each original rule
-    # store as arrays in an array [ rid, [attList], [subgoalList] ]
-    origInfo = []
-    for orid in origIDs :
-
-      # get attList
-      self.cursor.execute( "SELECT attID,attName FROM SubgoalAtt WHERE rid='" + orid + "'" )
-      attList = self.cursor.fetchall()
-      attList = tools.toAscii_multiList( attList )
-
-      # get subgoalList
-      self.cursor.execute( "SELECT subgoalName FROM Subgoals WHERE rid='" + orid + "'" )
-      subgoalList = self.cursor.fetchall()
-      subgoalList = tools.toAscii_multiList( subgoalList )
-
-      origInfo.append( [ orid, attList, subgoalList ] )
-
-    logging.debug( "  GET ALL ID PAIRS : origInfo = " + str( origInfo ) )
-
-    # ---------------------------------------------------------- #
-    #                      PROV RULE DATA                        #
-    # ---------------------------------------------------------- #
-    # get all provenance rule ids associated with the name
-    # first, get all rule id, rule name pairs
-
-    self.cursor.execute( "SELECT rid,goalName FROM Rule" )
-    idNamePairs = self.cursor.fetchall()
-    idNamePairs = tools.toAscii_multiList( idNamePairs )
-
-    # next, collect the rids of goalnames starting with self.name+"_prov"
-    provIDs = []
-    for idName in idNamePairs :
-      currID   = idName[0]
-      currName = idName[1]
-      if currName.startswith( self.name + "_prov" ) :
-        provIDs.append( currID )
-
-    logging.debug( "  GET ALL ID PAIRS : provIDs = " + str( provIDs ) )
-
-    # get the complete attList and subgoalList associated with each original rule
-    # store as arrays in an array [ rid, [attList], [subgoalList] ]
-    provInfo = []
-    for prid in provIDs :
-      # get attList
-      self.cursor.execute( "SELECT attID,attName FROM SubgoalAtt WHERE rid='" + prid + "'" )
-      attList = self.cursor.fetchall()
-      attList = tools.toAscii_multiList( attList )
-
-      # get subgoalList
-      self.cursor.execute( "SELECT subgoalName FROM Subgoals WHERE rid='" + prid + "'" )
-      subgoalList = self.cursor.fetchall()
-      subgoalList = tools.toAscii_multiList( subgoalList )
-
-      provInfo.append( [ prid, attList, subgoalList ] )
-
-    logging.debug( "  GET ALL ID PAIRS : provInfo = " + str( provInfo ) )
-
-    # ---------------------------------------------------------- #
-    #                         MATCH                              #
-    # ---------------------------------------------------------- #
-    # match original rids with provenance rids by matching
-    # attLists and subgoals.
-
-    idPairs = []
-    for origIDInfo in origInfo :
-      orid     = origIDInfo[0]
-      oAttList = origIDInfo[1]
-      oSubList = origIDInfo[2]
-
-      for provIDInfo in provInfo :
-        prid     = provIDInfo[0]
-        pAttList = provIDInfo[1]
-        pSubList = provIDInfo[2]
-
-        if self.checkListEquality( oAttList, pAttList ) and self.checkListEquality( oSubList, pSubList ) :
-          idPairs.append( [ orid, prid ] ) # save pair
-
-    logging.debug( "  GET ALL ID PAIRS : idPairs = " + str( idPairs ) )
-
-    return idPairs
-
-
-  #########################
-  #  CHECK LIST EQUALITY  #
-  #########################
-  # check list equality
-  # 1. list lengths must be equal
-  # 2. all elements in each list must appear in the other list
-
-  def checkListEquality( self, list1, list2 ) :
-
-    logging.debug( "  CHECK LIST EQUALITY : running process..." )
-    logging.debug( "  CHECK LIST EQUALITY : list1 = " + str( list1 ) )
-    logging.debug( "  CHECK LIST EQUALITY : list2 = " + str( list2 ) )
-
-    flag = True
-
-    # check length equality
-    if not len( list1 ) == len( list2 ) :
-      flag = False
-
-    # check contents equality
-    for item in list1 :
-      if not item in list2 :
-        flag = False
-        break
-  
-    logging.debug( "  CHECK LIST EQUALITY : returning " + str( flag ) )
-    return flag
-
-
-  #######################
-  #  GET GOAL ATT MAPS  #
-  #######################
-  # return an ordered array of binary arrays connecting goal 
-  # attributes from the original rule the values from the seed record.
-  def getGoalAttMaps( self, oridList ) :
-    ogattMap = []
-
-    # get the ordered list of goal attributes for each orid
-    oridAttLists = []
-    for orid in oridList :
-      self.cursor.execute( "SELECT attID,attName FROM GoalAtt WHERE rid=='" + orid + "'" )
-      attList = self.cursor.fetchall()
-      attList = tools.toAscii_multiList( attList )
-      attList = [ aPair[1] for aPair in attList ]
-
-      oridAttLists.append( [ orid, attList ] )
-
-    # for each orid:attList, connect atts to vals from seed record
-    for oridInfo in oridAttLists :
-      thisorid    = oridInfo[0]
-      thisattList = oridInfo[1]
-
-      # sanity check
-      # the number of goal atts in the original rule must match
-      # the number of values in the seed record.
-      if (len( thisattList ) < len( self.record )) or (len( thisattList ) > len( self.record )) :
-        tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : number of attributes in goal attribute list for " + self.name + " does not match the number of values in the seed record:\nattribute list = " + str(thisattList) + "\nrecord = " + str(self.record) )
-
-      # map atts to values from the seed record
-      thisAttValList = []
-      for i in range(0,len(thisattList)) :
-        att = thisattList[ i ]
-        val = self.record[ i ]
-        thisAttValList.append( [ att, val ] )
-
-      ogattMap.append( [ thisorid, thisAttValList ] )
-
-    return ogattMap
-
-
-  ################
-  #  MERGE MAPS  #
-  ################
-  # for each provenance rule id, use the corresponding orid map
-  # for goal atts to seed record values to map provenance rule 
-  # goal atts to seed record values or None.
-  # Map WILDCARDs to None.
-  def mergeMaps( self, allIDPairs, ogattMaps ) :
-    pgattMaps = []
-
-    # get list of all prids
-    pridList = [ aPair[1] for aPair in allIDPairs ]
-
-    for prid in pridList :
-
-      # get the goal att list for this provenance rule
-      self.cursor.execute( "SELECT attID,attName FROM GoalAtt WHERE rid=='" + prid + "'" )
-      pgattList = self.cursor.fetchall()
-      pgattList = tools.toAscii_multiList( pgattList )
-      pgattList = [ arr[1] for arr in pgattList ]
-
-      # get corresponding original rule id
-      orid = self.getORID( prid, allIDPairs )
-
-      # ///////////////////////////////////////////////////////// #
-      # get map of goal atts for the original rule 
-      # to seed record values.
-      # ------------------------------------------------------------- #
-      # Transform into dictionary for convenience
-      thisogattMap = self.getOGattMap( orid, ogattMaps )
-
-      ogattDict = {}
-      for arr in thisogattMap :
-        att = arr[0]
-        val = arr[1]
-
-        # sanity check
-        if att in ogattDict.keys() and not val == ogattDict[ att ] :
-          tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : multiple data values exist for the same attribute.\nattribute = " + att + "\nval = " + val + " and ogattDict[ att ] = " + ogattDict[ att ] )
-        else : # add to dictionary
-          ogattDict[ att ] = val
-      # ------------------------------------------------------------- #
-
-      # map provenance goal atts to values from the seed record based on 
-      # the attribute mappings in the original rule.
-      # unspecified atts are mapped to None.
-      # WILDCARDs are mapped to None.
-      pattMapping = []
-      for patt in pgattList :
-        #if patt == "__WILDCARD__" :
-        if patt == "_" :
-          pattMapping.append( [ patt, None ] )
-        elif patt in ogattDict.keys() :
-          pattMapping.append( [ patt, ogattDict[ patt ] ] )
-        else :
-          pattMapping.append( [ patt, None ] )
-
-      pgattMaps.append( [ prid, pattMapping ] )
-      # ///////////////////////////////////////////////////////// #
-
-    return pgattMaps
-
-
-  ################################################
-  #  GET O(riginal Rule) G(oal) ATT(ribute) MAP  #
-  ################################################
-  def getOGattMap( self, orid, ogattMaps ) :
-
-    for aMap in ogattMaps :
-      currorid = aMap[0]
-      currmap  = aMap[1]
-
-      if orid == currorid :
-        return currmap
-
-    tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : the original rule id " + orid + " has no goal attribute mapping in ogattMaps = " + str(ogattMaps) )
-
-
-  ##############
-  #  GET ORID  #
-  ##############
-  def getORID( self, prid, allIDPairs ) :
-
-    for aPair in allIDPairs :
-      currorid = aPair[0]
-      currprid = aPair[1]
-
-      if prid == currprid :
-        return currorid
-
-    tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : provenance id " + prid + " has no corresponding original rule id. You got major probs... =["  )
-
-
-  #############################
-  #  GET ALL TRIGGER RECORDS  #
-  #############################
-  # return list of binary lists connecting each prid
-  # with a list of records (stored as lists) from the 
-  # provenance record which may have triggered the
-  # appearance of the seed record in the original rule
-  # relation.
-
-  def getAllTriggerRecords( self, pgattMaps ) :
-
-    logging.debug( "  GET ALL TRIGGER RECORDS : pgattMaps = " + str( pgattMaps ) )
-
-    pTrigRecs = []
-
-    for attMap in pgattMaps :
-      prid    = attMap[0]
-      mapping = attMap [1]
-
-      # get full relation name
-      self.cursor.execute( "SELECT goalName FROM Rule WHERE rid=='" + prid + "'" )
-      pname = self.cursor.fetchone() # goalName should be unique per provenance rule
-      pname = tools.toAscii_str( pname )
-
-      # get full results table
-      resultsTable = self.results[ pname ]
-
-      # get list of valid records which agree with the provenance rule 
-      # goal attribute mapping
-      # correctness relies upon ordered nature of the mappings.
-      validRecList = []
-      for rec in resultsTable :
-
-        if self.checkAgreement( mapping, rec ) :
-          validRecList.append( rec )
-
-      pTrigRecs.append( [ prid, mapping, validRecList ] )
-
-    return pTrigRecs
-
-
-  #####################
-  #  CHECK AGREEMENT  #
-  #####################
-  def checkAgreement( self, mapping, rec ) :
-
-    # sanity check
-    if not len(mapping) == len( rec ) :
-      tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : arity of provenance schema not equal to arity of provenance records:\nmapping = " + str(mapping) + "\nrec = " + str(rec) + "\nYou got probs. =[ Aborting..." )
-
-    for i in range(0,len(mapping)) :
-      attValPair = mapping[i]
-      att        = attValPair[0]
-      val        = attValPair[1]
-      recval     = rec[i]
-
-      if val == None :
-        pass
-      elif val == "_" :
-        pass
-      elif val == recval :
-        pass
-      else :
-        return False
-
-    return True
-
-
-  #####################
-  #  SET DESCENDANTS  #
-  #####################
-  # goal nodes may have more than one descendant in the case of wildcards
-  # and when multiple firing records exist for the particular.
-  def setDescendants( self, triggerRecordList ) :
-
-    logging.debug( "  SET DESCENDANTS : running process..." )
-
-    # ==================================================== #
-    # ==================================================== #
-    #   CASE goal is a fact node
-    if tools.isFact( self.name, self.cursor ) :
-
-      # ************************************************* #
-      #                HANDLE CLOCK FACTS                 #
-      #
-      # triggerRecordList := list of trigger records 
-
-      if self.name == "clock" :
-
-        logging.debug( "  SET DESCENDANTS : hit a clock" )
-
-        # spawn a fact for each trigger record
-        for rec in triggerRecordList :
-          self.spawnFact( rec )
-
-      # ************************************************* #
-      #                HANDLE OTHER FACTS                 #
-      #
-      # triggerRecordList := list of trigger records 
-
-      elif self.isFactOnly() :
-
-        logging.debug( "  SET DESCENDANTS : hit a non-clock edb" )
-
-        # spawn a fact for each trigger record
-        for rec in triggerRecordList :
-          self.spawnFact( rec )
-
-      # ************************************************* #
-      #                HANDLE OTHER FACTS                 #
-      #               ALSO DEFINED BY RULES               #
-      #
-      # triggerRecordList := list of trinary lists 
-      #     containing the prid, the prov att map, and
-      #     the list of trigger records.
-
-      else :
-
-        logging.debug( "  SET DESCENDANTS : hit an edb/idb" )
-
-        # get complete list of trigger records
-        trigList = []
-        for trigRec in triggerRecordList :
-          provID     = trigRec[0]
-          provAttMap = trigRec[1]
-          recList    = trigRec[2]
-
-          # for empty record lists, use node record.
-          if recList == [] :
-            trigList.extend( [ self.record ] )
-
-          # otherwise, spawn fact nodes to all records
+  ##############################
+  #  GENERATE DESCENDANT META  #
+  ##############################
+  # generate the meta data required to spawn the desendant rule nodes.
+  def generate_descendant_meta( self ) :
+
+    # -------------------------------- #
+    # get the rid(s) for the prov rule(s) 
+
+    prov_rid_and_name_list = self.get_prov_rid_and_name_list()
+    logging.debug( "  GENERATE DESCENDANT META : prov_rid_and_name_list = " + str( prov_rid_and_name_list ) )
+
+    # -------------------------------- #
+    # generate the list of
+    # corresponding records from
+    # the provenance relations for this
+    # rule per provenance relation
+    # for this rule
+
+    prov_rid_to_valid_records = {} # maps prov rule rids to arrays
+
+    for pdata in prov_rid_and_name_list :
+
+      prid                              = pdata[0]
+      pname                             = pdata[1]
+      valid_records                     = self.get_valid_prov_records( pname )
+      prov_rid_to_valid_records[ prid ] = valid_records
+
+    logging.debug( "  GENERATE DESCENDANT META : prov_rid_to_valid_records = " + str( prov_rid_to_valid_records ) )
+
+    # -------------------------------- #
+    # generate the descendant metadata
+    # prov_rid : { goalName    : <string>,
+    #              triggerData : <array of strings/ints> }
+
+    for pdata in prov_rid_and_name_list :
+
+      prov_rid                     = pdata[ 0 ]
+      goalName                     = pdata[ 1 ]
+      triggerData                  = prov_rid_to_valid_records[ prov_rid ]
+      self.descendant_meta[ prov_rid ] = { 'goalName' : goalName, 'triggerData' : triggerData }
+
+    logging.debug( "  GENERATE DESCENDANT META : self.descendant_meta = " + str( self.descendant_meta ) )
+
+
+  ################################
+  #  GET PROV RID AND NAME LIST  #
+  ################################
+  # get the list of rid(s) for rules defining this relation
+  # capable of generating the input record.
+  # breaks if user inputs relations with '_prov' in the name.
+  def get_prov_rid_and_name_list( self ) :
+
+    self.cursor.execute( "SELECT rid,goalName FROM Rule WHERE goalName LIKE '" + self.name + "%_prov%'" )
+    prov_rid_and_name_list = self.cursor.fetchall()
+    prov_rid_and_name_list = tools.toAscii_multiList( prov_rid_and_name_list )
+
+    # all rules must have corresponding provenance rules
+    if not len( prov_rid_and_name_list ) > 0 and not self.name == "__TestNode__" :
+      tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : no provenance rule for '" + self.name + "'" )
+
+    return prov_rid_and_name_list
+
+
+  ############################
+  #  GET VALID PROV RECORDS  #
+  ############################
+  # get list of provenance records matching the 
+  # input record
+  # a record matches a prov_record if the first 
+  # n components of each tuple are identical,
+  # where n is the number of components in the record tuple.
+  def get_valid_prov_records( self, pname ) :
+
+    logging.debug( "  GET VALID PROV RECORDS : running process... " )
+    logging.debug( "  GET VALID PROV RECORDS : pname       = " + pname )
+    logging.debug( "  GET VALID PROV RECORDS : self.record = " + str( self.record ) )
+
+    valid_prov_records = []
+
+    for prov_record in self.parsedResults[ pname ] :
+
+      logging.debug( "  GET PROV RECORDS : prov_record = " + str( prov_record ) )
+
+      # CASE : the original record contains wildcards
+      if "_" in self.record :
+        flag = True
+        for i in range( 0, len( self.record ) ) :
+          if self.record[ i ] == "_" :
+            pass
           else :
-            trigList.extend( trigRec[2] )
+            if not prov_record[ i ] == self.record[ i ] :
+              flag = False
 
-        # spawn a fact for each trigger record
-        for rec in trigList :
-          self.spawnFact( rec )
+        if flag :
+          valid_prov_records.append( prov_record )
 
-    # ==================================================== #
-    #   CASE goal is a rule
-
-    else :
-
-      logging.debug( ">>> self.name = " + str( self.name ) )
-      logging.debug( ">>> self.isNeg = " + str( self.isNeg ) )
-      logging.debug( ">>> self.seedRecord = " + str( self.seedRecord ) )
-      logging.debug( ">> triggerRecordList : " + str( triggerRecordList ) )
-
-      for trigRec in triggerRecordList :
-
-        logging.debug( "  SET DESCENANTS ( GOAL NODE ) : trigRec = " + str( trigRec ) )
-
-        provID     = trigRec[0]
-        provAttMap = trigRec[1]
-        recList    = trigRec[2]
-
-        # spawn a rule for each valid record
-        for rec in recList :
-          logging.debug( "  SET DESCENANTS ( GOAL NODE ) : spawning rule on rec = " + str( rec ) )
-          self.spawnRule( provID, provAttMap, rec )
-
-    # ==================================================== #
-    # ==================================================== #
-
-
-  ################
-  #  SPAWN FACT  #
-  ################
-  def spawnFact( self, trigRec ) :
-
-    # ==================================================== #
-
-    global_data.total_number_of_descendants += 1
-    logging.debug( "  SPAWN FACT : spawning descendant number " + str( global_data.total_number_of_descendants ) )
-
-    if self.isNeg :
-      descendant_str = "fact->" + "_NOT_" + self.name + "(" + str( trigRec ) + ")"
-    else :
-      descendant_str = "fact->" + self.name + "(" + str( trigRec ) + ")"
-
-    global_data.total_descendant_list.append( descendant_str )
-    logging.debug( "  SPAWN FACT : spawning descendant " + descendant_str )
-
-    # check if trig rec has wildcards. if so, collect all valid records aligning with the wildcards.
-    recList = []
-    for d in trigRec :
-      if d == "_" :
-        recList = self.getRecsFromWildcardRec( trigRec )
-
-    # ==================================================== #
-    # sanity checks
-
-    # break if approximating the recursion limit
-    if global_data.total_number_of_descendants >= 1217 :
-      return None
-      #sys.exit( "why recusrion shitty?" ) # can't use tools.bp here????
-
-    # ==================================================== #
-    # perform descendant spawns
-
-    if recList == [] :
-      logging.debug( "spawning fact with trigFac '" + str( trigRec ) + "'" )
-      self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, trigRec, self.results, self.level+1, self.cursor ) )
-
-    else :
-      for rec in recList :
-        logging.debug( "spawning fact with rec '" + str( rec ) + "'" )
-        self.descendants.append( DerivTree.DerivTree( self.name, None, "fact", self.isNeg, None, rec, self.results, self.level+1, self.cursor ) )
-
-
-  ################################
-  #  GET RECS FROM WILDCARD REC  #
-  ################################
-  # given record containing wildcards
-  # return list of records aligning with the wildcard record
-  def getRecsFromWildcardRec( self, trigRec ) :
-
-    targetRelation = self.results[ self.name ]
-
-    recList = [] # list of records aligning with the trig rec containing wildcards
-
-    for tup in targetRelation :
-      validRec = True
-      for i in range(0,len(tup)) :
-        if tup[i] == trigRec[i] or trigRec[i] == "_" :
-          continue
-        else :
-          validRec = False
-
-      if validRec :
-        recList.append( tup )
+      # CASE : ther original record contains no wildcards
       else :
-        continue
+        if prov_record[ : len( self.record ) ] == self.record :
+          valid_prov_records.append( prov_record )
 
-    return recList
-
-
-  ################
-  #  SPAWN RULE  #
-  ################
-  def spawnRule( self, rid, provAttMap, seedRecord ) :
-
-    # ==================================================== #
-    # do not build provenance under domain nodes.
-
-    if self.name.startswith( "dom_" ) or self.name.startswith( "domcomp_" ) :
-      return None
-
-    # ==================================================== #
-    # update global data
-
-    logging.debug( "  SPAWN RULE : provAttMap = " + str( provAttMap ) )
-    logging.debug( "  SPAWN RULE : seedRecord = " + str( seedRecord ) )
-
-    global_data.total_number_of_descendants += 1
-    logging.debug( "  SPAWN RULE : spawning descendant number " + str( global_data.total_number_of_descendants ) )
-
-    if self.isNeg :
-      descendant_str = "rule->" + "_NOT_" + self.name + "(" + str( seedRecord ) + ")"
-    else :
-      descendant_str = "rule->" + self.name + "(" + str( seedRecord ) + ")"
-
-    global_data.total_descendant_list.append( descendant_str )
-    logging.debug( "  SPAWN RULE : spawning descendant " + descendant_str )
-
-    # ==================================================== #
-    # sanity checks
-
-    logging.debug( "after : global_data.total_number_of_descendants == 535 = " + str( global_data.total_number_of_descendants == 535 ) )
-
-    # break if approximating the recursion limit
-    if global_data.total_number_of_descendants >= 311 :
-      return None
-      #sys.exit( "why recusrion shitty?" ) # can't use tools.bp here????
-
-    # ==================================================== #
-    # call spawn procedure
-
-    logging.debug( "  SPAWN RULE : len( self.descendants ) = " + str( self.descendants ) )
-
-    self.descendants.append( DerivTree.DerivTree( self.name, rid, "rule", False, provAttMap, seedRecord, self.results, self.level+1, self.cursor ) )
-
-    logging.debug( "  SPAWN RULE : ...done" )
+    return valid_prov_records
 
 
 #########

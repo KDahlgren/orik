@@ -1,0 +1,8 @@
+post( X, Y ) :- sub0( X ), sub1( Y ), sub2( Y ) ;
+sub2( X ) :- sub3( X ) ;
+sub2( X ) :- sub4( X ) ;
+sub0( "a" )@1 ;
+sub0( "b" )@1 ;
+sub1( "c" )@1 ;
+sub3( "c" )@1 ;
+sub4( "c" )@1 ;

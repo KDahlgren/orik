@@ -11,12 +11,11 @@ import pydot
 
 # ------------------------------------------------------ #
 # import sibling packages HERE!!!
-import DerivTree, GoalNode, RuleNode, FactNode, provTools
-import SimpTree
-import global_data
+import GoalNode, RuleNode, FactNode
 
 if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
   sys.path.append( os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) )
+
 from utils import tools
 
 # **************************************** #
@@ -25,518 +24,723 @@ IMGSAVEPATH = os.path.abspath( os.getcwd() ) + "/data"
 
 # --------------------------------------------------- #
 
-class ProvTree( ) :
-
-  #############
-  #  ATTRIBS  #
-  #############
-  rootname      = None
-  subtrees      = None
-  parsedResults = None
-  cursor        = None
-  nodeset       = None
-  edgeset       = None
-  level         = 0
-  serial_nodes   = []
-  serial_edges   = []
-
+class ProvTree( object ) :
 
   #################
   #  CONSTRUCTOR  #
   #################
-  def __init__( self, name, parsedResults, cursor ) :
-    self.rootname      = name
-    self.subtrees      = []
-    self.parsedResults = parsedResults
-    self.cursor        = cursor
+  # rootname      : string.       name of the relation at this root node.
+  # parsedResults : dictionary.   contains all evaluation results keyed on relation names.
+  # cursor        : object.       pointer to the IR database instance.
+  # db_id         : integer.      identifier for rules/facts in the IR database.
+  # treeType      : string.       "goal" | "rule" | "fact"
+  # isNeg         : bool.         is this goal/fact negative?
+  # provAttMap    : dictionary.   maps goal attributes to data from evaluation records.
+  # record        : array.        a tuple of data from the evaluation results for some 
+  #                               relation (hopefully this relation).
+  # eot           : integer.      the eot for this execution.
+  # parents       : [ ProvTree ]. the ProvTree object instances connected to
+  #                               this tree. None iff root is "FinalState".
+  def __init__( self, rootname        = None, \
+                      final_state_ptr = None, \
+                      parsedResults   = {},   \
+                      cursor          = None, \
+                      db_id           = None, \
+                      treeType        = None, \
+                      isNeg           = None, \
+                      provAttMap      = {},   \
+                      record          = [],   \
+                      eot             = 0,    \
+                      parent          = None, \
+                      argDict         = {} ) :
 
+    # dictionary of the execution arguments
+    self.argDict = argDict
 
-  ###############
-  #  COPY TREE  #
-  ###############
-  def copyTree( self ) :
+    # list of descendant ProvTree objects
+    self.descendants = []
 
-    newTree               = ProvTree( self.rootname, self.parsedResults, self.cursor )
-    newTree.rootname      = self.rootname
-    newTree.subtrees      = self.subtrees
-    newTree.parsedResults = self.parsedResults
-    newTree.cursor        = self.cursor
-    newTree.nodeset       = self.nodeset
-    newTree.edgeset       = self.edgeset
+    # list of parent ProvTree objects
+    self.parents = []
 
-    return newTree
+    # list of nodes in this ProvTree as pydot objects
+    self.nodeset_pydot = []
+    self.edgeset_pydot = []
 
+    # list of nodes in this ProvTree in serialized format
+    self.nodeset_pydot_str = []
+    self.edgeset_pydot_str = []
 
-  ######################
-  #  IS ULTIMATE GOAL  #
-  ######################
-  # a convenience function
-  # a provenance tree will never not be rooted
-  # at "FinalState"
-  def isFinalState( self ) :
-    if self.rootname == "FinalState" :
-      return True
+    # the node object for the root of this ProvTree
+    self.curr_node = None
+
+    # FinalState also maintians a map of node names to object pointers.
+    self.node_str_to_object_map = {}
+
+    # set data from inputs
+    self.rootname        = rootname
+    self.final_state_ptr = final_state_ptr
+    self.parsedResults   = parsedResults
+    self.cursor          = cursor
+    self.db_id           = db_id
+    self.treeType        = treeType
+    self.isNeg           = isNeg
+    self.provAttMap      = provAttMap
+    self.record          = record
+    self.eot             = eot
+
+    if not self.rootname == "FinalState" :
+      self.parents.append( parent )
+
+    logging.debug( "==================================" )
+    logging.debug( "       CREATING NEW PROV TREE" )
+    logging.debug( "self.rootname        = " + str( self.rootname ) )
+    logging.debug( "self.final_state_ptr = " + str( self.final_state_ptr ) )
+    logging.debug( "self.parsedResults   = " + str( self.parsedResults ) )
+    logging.debug( "self.cursor          = " + str( self.cursor ) )
+    logging.debug( "self.db_id           = " + str( self.db_id ) )
+    logging.debug( "self.treeType        = " + str( self.treeType ) )
+    logging.debug( "self.isNeg           = " + str( self.isNeg ) )
+    logging.debug( "self.provAttMap      = " + str( self.provAttMap ) )
+    logging.debug( "self.record          = " + str( self.record ) )
+    logging.debug( "self.eot             = " + str( self.eot ) )
+    logging.debug( "self.parents         = " + str( self.parents ) )
+    logging.debug( "self                 = " + str( self        ) )
+    logging.debug( "==================================" )
+
+    # for qa testing :
+    if self.rootname == "__KD__TESTNODE__KD__" :
+      self.generate_tree()
+      return None
+
+    # -------------------------------- #
+    # CASE : node is the FinalState 
+    #        root
+
+    if rootname == "FinalState" :
+
+      # set the final_state_ptr
+      self.final_state_ptr = self
+      logging.debug( "  set final_state_ptr to '" + str( self.final_state_ptr ) + "'" )
+
+      # generate first level of nodes ( all post nodes )
+      self.generate_tree()
+
+    # -------------------------------- #
+    # CASE : node is not the FinalState
+    #        root
+
     else :
-      return False
+      self.generate_curr_node()
+      self.generate_subtree()
+
+      if self.final_state_ptr :
+        self.final_state_ptr.node_str_to_object_map[ self.__str__() ] = self # add this node to the final state map
+
+    # -------------------------------- #
+    if not self.rootname == "__TestNode__" :  # for qa tests
+
+      # generate graph meta data
+      self.generate_graph_data()
 
 
-  #############
-  #  IS LEAF  #
-  #############
-  # a convenience function
-  # a non-empty provenance tree will never be a leaf.
-  def isLeaf( self ) :
-    return False
+  #########
+  #  STR  #
+  #########
+  def __str__( self ) :
 
+    if self.curr_node :
+      return self.curr_node.__str__()
 
-  ###################
-  #  POPULATE TREE  #
-  ###################
-  def populateTree( self, post_eot ) :
-
-    for seedRecord in post_eot :
-
-      logging.debug( " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" )
-      logging.debug( "           NEW POST RECORD" )
-      logging.debug( "seedRecord = " + str( seedRecord ) )
-
-      self.generateProvTree( "post", seedRecord )
-
-
-  ##########################
-  #  GET DUPLICATED NODES  #
-  ##########################
-  # collect the list of nodes duplicated in the serial_nodes array.
-  def get_duplicated_nodes( self ) :
-
-    dup_nodes = []
-
-    for i in range( 0, len( self.serial_nodes ) ) :
-      for j in range( 0, len( self.serial_nodes ) ) :
-        if self.serial_nodes[ i ] == self.serial_nodes[ j ] and not i == j :
-          if not self.serial_nodes[ i ] in dup_nodes : # avoid duplicates in dup_nodes
-            dup_nodes.append( self.serial_nodes[ i ] )
-
-    return dup_nodes
-
-
-  #####################################
-  #  GET TOTAL NUMBER OF DESCENDANTS  #
-  #####################################
-  def get_total_number_of_descendants( self ) :
-    return global_data.total_number_of_descendants
-
-
-  ###############################
-  #  GET TOTAL DESCENDANT LIST  #
-  ###############################
-  def get_total_descendant_list( self ) :
-    return global_data.total_descendant_list
+    else :
+      return self.rootname + " : curr_node not set."
 
 
   ########################
-  #  GENERATE PROV TREE  #
+  #  CREATE PYDOT GRAPH  #
   ########################
-  # populates self.subtrees
-  # DerivTree Constructor Fields : ( name, rid, treeType, isNeg, provAttMap, record, results, cursor )
-  def generateProvTree( self, name, seedRecord ) :
+  # generate the pydot graph visualization and
+  # return a dictionary of stats.
+  # observe the FinalState prov tree contains the
+  # nodeset_pydot and edgeset_pydot structures.
+  # only call this function on a FinalState ProvTree
+  def create_pydot_graph( self, fmla_index, iter_count, additional_str ) :
 
-    global_data.total_number_of_descendants += 1
-    logging.debug( "  SPAWN GOAL : spawning descendant number " + str( global_data.total_number_of_descendants ) )
+    if not self.rootname == "FinalState" :
+      tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : calling create_pydot_graph on non-FinalState. aborrting." )
 
-    descendant_str = "goal->" + name + "(" + str( seedRecord ) + ")"
-    global_data.total_descendant_list.append( descendant_str )
-    logging.debug( "  SPAWN GOAL : spawning descendant " + descendant_str )
+    # -------------------------------- #
+    # generate and output pydot graph
 
-    newSubTree = DerivTree.DerivTree( name, None, "goal", False, None, seedRecord, self.parsedResults, self.level, self.cursor )
-    self.subtrees.append( newSubTree )
+    #graph           = pydot.Dot( graph_type = 'digraph', strict=True ) # strict => ignore duplicate edges
+    graph           = pydot.Dot( graph_type = 'digraph' ) # strict => ignore duplicate edges
+    graph_save_path = IMGSAVEPATH + "/provtree_render_fmla" + str( fmla_index ) + "_iter" + str(iter_count)
+    if additional_str :
+      graph_save_path += additional_str
 
-
-  #################
-  #  MERGE TREES  #
-  #################
-  # old_provTree := a ProvTree instance
-  def mergeTrees( self, old_provTree ) :
-
-    # define structure of the new merged tree
-    merged_name          = self.rootname
-    merged_subtrees      = self.subtrees.extend( old_provTree.subtrees )
-    merged_parsedResults = self.parsedResults.extend( old_provTree.parsedResults )
-    merged_cursor        = self.cursor
-
-    # instantiate new ProvTree
-    provTree_merged = ProvTree( self.rootname, merged_name, merged_parsedResults, merged_cursor )
-
-    # manually construct subtrees for new merged instance
-    provTree_merged.subtrees = merged_subtrees
-
-    sys.exit( "provTree_merged.subtrees = " + str(provTree_merged.subtrees) )
-
-    return provTree_merged
-
-
-  ##############################
-  #  GENERATE TREE SIMPLIFIED  #
-  ##############################
-  # output a SimpTree object
-  def generate_SimpTree( self ) :
-
-    # ------------------------------------------------ #
-    # grab the set of unique edges in the original
-    # provenance tree.
-    edges = self.getAllUniqueEdges()
-
-    #tools.bp( __name__, inspect.stack()[0][3], "num unique edges = " + str( len(edges) ) )
-
-    # ------------------------------------------------ #
-    # model the edges in a SimpTree object.
-    simpTree = SimpTree.SimpTree( None, edges )
-
-    return simpTree
-
-
-  ##########################
-  #  GET ALL UNIQUE EDGES  #
-  ##########################
-  def getAllUniqueEdges( self ) :
-
-    uniqueEdgeList = []
-
-    # ---------------------------------------- #
-    # use pydot to prep graph components
-    edges = []
-
-    provRootNode = pydot.Node( self.rootname, shape='doublecircle', margin=0 )
-
-    for tree in self.subtrees :
-      edges.append( pydot.Edge( provRootNode, provTools.createNode( tree.root ) ) )
-      topology = tree.getTopology( )
-
-      # node/edge postprocessing
-      topology = self.processTopo( topology )
-
-      edges.extend( topology[1] )
-
-    clean_edgeList = []
-    for edge in edges :
-      src = edge.get_source()
-      src = src.replace( "'", "" )
-      src = src.replace( '"', "" )
-      src = src.translate( None, string.whitespace )
-
-      des = edge.get_destination()
-      des = des.replace( "'", "" )
-      des = des.replace( '"', "" )
-      des = des.translate( None, string.whitespace )
-
-      clean_edgeList.append( [ src, des ] )
-
-    for e in clean_edgeList :
-      if not self.isDuplicate( e, uniqueEdgeList ) :
-        uniqueEdgeList.append( e )
-
-    return uniqueEdgeList
-
-
-  ##################
-  #  IS DUPLICATE  #
-  ##################
-  def isDuplicate( self, edge, edgeList ) :
-
-    flag = False
-    for e in edgeList :
-      src = e[0]
-      des = e[1]
-
-      if src == edge[0] and des == edge[1] :
-        flag = True
-
-    return flag
-
- 
-  ##################
-  #  CREATE GRAPH  #
-  ##################
-  # save image file, no return value
-  def createGraph( self, addNameInfo, fmla_index, iter_count, argDict ) :
-
-    logging.debug( "... running createGraph ..." )
-    logging.debug( "subtrees   = " + str( self.subtrees ) )
-    logging.debug( "iter_count = " + str( iter_count ) )
-  
-    graph = pydot.Dot( graph_type = 'digraph', strict=True ) # strict => ignore duplicate edges
-
-    #path  = IMGSAVEPATH + "/provtree_render_" + str(time.strftime("%d-%m-%Y")) + "_" + str( time.strftime( "%H"+"hrs-"+"%M"+"mins-"+"%S" +"secs" )) + "_" + str(iter_count)
-    path  = IMGSAVEPATH + "/provtree_render_fmla" + str( fmla_index ) + "_iter" + str(iter_count)
-
-    # example: add "_buggyGraph" to the end of the name
-    if addNameInfo :
-      path += "_" + addNameInfo
-
-    nodes = []
-    edges = []
-
-    # add prov tree root
-    provRootNode = pydot.Node( self.rootname, shape='doublecircle', margin=0 )
-    nodes.append( provRootNode )
-
-    for tree in self.subtrees :
-      edges.append( pydot.Edge( provRootNode, provTools.createNode( tree.root ) ) )
-      topology = tree.getTopology( )
-
-      # node/edge postprocessing
-      topology = self.processTopo( topology )
-
-      nodes.extend( topology[0] )
-      edges.extend( topology[1] )
-
-    logging.debug( "... in createGraph :"  )
-    logging.debug( "nodes : " + str(len(nodes)) )
-    for i in range(0,len(nodes)) :
-      logging.debug( "node#" + str(i) + " : " + str(nodes[i]) )
-    logging.debug( "edges : " + str(len(edges)) )
-    for i in range(0,len(edges)) :
-      logging.debug( "edge#" + str(i) + " : " + str(edges[i]) )
-
-    # set attributes
-    self.nodeset = nodes
-    self.edgeset = edges
-
-    # <><><><><><><><><><><><><><><><><><><><><><> #
-    # print an audit of tree nodes and edges
-    logging.debug( "/////////////////////////" )
-    logging.debug( "rootname is " + self.rootname )
-    logging.debug( "num subtrees = " + str( len(self.subtrees) ) )
-    logging.debug( "num nodes    = " + str( len(nodes) ) )
-    logging.debug( "num edges    = " + str( len(edges) ) )
-
-    #edgeCountMap = {}
-    #for edge in self.edgeset :
-    #  count = 0
-    #  for e in self.edgeset :
-    #    if e.to_string() == edge.to_string() :
-    #      count += 1
-    #  edgeCountMap[ edge.to_string() ] = count
-    #for edge in edgeCountMap :
-    #  print edge + " : " + str( edgeCountMap[edge] )
-
-    #print "-----------------------"
-
-    #countMap = {}
-    #for node in self.nodeset :
-    #  count = 0
-    #  for n in self.nodeset :
-    #    if n.to_string() == node.to_string() :
-    #      count += 1
-    #  countMap[ node.to_string() ] = count
-    #for node in countMap :
-    #  print node + " : " + str( countMap[node] )
-
-    logging.debug( "/////////////////////////" )
-    #tools.bp( __name__, inspect.stack()[0][3], "stophere" )
-    # <><><><><><><><><><><><><><><><><><><><><><> #
-
-    # -------------------------------------------------------- #
-    # create graph png
-
-    # add nodes :
-    for n in nodes :
+    for n in self.nodeset_pydot :
       graph.add_node( n )
-    # add edges
-    for e in edges :
+
+    for e in self.edgeset_pydot :
       graph.add_edge( e )
 
-    logging.info( "Saving prov tree render to " + str( path ) )
-    graph.write_png( path + ".png" )
-    #tools.bp( __name__, inspect.stack()[0][3], "sanity check graph before proceeding." )
+    logging.info( "Saving prov tree render to " + str( graph_save_path + ".png" ), )
+    graph.write_png( graph_save_path + ".png" )
+    logging.debug( "...done." )
 
-    # -------------------------------------------------------- #
-    # save graph data to file
+    # -------------------------------- #
+    # generate stats about the graph
 
-    if tools.getConfig( argDict[ "settings" ], "DEFAULT", "SERIAL_GRAPH", bool ) == True :
+    graph_stats                = {}
+    graph_stats[ "num_nodes" ] = len( self.nodeset_pydot )
+    graph_stats[ "num_edges" ] = len( self.edgeset_pydot )
 
-      self.serial_nodes = []
-      self.serial_edges = []
+    try :
+      if tools.getConfig( self.argDict[ "settings" ], "DEFAULT", "SERIAL_GRAPH", bool ) == True :
+        self.save_serial_graph( fmla_index, iter_count, additional_str )
+    except KeyError :
+      logging.info( "not outputting graph data." )
 
-      serial_path  = IMGSAVEPATH + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + ".txt"
-      logging.info( "Saving prov tree graph data to " + str( serial_path ) )
+    return graph_stats
+
+
+  #######################
+  #  SAVE SERIAL GRAPH  #
+  #######################
+  # save the nodes and edges of the graph to file.
+  def save_serial_graph( self, fmla_index, iter_count, additional_str ) :
+
+      serial_path  = IMGSAVEPATH + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + "_" + additional_str + ".txt"
+      logging.info( "Saving prov tree graph data to " + str( serial_path ), )
 
       fo = open( serial_path, "w" )
 
       fo.write( "[NODES]\n" )
-      for n in nodes :
-        serial_node = "pydot.Node(" + str( n.get_name() ) + ")"
-        self.serial_nodes.append( serial_node )
-        fo.write( serial_node + "\n" )
+      for n in self.final_state_ptr.nodeset_pydot_str :
+        fo.write( n + "\n" )
 
       fo.write( "[EDGES]\n" )
-      for e in edges :
-        serial_edge = "pydot.Edge(" + str( e.get_source() ) + "," + str( e.get_destination() ) + ")"
-        self.serial_edges.append( serial_edge )
-        fo.write( serial_edge + "\n" )
+      for e in self.final_state_ptr.edgeset_pydot_str :
+        fo.write( e + "\n" )
 
       fo.close()
 
-
-  #####################
-  #  GET TREE HEIGHT  #
-  #####################
-  # input pydot edgeset, which is a list of pydot node maps
-  # output the height of tree
-  def get_tree_height( self ) :
-
-    logging.debug( "  GET TREE HEIGHT : running getHeight..." )
-
-    edgeset = self.get_edges()
-
-    rootName    = edgeset[0][0] # first edge in pydot has src root.
-    tree_height = self.get_tree_height_helper( rootName, edgeset )
-
-    return tree_height
+      logging.debug( "...done." )
 
 
-  ############################
-  #  GET TREE HEIGHT HELPER  #
-  ############################
-  def get_tree_height_helper( self, rootName, edgeset ) :
+  #########################
+  #  GENERATE GRAPH DATA  #
+  #########################
+  # generate the data necessary to represent this ProvTree
+  # in a pydot graph.
+  def generate_graph_data( self ) :
 
-    logging.debug( "  GET TREE HEIGHT HELPER : running process..." )
-    logging.debug( "  GET TREE HEIGHT HELPER : rootName = " + rootName )
+    logging.debug( "  GENERATE GRAPH DATA : running process..." )
+    logging.debug( "  GENERATE GRAPH DATA : self.rootname = " + self.rootname )
+    logging.debug( "  GENERATE GRAPH DATA : self.treeType = " + self.treeType )
 
-    # check if rootName is a leaf
-    rootNameAppearsAsSrc = False
-    for edge in edgeset :
-      src = edge[0]
-      if rootName == src :
-        rootNameAppearsAsSrc = True
+    # -------------------------------- #
+    # build node
+    this_node_pydot     = self.create_pydot_node( self.__str__(), self.curr_node.treeType )
+    this_node_pydot_str = self.get_pydot_str( this_node_pydot )
 
-    # leaf subgraphs 
-    if not rootNameAppearsAsSrc :
-      return 1
+    logging.debug( "  GENERATE GRAPH DATA : this_node_pydot_str = " + this_node_pydot_str )
+
+    # add to final_state accumulation structure
+    self.final_state_ptr.nodeset_pydot.append( this_node_pydot )
+    self.final_state_ptr.nodeset_pydot_str.append( this_node_pydot_str )
+
+    # -------------------------------- #
+    # handle FinalState
+
+    if self.rootname == "FinalState" :
+
+      for d in self.descendants :
+
+        goalName = d.rootname
+        rec      = d.record
+
+        descendant_str        = "goal->" + goalName + "(" + str( rec ) + ")"
+        descendant_node_pydot = self.create_pydot_node( descendant_str, "goal" )
+        this_edge_pydot       = self.create_pydot_edge( this_node_pydot, descendant_node_pydot )
+        this_edge_pydot_str   = self.get_pydot_str( this_edge_pydot )
+
+        logging.debug( "  GENERATE GRAPH DATA : adding this_edge_pydot_str = " + this_edge_pydot_str )
+
+        self.final_state_ptr.edgeset_pydot.append( this_edge_pydot )
+        self.final_state_ptr.edgeset_pydot_str.append( this_edge_pydot_str )
 
     else :
-      desList = []
-      for edge in edgeset :
-        src = edge[0]
-        des = edge[1]
-        if rootName == src :
-          desList.append( des )
 
-      heightMap = []
-      for des in desList :
-        des_height = self.get_tree_height_helper( des, edgeset )
-        heightMap.append( [ des, des_height ] )
+      # -------------------------------- #
+      # build edges
+      # use descendant meta data to build pydot edges 
+      # between the current node and descendant nodes 
+      # w/o requiring the generation of ProvTree objects 
+      # for the descendants.
 
-      maxDepth = 0
-      for h in heightMap :
-        if h[1] > maxDepth :
-          maxDepth = h[1]
+      # CASE : this is a goal node
+      #        spawn rules only.
+      if self.treeType == "goal" :
 
-      if rootName == "FinalState" :
-        return maxDepth
+        for prov_id in self.curr_node.descendant_meta :
+          d_meta = self.curr_node.descendant_meta[ prov_id ]
+          logging.debug( "  GENERATE GRAPH DATA : d_meta = " + str( d_meta ) )
 
-      else :
-        return maxDepth + 1
+          goalName    = d_meta[ "goalName" ]
+          triggerData = d_meta[ "triggerData" ]
+
+          # need one rule descendant per provenance trigger
+          for rec in triggerData :
+
+            descendant_str        = "rule->" + goalName + "(" + str( rec ) + ")"
+            descendant_node_pydot = self.create_pydot_node( descendant_str, "goal" )
+            this_edge_pydot       = self.create_pydot_edge( this_node_pydot, descendant_node_pydot )
+            this_edge_pydot_str   = self.get_pydot_str( this_edge_pydot )
+
+            self.final_state_ptr.edgeset_pydot.append( this_edge_pydot )
+            self.final_state_ptr.edgeset_pydot_str.append( this_edge_pydot_str )
+
+            logging.debug( "  GENERATE GRAPH DATA : adding this_edge_pydot_str = " + this_edge_pydot_str )
+
+      # CASE : this is a rule node
+      #        spawn goals or facts only.
+      elif self.treeType == "rule" :
+
+        for d_meta in self.curr_node.descendant_meta :
+          logging.debug( "  GENERATE GRAPH DATA : d_meta = " + str( d_meta ) )
+
+          descendant_goalName      = d_meta[ "node_name" ]
+          descendant_polarity      = d_meta[ "polarity" ]
+          descendant_triggerRecord = d_meta[ "triggerRecord" ]
+          descendant_treeType      = d_meta[ "treeType" ]
+
+          if descendant_treeType == "goal" :
+            if descendant_polarity == "notin" :
+              descendant_str = "goal->" + "_NOT_" + descendant_goalName + "(" + str( descendant_triggerRecord ) + ")"
+            else :
+              descendant_str = "goal->" + descendant_goalName + "(" + str( descendant_triggerRecord ) + ")"
+            descendant_node_pydot = self.create_pydot_node( descendant_str, "goal" )
+
+            # need this shit in both locations???
+            this_edge_pydot     = self.create_pydot_edge( this_node_pydot, descendant_node_pydot )
+            this_edge_pydot_str = self.get_pydot_str( this_edge_pydot )
+            self.final_state_ptr.edgeset_pydot.append( this_edge_pydot )
+            self.final_state_ptr.edgeset_pydot_str.append( this_edge_pydot_str )
+
+            logging.debug( "  GENERATE GRAPH DATA : adding this_edge_pydot_str = " + this_edge_pydot_str )
+
+          else : # is a fact
+            if descendant_polarity == "notin" :
+              descendant_str = "fact->" + "_NOT_" + descendant_goalName + "(" + str( descendant_triggerRecord ) + ")"
+            else :
+              descendant_str = "fact->" + descendant_goalName + "(" + str( descendant_triggerRecord ) + ")"
+            descendant_node_pydot = self.create_pydot_node( descendant_str, "fact" )
+
+            this_edge_pydot     = self.create_pydot_edge( this_node_pydot, descendant_node_pydot )
+            this_edge_pydot_str = self.get_pydot_str( this_edge_pydot )
+            self.final_state_ptr.edgeset_pydot.append( this_edge_pydot )
+            self.final_state_ptr.edgeset_pydot_str.append( this_edge_pydot_str )
+            logging.debug( "  GENERATE GRAPH DATA : adding this_edge_pydot_str = " + this_edge_pydot_str )
+
+    logging.debug( "  GENERATE GRAPH DATA : ...done." )
 
 
-  ###############
-  #  GET EDGES  #
-  ###############
-  # extract the edges from string representation.
-  # return an array of binary arrays.
-  def get_edges( self ) :
+  ######################
+  #  GENERATE SUBTREE  #
+  ######################
+  # spawn prov trees on descendant nodes
+  # do not generate new subtrees from descendants if the descendant 
+  # already exists in the graph
+  def generate_subtree( self ) :
 
-    logging.debug( "  GET EDGES : running process..." )
+    # -------------------------------- #
+    # CASE : this tree is a goal. 
+    #        goals spawn rules only.
+    #
+    # node descendant meta :
+    # { prov_rid : { goalName    : <string>,
+    #                triggerData : <array of strings/ints> }, ... }
 
-    edge_list = []
+    if self.treeType == "goal" :
 
-    for e in self.serial_edges :
-      e = e.replace( "pydot.Edge(", "" )
-      e = e[:-1]
-      e = e.replace( '"', "" )
+      # iterate over provenance rules
+      for prov_rid in self.curr_node.descendant_meta :
 
-      if e.startswith( "FinalState," ) :
-        src = "FinalState"
-        des = e[11:]
-      else :
-        src = e.split( ")," )[0] + ")"
-        des = e.split( ")," )[1]
+        # iterate over the trigger records from the provenance
+        for trig_rec in self.curr_node.descendant_meta[ prov_rid ][ "triggerData" ] :
 
-      logging.debug( "  GET EDGES : adding edge  : " + str( [ src, des ] ) )
-      edge_list.append( [ src, des ] )
+          # CASE : yes wildcards in the trigger record
+          if self.is_wildcard_record( trig_rec ) :
+            sys.exit( "blah" )
 
-    return edge_list
+          # CASE : no wildcards in the trigger record
+          else :
+            goalName    = self.curr_node.descendant_meta[ prov_rid ][ "goalName" ]
+            polarity    = None
+            subtreeType = "rule"
 
+            # do not create another ProvTree for the descendant if the descendant already exists.
+            # just update the existing node's parents.
+            # keep the meta data for when generating graph edges, though.
+            if self.already_incorporated_into_graph( goalName, polarity, trig_rec, subtreeType ) :
 
-  ##################
-  #  PROCESS TOPO  #
-  ##################
-  def processTopo( self, topology ) :
+              # get descendant meta
+              descendant_node_str = self.get_node_string( goalName, polarity, trig_rec, subtreeType )
+              existing_descendant = self.final_state_ptr.node_str_to_object_map[ descendant_node_str ]
 
-    logging.debug( "topology    = " + str( topology ) )
-    logging.debug( "topology[0] = " + str( topology[0] ) )
-    logging.debug( "topology[1] = " + str( topology[1] ) )
-    for node in topology[0] :
-      logging.debug( str( node.get_name() ) )
-    for edge in topology[1] :
-      logging.debug( "src  = " + str( edge.get_source() ) )
-      logging.debug( "dest =" + str( edge.get_destination() ) )
+              # update parents of existing descendant
+              if existing_descendant.treeType == "rule" :
+                pass # not applicable on rules because rules can have only one parent.
+              else :
+                existing_descendant.parents.append( self )
 
-    #topology = self.suppressDomNodes( topology )
+            else :
+  
+              goalName    = self.curr_node.descendant_meta[ prov_rid ][ "goalName"    ]
+              triggerData = self.curr_node.descendant_meta[ prov_rid ][ "triggerData" ]
+  
+              for record in triggerData :
+  
+                new_subtree = ProvTree( rootname        = goalName, \
+                                        final_state_ptr = self.final_state_ptr, \
+                                        parsedResults   = self.parsedResults, \
+                                        cursor          = self.cursor, \
+                                        db_id           = prov_rid, \
+                                        treeType        = "rule", \
+                                        record          = record, \
+                                        parent          = self, \
+                                        eot             = self.eot )
+  
+                self.descendants.append( new_subtree )
 
-    return topology
+    # -------------------------------- #
+    # CASE : this tree is a rule. 
+    #        rules spawn goals or facts.
+    #
+    # node descendant meta :
+    # [ { 'treeType'      : "goal" | "fact",
+    #     'node_name'     : <string>,
+    #     'triggerRecord' : <string>,
+    #     'polarity'      : "notin" | "",
+    #   }, ... ]
+
+    elif self.treeType == "rule" :
+
+      for d_meta in self.curr_node.descendant_meta :
+
+        logging.debug( "  GENERATE SUBTREE : d_meta = " + str( d_meta ) )
+
+        goalName    = d_meta[ "node_name" ]
+        polarity    = d_meta[ "polarity" ]
+        subtreeType = d_meta[ "treeType" ]
+        trig_rec    = d_meta[ "triggerRecord" ]
+
+        # do not create another ProvTree for the descendant if the descendant already exists.
+        # just update the existing node's parents.
+        # keep the meta data for when generating graph edges, though.
+        if self.already_incorporated_into_graph( goalName, polarity, trig_rec, subtreeType ) :
+
+          # get descendant meta
+          descendant_node_str = self.get_node_string( goalName, polarity, trig_rec, subtreeType )
+          existing_descendant = self.final_state_ptr.node_str_to_object_map[ descendant_node_str ]
+
+          # update parents of existing descendant
+          existing_descendant.parents.append( self )
+
+        else :
+
+          treeType      = d_meta[ "treeType" ]
+          node_name     = d_meta[ "node_name" ]
+          triggerRecord = d_meta[ "triggerRecord" ]
+          polarity      = d_meta[ "polarity" ]
+  
+          if polarity == "notin" :
+            isNeg = True
+          else :
+            isNeg = False
+  
+          # CASE : spawn a goal
+          if treeType == "goal" :
+            new_subtree = ProvTree( rootname        = node_name, \
+                                    final_state_ptr = self.final_state_ptr, \
+                                    parsedResults   = self.parsedResults, \
+                                    cursor          = self.cursor, \
+                                    treeType        = "goal", \
+                                    record          = triggerRecord, \
+                                    isNeg           = isNeg, \
+                                    parent          = self, \
+                                    eot             = self.eot )
+  
+          # CASE : spawn a fact
+          elif treeType == "fact" :
+            new_subtree = ProvTree( rootname        = node_name, \
+                                    final_state_ptr = self.final_state_ptr, \
+                                    parsedResults   = self.parsedResults, \
+                                    cursor          = self.cursor, \
+                                    treeType        = "fact", \
+                                    record          = triggerRecord, \
+                                    isNeg           = isNeg, \
+                                    parent          = self, \
+                                    eot             = self.eot )
+  
+          # CASE : wtf??? 
+          else :
+            tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : treeType not recognized '" + treeType + "'" )
+  
+          self.descendants.append( new_subtree )
+
+    # -------------------------------- #
+    # CASE : this tree is a fact. 
+    #        facts spawn nothing.
+
+    else :
+      pass
 
 
   ########################
-  #  SUPPRESS DOM NODES  #
+  #  IS WILDCARD RECORD  #
   ########################
-  def suppressDomNodes( self, topology ) :
+  # check if the input record contains a wildcard.
+  # return boolean.
+  def is_wildcard_record( self, trig_rec ) :
+    logging.debug( "  IS WILDCARD RECORD : trig_rec = " + str( trig_rec ) )
 
-    processed_nodeset = []
-    processed_edgeset = []
+    if "_" in trig_rec :
+      logging.debug( "  IS WILDCARD RECORD : returning True" )
+      return True
+    else :
+      logging.debug( "  IS WILDCARD RECORD : returning False" )
+      return False
 
-    orig_nodeset = topology[0]
-    orig_edgeset = topology[1]
 
-    # nodes are pydot objects.
-    # get_name also pulls quotation marks.
-    for node in orig_nodeset :
-      if not node.get_name().startswith( "goal->dom_" ) and not destinationNode.startswith( "goal->domcomp__" ) :
-        processed_nodeset.append( node )
+  #####################################
+  #  ALREADY INCORPORATED INTO GRAPH  #
+  #####################################
+  # check if the descendant node already exists in the graph
+  def already_incorporated_into_graph( self, goalName, polarity, trig_rec, subtreeType ) :
+
+    logging.debug( "  ALREADY INCORPORATED INTO GRAPH : running process..." )
+    logging.debug( "  ALREADY INCORPORATED INTO GRAPH : goalName    = " + goalName )
+    logging.debug( "  ALREADY INCORPORATED INTO GRAPH : polarity    = " + str( polarity ) )
+    logging.debug( "  ALREADY INCORPORATED INTO GRAPH : trig_rec    = " + str( trig_rec ) )
+    logging.debug( "  ALREADY INCORPORATED INTO GRAPH : subtreeType = " + subtreeType )
+    logging.debug( "  ALREADY INCORPORATED INTO GRAPH : self.final_state_ptr.node_str_to_object_map = " + \
+                      str( self.final_state_ptr.node_str_to_object_map ) )
+
+    flag = False
+
+    if subtreeType == "rule" :
+      rule_str_to_check = self.get_node_string( goalName, polarity, trig_rec, subtreeType )
+      if rule_str_to_check in self.final_state_ptr.node_str_to_object_map :
+        flag = True
+
+    elif subtreeType == "goal" :
+      goal_str_to_check = self.get_node_string( goalName, polarity, trig_rec, subtreeType )
+      if goal_str_to_check in self.final_state_ptr.node_str_to_object_map :
+        flag = True
+
+    elif subtreeType == "fact" :
+      fact_str_to_check = self.get_node_string( goalName, polarity, trig_rec, subtreeType )
+      if fact_str_to_check in self.final_state_ptr.node_str_to_object_map :
+        flag = True
+
+    else :
+      tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : unrecognized descendant type '" + subtreeType + "'" )
+
+    logging.debug( "  ALREADY INCORPORATED INTO GRAPH : ...done." )
+
+    return flag
+
+
+  #####################
+  #  GET NODE STRING  #
+  #####################
+  # derive the expected string for the node
+  def get_node_string( self, goalName, polarity, trig_rec, subtreeType ) :
+
+    if subtreeType == "rule" :
+      node_str = "rule->" + goalName + "(" + str( trig_rec ) + ")"
+
+    elif subtreeType == "goal" :
+      if polarity == "notin" :
+        node_str = "goal->" + "_NOT_" + goalName + "(" + str( trig_rec ) + ")" 
       else :
-        #print "<><><>deleted node " + str( node.get_name() )
-        continue
+        node_str = "goal->" + goalName + "(" + str( trig_rec ) + ")" 
 
-    # edges are pydot objects.
-    # get_source and get_destination also pull quotation marks.
-    for edge in orig_edgeset :
-      sourceNode      = edge.get_source()
-      destinationNode = edge.get_destination()
-      if not sourceNode.startswith( "goal->dom_" ) :
-        processed_edgeset.append( edge )
+    elif subtreeType == "fact" :
+      if polarity == "notin" :
+        node_str = "fact->" + "_NOT_" + goalName + "(" + str( trig_rec ) + ")" 
       else :
-        #print "<><><>deleted edge (" + sourceNode + "," + destinationNode + ")"
-        continue
+        node_str = "fact->" + goalName + "(" + str( trig_rec ) + ")" 
 
-    return ( processed_nodeset, processed_edgeset )
+    else :
+      tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : unrecognized descendant type '" + subtreeType + "'" )
+
+    return node_str
+
+
+
+  ########################
+  #  GENERATE CURR NODE  #
+  ########################
+  # generate the current node for the root of this ProvTree.
+  def generate_curr_node( self ) :
+
+    logging.debug( "  GENERATE CURR NODE : running process..." )
+    logging.debug( "    name     = " + self.rootname )
+    logging.debug( "    isNeg    = " + str( self.isNeg ) )
+    logging.debug( "    treeType = " + self.treeType )
+
+    # -------------------------------- #
+    # CASE : goal node
+
+    if self.treeType == "goal" :
+      self.curr_node = GoalNode.GoalNode( name          = self.rootname, \
+                                          isNeg         = self.isNeg, \
+                                          record        = self.record, \
+                                          parsedResults = self.parsedResults, \
+                                          cursor        = self.cursor )
+
+    # -------------------------------- #
+    # CASE : rule node
+
+    elif self.treeType == "rule" :
+      self.curr_node = RuleNode.RuleNode( rid           = self.db_id, \
+                                          name          = self.rootname, \
+                                          record        = self.record, \
+                                          parsedResults = self.parsedResults, \
+                                          cursor        = self.cursor )
+
+    # -------------------------------- #
+    # CASE : fact node
+    elif self.treeType == "fact" :
+      self.curr_node = FactNode.FactNode( name          = self.rootname, \
+                                          isNeg         = self.isNeg, \
+                                          record        = self.record, \
+                                          parsedResults = self.parsedResults, \
+                                          cursor        = self.cursor )
+
+    # -------------------------------- #
+    else :
+      tools.bp( __name__, inspect.stack()[0][3], "  GENERATE CURR NODE : FATAL ERROR : unrecognized tree type '" + self.treeType + "'" )
+
+    logging.debug( "  GENERATE CURR NODE : ...done." )
+
+  ###################
+  #  GENERATE TREE  #
+  ###################
+  # generate a tree given the parsed results.
+  # should only run on node FinalState
+  def generate_tree( self ) :
+
+    # -------------------------------- #
+    # create the current node.
+
+    self.curr_node = GoalNode.GoalNode( name          = self.rootname, \
+                                        isNeg         = False, \
+                                        parsedResults = self.parsedResults, \
+                                        cursor        = self.cursor )
+
+    # -------------------------------- #
+    # create the descendant node(s)
+
+    post_eot = self.get_post_eot()
+
+    # break early if no post records at eot.
+    if not len( post_eot ) > 0 :
+      tools.bp( __name__, inspect.stack()[0][3], "  GENERATE TREE : FATAL ERROR : no eot post records. aborting." )
+
+    for rec in post_eot :
+      self.descendants.append( ProvTree( rootname        = "post",             \
+                                         final_state_ptr = self.final_state_ptr, \
+                                         parsedResults   = self.parsedResults, \
+                                         cursor          = self.cursor,        \
+                                         db_id           = None,               \
+                                         treeType        = "goal",             \
+                                         isNeg           = False,              \
+                                         provAttMap      = {},                 \
+                                         record          = rec,                 \
+                                         eot             = self.eot,           \
+                                         parent          = self ) )
 
 
   ##################
-  #  GET EDGE SET  #
+  #  GET POST EOT  #
   ##################
-  # grab the complete list of edges for a prov tree
-  # use for equality comparisons
-  def getEdgeSet( self ) :
-    logging.debug( "... running getEdgeSet ..." )
-    logging.debug( "subtrees = " + str( self.subtrees ) )
+  # extract the post results for eot only.
+  # return as a list.
+  def get_post_eot( self ) :
 
-    edgeSet = []
+    logging.debug( "  GET POST EOT : running process..." )
+    logging.debug( "  GET POST EOT : eot = " + str( self.eot ) )
 
-    for tree in self.subtrees :
-      edgeSet.append( ( self.rootname, str( tree.root ) ) )
-      edgeSet.extend( tree.getTopology_edgeSet() )
+    post_eot = []
 
-    return edgeSet
+    try :
+      for rec in self.parsedResults[ "post" ] :
+ 
+        logging.debug( "  GET POST EOT : rec = " + str( rec ) )
+ 
+        # collect eot post records only
+        if int( rec[-1] ) == int( self.eot ) :
+          post_eot.append( rec )
+
+    except KeyError :
+      logging.info( "  GET POST EOT : no eot post records." )
+
+    logging.debug( "  GET POST EOT : post_eot = " + str( post_eot ) )
+
+    return post_eot
+
+
+  #######################
+  #  CREATE PYDOT NODE  #
+  #######################
+  # return a pydot node
+  def create_pydot_node( self, node_str, node_type ) :
+  
+    if node_type == "goal" :
+      thisNode = pydot.Node( node_str, shape='oval' )
+  
+    elif node_type == "rule" :
+      thisNode = pydot.Node( node_str, shape='box' )
+  
+    elif node_type == "fact" :
+      thisNode = pydot.Node( node_str, shape='cylinder' )
+  
+    else :
+      sys.exit( "********************\n********************\n \
+                FATAL ERROR in file " + __name__ + \
+                " in function " + \
+                inspect.stack()[0][3] + \
+                " :\nUnrecognized treeType" + \
+                str( node_type ) )
+  
+    return thisNode
+
+
+  #######################
+  #  CREATE PYDOT EDGE  #
+  #######################
+  # return a pydot edge
+  def create_pydot_edge( self, src_pydot_node, dest_pydot_node ) :
+    return pydot.Edge( src_pydot_node, dest_pydot_node )
+
+
+  ###################
+  #  GET PYDOT STR  #
+  ###################
+  # generate an informative string 
+  # version of the input pydot object
+  def get_pydot_str( self, pydot_obj ) :
+
+    if type( pydot_obj ) is pydot.Node :
+      return "pydot.Node(" + pydot_obj.get_name() + ")"
+    else :
+      return "pydot.Edge(" + pydot_obj.get_source() + "," + pydot_obj.get_destination() + ")"
+
+
 
 #########
 #  EOF  #

@@ -1,9 +1,0 @@
-
-b("a")@1 ;
-c("a")@1 ;
-
-a( X, "STUFF" ) :- b( X ), c( X ) ;
-a( X, Y )@next :- a( X, Y ) ;
-
-pre(X) :- a(X,Y) ;
-post(X) :- pre(X) ;
