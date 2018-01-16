@@ -106,7 +106,11 @@ class ProvTree( object ) :
     logging.debug( "self.eot             = " + str( self.eot ) )
     logging.debug( "self.parents         = " + str( self.parents ) )
     logging.debug( "self                 = " + str( self        ) )
-    logging.debug( "==================================" )
+    if not self.rootname == "FinalState" and self.final_state_ptr :
+      logging.debug( "self.final_state_ptr.node_str_to_object_map = \n" + str( self.final_state_ptr.node_str_to_object_map ) )
+      logging.debug( "==================================" )
+    else :
+      logging.debug( "==================================" )
 
     # for qa testing :
     if self.rootname == "__KD__TESTNODE__KD__" :
@@ -117,7 +121,7 @@ class ProvTree( object ) :
     # CASE : node is the FinalState 
     #        root
 
-    if rootname == "FinalState" :
+    if self.rootname == "FinalState" :
 
       # set the final_state_ptr
       self.final_state_ptr = self
@@ -132,10 +136,9 @@ class ProvTree( object ) :
 
     else :
       self.generate_curr_node()
-      self.generate_subtree()
-
       if self.final_state_ptr :
         self.final_state_ptr.node_str_to_object_map[ self.__str__() ] = self # add this node to the final state map
+      self.generate_subtree()
 
     # -------------------------------- #
     if not self.rootname == "__TestNode__" :  # for qa tests

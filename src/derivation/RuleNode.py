@@ -118,8 +118,29 @@ class RuleNode( Node ) :
 
     for i in range( 0, len( goal_atts ) ) :
       gatt                 = goal_atts[ i ]
-      data                 = self.record[ i ]
-      gatt_to_data[ gatt ] = data
+
+      if self.contains_agg( gatt ) :
+        op         = self.get_op( gatt )
+        lhs        = self.get_lhs( gatt )
+        clean_gatt = self.get_clean_gatt( gatt )
+        raw_data   = self.record[ i ]
+
+        if op == "+" :
+          real_data = str( int( raw_data ) - int( lhs ) )
+        elif op == "-" :
+          real_data = str( int( raw_data ) + int( lhs ) )
+        elif op == "*" :
+          real_data = str( int( raw_data ) / int( lhs ) )
+        elif op == "/" :
+          real_data = str( int( raw_data ) * int( lhs ) )
+        else :
+          tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : unrecognized op '" + op + "'" )
+
+        gatt_to_data[ clean_gatt ] = real_data
+
+      else :
+        data                 = self.record[ i ]
+        gatt_to_data[ gatt ] = data
 
     logging.debug( "  GENERATE DESCENDANT META : gatt_to_data = " + str( gatt_to_data ) )
 
@@ -233,6 +254,60 @@ class RuleNode( Node ) :
       d[ "polarity" ]      = polarity
 
       self.descendant_meta.append( d )
+
+
+  ##################
+  #  CONTAINS AGG  #
+  ##################
+  # check if the input goal attribute
+  # contains an aggregate operator.
+  def contains_agg( self, gatt ) :
+    ops = [ "+", "-", "*", "/" ]
+    for op in ops :
+      if op in gatt :
+        return True
+    return False
+
+
+  ############
+  #  GET OP  #
+  ############
+  # grab the operation from the goal attribute string
+  def get_op( self, gatt ) :
+    if "+" in gatt :
+      return "+"
+    elif "-" in gatt :
+      return "-"
+    elif "*" in gatt :
+      return "*"
+    elif "/" in gatt :
+      return "/"
+    else :
+      return "NO_OP"
+
+
+  #############
+  #  GET LHS  #
+  #############
+  # grab the lhs from the goal attribute string
+  def get_lhs( self, gatt ) :
+    ops = [ "+", "-", "*", "/" ]
+    for i in range( 0, len( gatt ) ) :
+      if gatt[ i ] in ops :
+        return gatt[ i+1 : ]
+    return gatt
+
+
+  ####################
+  #  GET CLEAN GATT  #
+  ####################
+  # grab the goal attribute
+  def get_clean_gatt( self, gatt ) :
+    ops = [ "+", "-", "*", "/" ]
+    for i in range( 0, len( gatt ) ) :
+      if gatt[ i ] in ops :
+        return gatt[ : i ]
+    return gatt
 
 
   ####################################
