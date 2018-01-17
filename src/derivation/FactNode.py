@@ -123,10 +123,30 @@ class FactNode( Node ) :
         logging.debug( "self.record = " + str( self.record ) )
         logging.debug( "fact == self.record is" + str( fact == self.record ) )
   
-        if fact == self.record :
+        #if fact == self.record : # does not handle wildcards
+        if self.is_match( fact ) :
           return True
 
     return False # otherwise, return false
+
+
+  ##############
+  #  IS MATCH  #
+  ##############
+  # check if the input fact 'matches' the record for this fact node.
+  def is_match( self, fact ) :
+
+    for i in range( 0, len( self.record ) ) :
+      fact_datum   = fact[ i ]
+      record_datum = self.record[ i ]
+
+      if record_datum == "_" :
+        pass
+      else :
+        if not fact_datum == record_datum :
+          return False
+
+    return True
 
 
 #########
