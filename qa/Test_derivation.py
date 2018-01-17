@@ -33,9 +33,9 @@ from evaluators import c4_evaluator
 #####################
 class Test_derivation( unittest.TestCase ) :
 
-  logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.DEBUG )
+  #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.DEBUG )
   #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.INFO )
-  #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.WARNING )
+  logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.WARNING )
 
   PRINT_STOP = False
 
@@ -168,6 +168,64 @@ class Test_derivation( unittest.TestCase ) :
 #                            total_number_serial_nodes ]
 #
 #    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+
+  ###############
+  #  DM DEMO 1  #
+  ###############
+  # tests a small dedalus program illustrating the 
+  # benefits of the DM approach.
+  #@unittest.skip( "working on different example" )
+  def test_dm_demo_1( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    if os.path.exists( "./data/" ) :
+      os.system( "rm -rf ./data/" )
+    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/demo_1.ded"
+    serial_nodes_path = "./testFiles/dm_demo_1_expected_nodes.txt"
+    serial_edges_path = "./testFiles/dm_demo_1_expected_edges.txt"
+    additional_str    = "_test_demo_1"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "EOT" ]      = 1
+    argDict[ "settings" ] = "./settings_dm.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
 
     # --------------------------------------------------------------- #
     # clean up test

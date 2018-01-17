@@ -1,0 +1,13 @@
+t( X )@next :- t( X ) ;
+t( X ) :- m( X ) ;
+m( X ) :- n( X ), notin o( X ) ;
+o( X ) :- p( X ), notin q( X ) ;
+q( X ) :- r( X ) ;
+n( "a" )@1 ;
+p( "b" )@1 ;
+q( "a" )@1 ;
+q( "c" )@1 ;
+r( "a" )@1 ;
+post( X ) :- t( X ) ;
+pre( X ) :- l( X ) ;
+l( "a" )@2 ;
