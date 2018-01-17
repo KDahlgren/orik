@@ -630,6 +630,7 @@ class ProvTree( object ) :
 
     logging.debug( "  GENERATE CURR NODE : ...done." )
 
+
   ###################
   #  GENERATE TREE  #
   ###################

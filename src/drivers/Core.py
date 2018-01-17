@@ -175,66 +175,19 @@ class Core :
   
     logging.debug( "  BUILD PROV TREE : running process..." )
 
-    # ------------------------------------------------------------------------------ #
-    # grab the set of post records at EOT.
-    # assume the right-most attribute/variable/field of the post schema
-    # represents the last send time (aka EOT).
-    # should be true b/c of the dedalus rewriter reqs for deductive rules.
-
-    if parsedResults :
-      postrecords_all = parsedResults[ "post" ]
-      postrecords_eot = []
-    
-      logging.debug( "postrecords_all = " + str(postrecords_all) )
-    
-      for rec in postrecords_all :
-    
-        logging.debug( "rec     = " + str(rec) )
-        logging.debug( "rec[-1] = " + str(rec[-1]) )
-        logging.debug( "eot     = " + str(eot) )
-    
-        # collect eot post records only
-        if int( rec[-1] ) == int( eot ) :
-          postrecords_eot.append( rec )
-    
-      logging.debug( "postrecords_eot = " + str(postrecords_eot) )
-    
-      # ------------------------------------------------------------------------------ #
-      # !!! BREAK EARLY IF POST CONTAINS NO EOT RECORDS !!!
-
-      if len( postrecords_eot ) < 1 :
-        tools.bp( __name__, inspect.stack()[0][3], "FATAL ERROR : attempting to build \
-                                                    a provenance tree when no post eot \
-                                                    records exist. Aborting..." )
-   
-    # ------------------------------------------------------------------------------ #
-    # abort execution if evaluation results not accessible
-
-    else :
-      sys.exit( "ERROR: No access to evaluation results.\nAborting..." ) # sanity check
-  
-    # ------------------------------------------------------------------------------ #
-    # there exist results and eot post records.
-
-    logging.debug( "++++++++++++++++++++++++" )
-    logging.debug( "+  BUILDING PROV TREE  +" )
-    logging.debug( "++++++++++++++++++++++++" )
-  
-    # initialize provenance tree structure
-    provTreeComplete = ProvTree.ProvTree( "FinalState", parsedResults, irCursor )
-
-    # populate prov tree
-    for seedRecord in postrecords_eot :
-      logging.debug( " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" )
-      logging.debug( "           NEW POST RECORD " )
-      logging.debug( "seedRecord = " + str( seedRecord ) )
-      provTreeComplete.generateProvTree( "post", seedRecord )
+    # build provenance tree structure
+    provTreeComplete = ProvTree.ProvTree( rootname      = "FinalState", \
+                                          parsedResults = parsedResults, \
+                                          cursor        = irCursor, \
+                                          treeType      = "goal", \
+                                          isNeg         = False, \
+                                          eot           = eot )
 
     # ------------------------------------------------------------------------------ #
     # build the provenance graph
 
     default_fmla_index = 0 
-    provTreeComplete.createGraph( None, default_fmla_index, iter_count, self.argDict )
+    provTreeComplete.create_pydot_graph( default_fmla_index, iter_count, None )
 
     # ------------------------------------------------------------------------------ #
 
