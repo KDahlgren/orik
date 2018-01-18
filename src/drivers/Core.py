@@ -181,7 +181,8 @@ class Core :
                                           cursor        = irCursor, \
                                           treeType      = "goal", \
                                           isNeg         = False, \
-                                          eot           = eot )
+                                          eot           = eot, \
+                                          argDict       = self.argDict )
 
     # ------------------------------------------------------------------------------ #
     # build the provenance graph
