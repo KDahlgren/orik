@@ -701,7 +701,7 @@ class Test_derivation_functionality( unittest.TestCase ) :
       actual_error = str( sys.exc_info()[1] )
 
     # define expected error
-    expected_error = "BREAKPOINT in file derivation.GoalNode at function get_prov_rid_and_name_list :\n>>>   FATAL ERROR : no provenance rule for 'TestNode'"
+    expected_error = "BREAKPOINT in file derivation.GoalNode at function get_prov_rid_and_name_list :\n>>>   FATAL ERROR : no provenance rules for 'TestNode'"
 
     self.assertEqual( actual_error, expected_error )  
 
@@ -842,9 +842,21 @@ class Test_derivation_functionality( unittest.TestCase ) :
   #@unittest.skip( "working on different example" )
   def test_empty_prov_tree_error_case_1( self ) :
 
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables( cursor )
+    dedt.globalCounterReset()
+
     rootname      = "__KD__TESTNODE__KD__1"
     parsedResults = { "__KD__TESTNODE__KD__1":[ ['a','b'] ] }
-    cursor        = None
     db_id         = None
     treeType      = "goal"
     isNeg         = False
@@ -859,13 +871,14 @@ class Test_derivation_functionality( unittest.TestCase ) :
       new_tree = ProvTree.ProvTree( rootname      = rootname, \
                                     parsedResults = parsedResults, \
                                     treeType      = treeType, \
+                                    cursor        = cursor, \
                                     isNeg         = isNeg )
 
     except SystemExit :
       actual_error = str( sys.exc_info()[1] )
 
     # define expected error
-    expected_error = "BREAKPOINT in file derivation.GoalNode at function __init__ :\n>>>   GOAL CONSTRUCTOR : FATAL ERROR : record '[]' does not appear in the results for relation '__KD__TESTNODE__KD__1' :\n[['a', 'b']]"
+    expected_error = "BREAKPOINT in file derivation.GoalNode at function get_prov_rid_and_name_list :\n>>>   FATAL ERROR : no provenance rules for '__KD__TESTNODE__KD__1'"
 
     self.assertEqual( actual_error, expected_error )
 

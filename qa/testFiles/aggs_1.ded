@@ -1,0 +1,12 @@
+
+n( "a" )@1 ;
+p( "a", 1 )@1 ;
+p( "a", 3 )@1 ;
+l( "a", 3 )@2 ;
+
+t( X, Y )@next :- t( X, Y ) ;
+t( X, Y ) :- m( X, Y ) ;
+m( X, max<Y> ) :- n( X ), p( X, Y ) ;
+
+post( X, Y ) :- t( X, Y ) ;
+pre( X, Y ) :- l( X, Y ) ;

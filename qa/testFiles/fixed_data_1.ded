@@ -1,0 +1,12 @@
+
+p( "b", 1 )@1 ;
+p( "c", 3 )@1 ;
+
+l( "c", "stuff" )@2 ;
+
+t( X, Y )@next :- t( X, Y ) ;
+t( X, Y ) :- m( X, Y ) ;
+m( X, "stuff" ) :-  p( X, 3 ) ;
+
+post( X, Y ) :- t( X, Y ) ;
+pre( X, Y ) :- l( X, Y ) ;

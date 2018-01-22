@@ -34,8 +34,8 @@ from evaluators import c4_evaluator
 class Test_derivation( unittest.TestCase ) :
 
   #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.DEBUG )
-  logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.INFO )
-  #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.WARNING )
+  #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.INFO )
+  logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.WARNING )
 
   PRINT_STOP = False
 
@@ -452,6 +452,271 @@ class Test_derivation( unittest.TestCase ) :
     IRDB.close()
     os.remove( testDB )
 
+  ##################
+  #  FIXED DATA 3  #
+  ##################
+  # tests a small dedalus program with a subgoal contiaining fixed data
+  # and with a goal containing fixed data.
+  #@unittest.skip( "working on different example" )
+  def test_fixed_data_3( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/fixed_data_3.ded"
+    serial_nodes_path = "./testFiles/fixed_data_3_nodes.txt"
+    serial_edges_path = "./testFiles/fixed_data_3_edges.txt"
+    additional_str    = "_test_fixed_data_3"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "EOT" ]      = 2
+    argDict[ "EFF" ]      = 1
+    argDict[ "settings" ] = "./settings_dm.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, "_test_fixed_data_3" ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 25 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 26 )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+
+  ##################
+  #  FIXED DATA 2  #
+  ##################
+  # tests a small dedalus program with a subgoal contiaining fixed data
+  # and with a goal containing fixed data.
+  #@unittest.skip( "working on different example" )
+  def test_fixed_data_2( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/fixed_data_2.ded"
+    serial_nodes_path = "./testFiles/fixed_data_2_nodes.txt"
+    serial_edges_path = "./testFiles/fixed_data_2_edges.txt"
+    additional_str    = "_test_fixed_data_2"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "EOT" ]      = 2
+    argDict[ "EFF" ]      = 1
+    argDict[ "settings" ] = "./settings_dm.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, "_test_fixed_data_2" ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 25 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 26 )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+
+  ##################
+  #  FIXED DATA 1  #
+  ##################
+  # tests a small dedalus program with a subgoal contiaining fixed data
+  # and with a goal containing fixed data.
+  #@unittest.skip( "working on different example" )
+  def test_fixed_data_1( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/fixed_data_1.ded"
+    serial_nodes_path = "./testFiles/fixed_data_1_nodes.txt"
+    serial_edges_path = "./testFiles/fixed_data_1_edges.txt"
+    additional_str    = "_test_fixed_data_1"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "EOT" ]      = 2
+    argDict[ "EFF" ]      = 1
+    argDict[ "settings" ] = "./settings_dm.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, "_test_fixed_data_1" ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 13 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 13 )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+  ############
+  #  AGGS 1  #
+  ############
+  # tests a small dedalus program with an aggregate in the goal.
+  #@unittest.skip( "working on different example" )
+  def test_aggs_1( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/aggs_1.ded"
+    serial_nodes_path = "./testFiles/aggs_1_nodes.txt"
+    serial_edges_path = "./testFiles/aggs_1_edges.txt"
+    additional_str    = "_test_aggs_1"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "EOT" ]      = 2
+    argDict[ "EFF" ]      = 1
+    argDict[ "settings" ] = "./settings_dm.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, "_test_dm_demo_1" ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 16 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 16 )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
 
   ###############
   #  DM DEMO 1  #
@@ -484,7 +749,7 @@ class Test_derivation( unittest.TestCase ) :
     inputfile         = "./testFiles/demo_1.ded"
     serial_nodes_path = "./testFiles/dm_demo_1_expected_nodes.txt"
     serial_edges_path = "./testFiles/dm_demo_1_expected_edges.txt"
-    additional_str    = "_test_demo_1"
+    additional_str    = "_test_dm_demo_1"
 
     # --------------------------------------------------------------- #
     # get argDict
