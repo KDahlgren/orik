@@ -1,0 +1,10 @@
+orik design notes.
+decrease graph complexity by:
+1. not incorporating domcomp_ nodes into the prov tree structure.
+2. not incorporating dom_ nodes into the prov tree structire.
+3. under the SYNC model, MRESERVED == NRESERVED+1. 
+   ^need to make this is an option in iapyx dm rewrites.
+4. //
+
+other tricks:
+1. smaller eots => smaller graphs

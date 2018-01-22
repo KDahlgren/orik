@@ -8,7 +8,7 @@ Test_derivation.py
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, logging, os, sqlite3, sys, unittest
+import copy, inspect, logging, os, sqlite3, sys, time, unittest
 
 # ------------------------------------------------------ #
 # import sibling packages HERE!!!
@@ -34,8 +34,8 @@ from evaluators import c4_evaluator
 class Test_derivation( unittest.TestCase ) :
 
   #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.DEBUG )
-  #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.INFO )
-  logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.WARNING )
+  logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.INFO )
+  #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.WARNING )
 
   PRINT_STOP = False
 
@@ -43,11 +43,145 @@ class Test_derivation( unittest.TestCase ) :
   #          FULL EXAMPLE TESTS          #
   # //////////////////////////////////// #
 
+  ###############
+  #  REPLOG DM  #
+  ###############
+  # tests replog provenance graph generation without dm
+  #@unittest.skip( "working on different example." )
+  def test_replog_dm( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./dedalus_drivers/replog_driver.ded"
+    serial_nodes_path = "./testFiles/replog_dm_nodes.txt"
+    serial_edges_path = "./testFiles/replog_dm_edges.txt"
+    additional_str    = "_test_replog_dm"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "settings" ] = "./settings_dm.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
+
+    # --------------------------------------------------------------- #
+    # compare the actual and expected tree dimensions
+
+#    tree_height               = 12
+#    total_number_serial_nodes = 80
+#
+#    expected_dimensions = [ tree_height, \
+#                            total_number_serial_nodes ]
+#
+#    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+
+  ##############
+  #  RDLOG DM  #
+  ##############
+  # tests rdlog provenance graph generation without dm
+  #@unittest.skip( "working on different example." )
+  def test_rdlog_dm( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./dedalus_drivers/rdlog_driver.ded"
+    serial_nodes_path = "./testFiles/rdlog_dm_nodes.txt"
+    serial_edges_path = "./testFiles/rdlog_dm_edges.txt"
+    additional_str    = "_test_rdlog_dm"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "settings" ] = "./settings_dm.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
+
+    # --------------------------------------------------------------- #
+    # compare the actual and expected tree dimensions
+
+#    tree_height               = 12
+#    total_number_serial_nodes = 80
+#
+#    expected_dimensions = [ tree_height, \
+#                            total_number_serial_nodes ]
+#
+#    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+
   ################
   #  SIMPLOG DM  #
   ################
   # tests simplog provenance graph generation without dm
-  @unittest.skip( "stackoverflow." )
+  #@unittest.skip( "working on different example." )
   def test_simplog_dm( self ) :
 
     # --------------------------------------------------------------- #
@@ -63,16 +197,16 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-    if os.path.exists( "./data/" ) :
-      os.system( "rm -rf ./data/" )
-    os.system( "mkdir ./data/" )
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
 
-    inputfile         = "./testFiles/simplog.ded"
-    serial_nodes_path = "./testFiles/simplog_nodes_dm.txt"
-    serial_edges_path = "./testFiles/simplog_edges_dm.txt"
+    inputfile         = "./dedalus_drivers/simplog_driver.ded"
+    serial_nodes_path = "./testFiles/simplog_dm_nodes.txt"
+    serial_edges_path = "./testFiles/simplog_dm_edges.txt"
     additional_str    = "_test_simplog_dm"
 
     # --------------------------------------------------------------- #
@@ -110,11 +244,145 @@ class Test_derivation( unittest.TestCase ) :
     os.remove( testDB )
 
 
+  ############
+  #  REPLOG  #
+  ############
+  # tests replog provenance graph generation without dm
+  #@unittest.skip( "working on different example.." )
+  def test_replog( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./dedalus_drivers/replog_driver.ded"
+    serial_nodes_path = "./testFiles/replog_nodes.txt"
+    serial_edges_path = "./testFiles/replog_edges.txt"
+    additional_str    = "_test_replog"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ 'settings' ] = "./settings_iedb_rewrites.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
+
+    # --------------------------------------------------------------- #
+    # compare the actual and expected tree dimensions
+
+#    tree_height               = 12
+#    total_number_serial_nodes = 80
+#
+#    expected_dimensions = [ tree_height, \
+#                            total_number_serial_nodes ]
+#
+#    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+
+  ###########
+  #  RDLOG  #
+  ###########
+  # tests rdlog provenance graph generation without dm
+  #@unittest.skip( "working on different example." )
+  def test_rdlog( self ) :
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR.db" ) :
+      os.remove( "./IR.db" )
+
+    testDB = "./IR.db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./dedalus_drivers/rdlog_driver.ded"
+    serial_nodes_path = "./testFiles/rdlog_nodes.txt"
+    serial_edges_path = "./testFiles/rdlog_edges.txt"
+    additional_str    = "_test_rdlog"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ 'settings' ] = "./settings_iedb_rewrites.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
+
+    # --------------------------------------------------------------- #
+    # compare the actual and expected tree dimensions
+
+#    tree_height               = 12
+#    total_number_serial_nodes = 80
+#
+#    expected_dimensions = [ tree_height, \
+#                            total_number_serial_nodes ]
+#
+#    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+
   #############
   #  SIMPLOG  #
   #############
   # tests simplog provenance graph generation without dm
-  @unittest.skip( "stackoverflow." )
+  #@unittest.skip( "working on different example." )
   def test_simplog( self ) :
 
     # --------------------------------------------------------------- #
@@ -130,14 +398,14 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-    if os.path.exists( "./data/" ) :
-      os.system( "rm -rf ./data/" )
-    os.system( "mkdir ./data/" )
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
 
-    inputfile         = "./testFiles/simplog.ded"
+    inputfile         = "./dedalus_drivers/simplog_driver.ded"
     serial_nodes_path = "./testFiles/simplog_nodes.txt"
     serial_edges_path = "./testFiles/simplog_edges.txt"
     additional_str    = "_test_simplog"
@@ -146,6 +414,7 @@ class Test_derivation( unittest.TestCase ) :
     # get argDict
 
     argDict = self.getArgDict( inputfile )
+    argDict[ 'settings' ] = "./settings_iedb_rewrites.ini"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -157,6 +426,14 @@ class Test_derivation( unittest.TestCase ) :
                                                        serial_edges_path, \
                                                        cursor, \
                                                        additional_str )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, "_test_simplog" ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 48 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 51 )
 
     # --------------------------------------------------------------- #
     # compare the actual and expected tree dimensions
@@ -197,9 +474,9 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-    if os.path.exists( "./data/" ) :
-      os.system( "rm -rf ./data/" )
-    os.system( "mkdir ./data/" )
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -213,7 +490,8 @@ class Test_derivation( unittest.TestCase ) :
     # get argDict
 
     argDict = self.getArgDict( inputfile )
-    argDict[ "EOT" ]      = 1
+    argDict[ "EOT" ]      = 2
+    argDict[ "EFF" ]      = 1
     argDict[ "settings" ] = "./settings_dm.ini"
 
     # --------------------------------------------------------------- #
@@ -226,6 +504,14 @@ class Test_derivation( unittest.TestCase ) :
                                                        serial_edges_path, \
                                                        cursor, \
                                                        additional_str )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, "_test_dm_demo_1" ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 18 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 19 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -255,9 +541,9 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-    if os.path.exists( "./data/" ) :
-      os.system( "rm -rf ./data/" )
-    os.system( "mkdir ./data/" )
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -295,17 +581,6 @@ class Test_derivation( unittest.TestCase ) :
     self.assertEqual( actual_error, expected_error )
 
     # --------------------------------------------------------------- #
-    # compare the actual and expected tree dimensions
-
-#    tree_height               = 12
-#    total_number_serial_nodes = 80
-#
-#    expected_dimensions = [ tree_height, \
-#                            total_number_serial_nodes ]
-#
-#    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
-
-    # --------------------------------------------------------------- #
     # clean up test
 
     IRDB.close()
@@ -333,9 +608,9 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-    if os.path.exists( "./data/" ) :
-      os.system( "rm -rf ./data/" )
-    os.system( "mkdir ./data/" )
+#    if os.path.exists( "./data/" ) :
+#      os.system( "rm -rf ./data/" )
+#    os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -361,6 +636,14 @@ class Test_derivation( unittest.TestCase ) :
                                                        serial_edges_path, \
                                                        cursor, \
                                                        additional_str )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, "_test_example_1" ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 16 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 18 )
 
     # --------------------------------------------------------------- #
     # compare the actual and expected tree dimensions
@@ -405,6 +688,11 @@ class Test_derivation( unittest.TestCase ) :
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( "./testFiles/empty.ded" )
 
     # --------------------------------------------------------------- #
     # populate database
@@ -502,7 +790,8 @@ class Test_derivation( unittest.TestCase ) :
                                     cursor        = cursor, \
                                     treeType      = treeType, \
                                     isNeg         = isNeg, \
-                                    eot           = eot )
+                                    eot           = eot, \
+                                    argDict       = argDict )
 
     except SystemExit :
       actual_error = str( sys.exc_info()[1] )
@@ -540,6 +829,11 @@ class Test_derivation( unittest.TestCase ) :
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( "./testFiles/empty.ded" )
 
     # --------------------------------------------------------------- #
     # populate database
@@ -636,7 +930,8 @@ class Test_derivation( unittest.TestCase ) :
                                   cursor        = cursor, \
                                   treeType      = treeType, \
                                   isNeg         = isNeg, \
-                                  eot           = eot )
+                                  eot           = eot, \
+                                  argDict       = argDict )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -699,6 +994,11 @@ class Test_derivation( unittest.TestCase ) :
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( "./testFiles/empty.ded" )
 
     # --------------------------------------------------------------- #
     # populate database
@@ -782,7 +1082,8 @@ class Test_derivation( unittest.TestCase ) :
                                   cursor        = cursor, \
                                   treeType      = treeType, \
                                   isNeg         = isNeg, \
-                                  eot           = eot )
+                                  eot           = eot, \
+                                  argDict       = argDict )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -898,6 +1199,11 @@ class Test_derivation( unittest.TestCase ) :
     dedt.globalCounterReset()
 
     # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( "./testFiles/empty.ded" )
+
+    # --------------------------------------------------------------- #
     # populate database
 
     # post rule
@@ -970,7 +1276,8 @@ class Test_derivation( unittest.TestCase ) :
                                   cursor        = cursor, \
                                   treeType      = treeType, \
                                   isNeg         = isNeg, \
-                                  eot           = eot )
+                                  eot           = eot, \
+                                  argDict       = argDict )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -1073,6 +1380,11 @@ class Test_derivation( unittest.TestCase ) :
     dedt.globalCounterReset()
 
     # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( "./testFiles/empty.ded" )
+
+    # --------------------------------------------------------------- #
     # populate database
 
     # post rule
@@ -1130,7 +1442,8 @@ class Test_derivation( unittest.TestCase ) :
                                   cursor        = cursor, \
                                   treeType      = treeType, \
                                   isNeg         = isNeg, \
-                                  eot           = eot )
+                                  eot           = eot, \
+                                  argDict       = argDict )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -1216,96 +1529,102 @@ class Test_derivation( unittest.TestCase ) :
   #  PROV TREE 3  #
   #################
   # test generating a provenance containing a goal node with two parents.
-  #@unittest.skip( "working on different exampple." )
+  #@unittest.skip( "working on different example." )
   def test_prov_tree_3( self ) :
 
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    test_name = "test_prov_tree_3"
+    testDB = "./IR_" + test_name + ".db"
+    if os.path.exists( testDB ) :
+      os.remove( testDB )
+      logging.info( "removing " + testDB )
+    IRDB_3   = sqlite3.connect( testDB )
+    cursor_3 = IRDB_3.cursor()
 
-    testDB = "./IR.db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables( cursor )
+    dedt.createDedalusIRTables( cursor_3 )
     dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( "./testFiles/empty.ded" )
 
     # --------------------------------------------------------------- #
     # populate database
 
     # post rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('0','post','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','1','Y','int')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','1','Y','int')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','0','Y','int')" )
+    cursor_3.execute( "INSERT INTO Rule       VALUES ('0','post','','')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('0','0','X','string')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('0','1','Y','int')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('0','0','sub0','','')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('0','1','sub1','','')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','0','X','string')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','1','Y','int')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','0','Y','int')" )
 
     # post provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('1','post_prov0','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Y','int')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','1','Y','int')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','0','Y','int')" )
+    cursor_3.execute( "INSERT INTO Rule       VALUES ('1','post_prov0','','')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('1','0','X','string')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Y','int')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('1','0','sub0','','')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('1','1','sub1','','')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','0','X','string')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','1','Y','int')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','0','Y','int')" )
 
     # sub0 rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('2','sub0','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','1','Y','int')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('2','0','sub3','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','0','0','X','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('2','1','sub4','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','1','0','Y','int')" )
+    cursor_3.execute( "INSERT INTO Rule       VALUES ('2','sub0','','')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('2','0','X','string')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('2','1','Y','int')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('2','0','sub3','','')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('2','0','0','X','string')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('2','1','sub4','','')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('2','1','0','Y','int')" )
 
     # sub0 provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('3','sub0_prov1','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('3','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('3','1','Y','int')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('3','0','sub3','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('3','0','0','X','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('3','1','sub4','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('3','1','0','Y','int')" )
+    cursor_3.execute( "INSERT INTO Rule       VALUES ('3','sub0_prov1','','')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('3','0','X','string')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('3','1','Y','int')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('3','0','sub3','','')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('3','0','0','X','string')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('3','1','sub4','','')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('3','1','0','Y','int')" )
 
     # sub1 rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('4','sub1','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('4','0','X','int')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('4','0','sub4','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('4','0','0','X','int')" )
+    cursor_3.execute( "INSERT INTO Rule       VALUES ('4','sub1','','')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('4','0','X','int')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('4','0','sub4','','')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('4','0','0','X','int')" )
 
     # sub1 provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('5','sub1_prov2','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('5','0','X','int')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('5','0','sub4','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('5','0','0','X','int')" )
+    cursor_3.execute( "INSERT INTO Rule       VALUES ('5','sub1_prov2','','')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('5','0','X','int')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('5','0','sub4','','')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('5','0','0','X','int')" )
 
     # sub4 rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('6','sub4','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('6','0','X','int')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('6','0','sub5','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('6','0','0','X','int')" )
+    cursor_3.execute( "INSERT INTO Rule       VALUES ('6','sub4','','')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('6','0','X','int')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('6','0','sub5','','')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('6','0','0','X','int')" )
 
     # sub4 provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('7','sub4_prov3','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('7','0','X','int')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('7','0','sub5','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('7','0','0','X','int')" )
+    cursor_3.execute( "INSERT INTO Rule       VALUES ('7','sub4_prov3','','')" )
+    cursor_3.execute( "INSERT INTO GoalAtt    VALUES ('7','0','X','int')" )
+    cursor_3.execute( "INSERT INTO Subgoals   VALUES ('7','0','sub5','','')" )
+    cursor_3.execute( "INSERT INTO SubgoalAtt VALUES ('7','0','0','X','int')" )
 
     # fact data
-    cursor.execute( "INSERT INTO Fact     VALUES ('8','sub3','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('8','0','a','string')" )
-    cursor.execute( "INSERT INTO Fact     VALUES ('9','sub3','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('9','0','b','string')" )
-    cursor.execute( "INSERT INTO Fact     VALUES ('10','sub5','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('10','0','1','int')" )
-    cursor.execute( "INSERT INTO Fact     VALUES ('11','sub5','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('11','0','2','int')" )
+    cursor_3.execute( "INSERT INTO Fact     VALUES ('8','sub3','')" )
+    cursor_3.execute( "INSERT INTO FactData VALUES ('8','0','a','string')" )
+    cursor_3.execute( "INSERT INTO Fact     VALUES ('9','sub3','')" )
+    cursor_3.execute( "INSERT INTO FactData VALUES ('9','0','b','string')" )
+    cursor_3.execute( "INSERT INTO Fact     VALUES ('10','sub5','')" )
+    cursor_3.execute( "INSERT INTO FactData VALUES ('10','0','1','int')" )
+    cursor_3.execute( "INSERT INTO Fact     VALUES ('11','sub5','')" )
+    cursor_3.execute( "INSERT INTO FactData VALUES ('11','0','2','int')" )
 
     # ------------------------------------------- #
     # instantiate new tree
@@ -1332,14 +1651,15 @@ class Test_derivation( unittest.TestCase ) :
     # instantiate tree
     new_tree = ProvTree.ProvTree( rootname      = rootname, \
                                   parsedResults = parsedResults, \
-                                  cursor        = cursor, \
+                                  cursor        = cursor_3, \
                                   treeType      = treeType, \
                                   isNeg         = isNeg, \
-                                  eot           = eot )
+                                  eot           = eot, \
+                                  argDict       = argDict )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
-    self.assertTrue( new_tree.cursor        == cursor        )
+    self.assertTrue( new_tree.cursor        == cursor_3        )
     self.assertTrue( new_tree.db_id         == db_id         )
     self.assertTrue( new_tree.treeType      == treeType      )
     self.assertTrue( new_tree.isNeg         == isNeg         )
@@ -1434,15 +1754,17 @@ class Test_derivation( unittest.TestCase ) :
     #logging.debug( new_tree.edgeset_pydot_str )
     #logging.debug( len( new_tree.edgeset_pydot_str ) )
 
-    graph_stats = new_tree.create_pydot_graph( 0, 0, "_test_prov_tree_3" )
+    graph_stats = new_tree.create_pydot_graph( 0, 0, "_" + test_name )
     self.assertTrue( graph_stats[ "num_nodes" ] == 16 )
     self.assertTrue( graph_stats[ "num_edges" ] == 18 )
 
     # --------------------------------------------------------------- #
     # clean up test
 
-    IRDB.close()
-    os.remove( testDB )
+    IRDB_3.close()
+    if os.path.exists( testDB ) :
+      os.remove( testDB )
+      logging.info( "removing " + testDB )
 
 
   #################
@@ -1451,21 +1773,27 @@ class Test_derivation( unittest.TestCase ) :
   # test generating a provenance containing a goal with 
   # two parents and a fact with two parents.
   # also tests wilcards.
-  #@unittest.skip( "working on different exampple." )
+  #@unittest.skip( "working on different example." )
   def test_prov_tree_2( self ) :
 
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
+    test_name = "test_prov_tree_2"
+    testDB = "./IR_" + test_name + ".db"
+    if os.path.exists( testDB ) :
+      os.remove( testDB )
+      logging.info( "removing " + testDB )
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( "./testFiles/empty.ded" )
 
     # --------------------------------------------------------------- #
     # populate database
@@ -1577,7 +1905,9 @@ class Test_derivation( unittest.TestCase ) :
                                   cursor        = cursor, \
                                   treeType      = treeType, \
                                   isNeg         = isNeg, \
-                                  eot           = eot )
+                                  eot           = eot, \
+                                  argDict       = argDict )
+    IRDB.close()
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -1701,15 +2031,16 @@ class Test_derivation( unittest.TestCase ) :
     #logging.debug( new_tree.edgeset_pydot_str )
     #logging.debug( len( new_tree.edgeset_pydot_str ) )
 
-    graph_stats = new_tree.create_pydot_graph( 0, 0, "_test_prov_tree_2" )
+    graph_stats = new_tree.create_pydot_graph( 0, 0, "_" + test_name )
     self.assertTrue( graph_stats[ "num_nodes" ] == 22 )
     self.assertTrue( graph_stats[ "num_edges" ] == 30 )
 
     # --------------------------------------------------------------- #
     # clean up test
 
-    IRDB.close()
-    os.remove( testDB )
+    if os.path.exists( testDB ) :
+      os.remove( testDB )
+      logging.info( "removing " + testDB )
 
 
   #################
@@ -1722,15 +2053,21 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
+    test_name = "test_prov_tree_1"
+    testDB = "./IR_" + test_name + ".db"
+    if os.path.exists( testDB ) :
+      os.remove( testDB )
+      logging.info( "removing " + testDB )
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( "./testFiles/empty.ded" )
 
     # --------------------------------------------------------------- #
     # populate database
@@ -1797,7 +2134,8 @@ class Test_derivation( unittest.TestCase ) :
                                   cursor        = cursor, \
                                   treeType      = treeType, \
                                   isNeg         = isNeg, \
-                                  eot           = eot )
+                                  eot           = eot, \
+                                  argDict       = argDict )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -1888,7 +2226,7 @@ class Test_derivation( unittest.TestCase ) :
     #logging.debug( len( new_tree.edgeset_pydot_str ) )
 
     # generate graph visualisation and examine stats
-    graph_stats = new_tree.create_pydot_graph( 0, 0, "_test_prov_tree_1" )
+    graph_stats = new_tree.create_pydot_graph( 0, 0, "_" + test_name )
     self.assertTrue( graph_stats[ "num_nodes" ] == 10 )
     self.assertTrue( graph_stats[ "num_edges" ] == 10 )
 
@@ -1896,892 +2234,9 @@ class Test_derivation( unittest.TestCase ) :
     # clean up test
 
     IRDB.close()
-    os.remove( testDB )
-  
-
-  ################################
-  #  FACT NODE CREATION ERROR 2  #
-  ################################
-  # test error on the creation of a fact node.
-  # error because input name does not reference a fact.
-  #@unittest.skip( "working on different example" )
-  def test_fact_node_creation_error_2( self ) :
-
-    # --------------------------------------------------------------- #
-    # set up test
-
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables( cursor )
-    dedt.globalCounterReset()
-
-    # --------------------------------------------------------------- #
-    # populate database
-
-    # original rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('0','TestNode','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','1','Y','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','2','_','string')" )
-
-    # provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('1','TestNode_prov0','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','2','_','string')" )
-
-    # sub1 rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('2','sub1','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','2','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('2','0','sub2','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','2','0','Z','string')" )
-
-    # fact data
-    cursor.execute( "INSERT INTO Fact     VALUES ('3','sub0','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('3','0','a','string')" )
-
-
-    # --------------------------------------------------------------- #
-    # define data
-
-    name          = "sub0"
-    record        = ['b']
-    parsedResults = { "TestNode"       : [ ["a","b"] ], \
-                      "TestNode_prov0" : [ ["a","b","c"], ["a","b","d"] ], \
-                      "sub0"           : [ ["a"] ], \
-                      "sub1"           : [ ["b","c","e"], ["b","c","f"], ["b","d","e"] ]  }
-
-    # --------------------------------------------------------------- #
-    # create node
-
-    try :
-      new_fact_node = FactNode.FactNode( name          = name, \
-                                         record        = record, \
-                                         parsedResults = parsedResults, \
-                                         cursor        = cursor )
-
-    except SystemExit :
-      actual_error = str( sys.exc_info()[1] )
-
-    # define expected error
-    expected_error = "BREAKPOINT in file derivation.FactNode at function __init__ :\n>>>   FATAL ERROR : relation 'sub0' does not reference a fact. aborting."
-
-    self.assertEqual( actual_error, expected_error )
-
-    # --------------------------------------------------------------- #
-    # clean up test
-
-    IRDB.close()
     if os.path.exists( testDB ) :
       os.remove( testDB )
-
-
-  ################################
-  #  FACT NODE CREATION ERROR 1  #
-  ################################
-  # test error on the creation of a fact node.
-  # error because input name does not reference a fact.
-  #@unittest.skip( "working on different example" )
-  def test_fact_node_creation_error_1( self ) :
-
-    # --------------------------------------------------------------- #
-    # set up test
-
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables( cursor )
-    dedt.globalCounterReset()
-
-    # --------------------------------------------------------------- #
-    # populate database
-
-    # original rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('0','TestNode','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','1','Y','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','2','_','string')" )
-
-    # provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('1','TestNode_prov0','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','2','_','string')" )
-
-    # sub1 rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('2','sub1','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','2','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('2','0','sub2','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','2','0','Z','string')" )
-
-    # fact data
-    cursor.execute( "INSERT INTO Fact     VALUES ('3','sub0','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('3','0','a','string')" )
-
-
-    # --------------------------------------------------------------- #
-    # define data
-
-    name          = "sub3"
-    record        = ['a']
-    parsedResults = { "TestNode"       : [ ["a","b"] ], \
-                      "TestNode_prov0" : [ ["a","b","c"], ["a","b","d"] ], \
-                      "sub0"           : [ ["a"] ], \
-                      "sub1"           : [ ["b","c","e"], ["b","c","f"], ["b","d","e"] ]  }
-
-    # --------------------------------------------------------------- #
-    # create node
-
-    try :
-      new_fact_node = FactNode.FactNode( name          = name, \
-                                         record        = record, \
-                                         parsedResults = parsedResults, \
-                                         cursor        = cursor )
-
-    except SystemExit :
-      actual_error = str( sys.exc_info()[1] )
-
-    # define expected error
-    expected_error = "BREAKPOINT in file derivation.FactNode at function __init__ :\n>>>   FATAL ERROR : relation 'sub3' does not reference a fact. aborting."
-
-    self.assertEqual( actual_error, expected_error )
-
-    # --------------------------------------------------------------- #
-    # clean up test
-
-    IRDB.close()
-    if os.path.exists( testDB ) :
-      os.remove( testDB )
-
-
-  ########################
-  #  FACT NODE CREATION  #
-  ########################
-  # test the creation of a fact node.
-  #@unittest.skip( "working on different example" )
-  def test_fact_node_creation( self ) :
-
-    # --------------------------------------------------------------- #
-    # set up test
-
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables( cursor )
-    dedt.globalCounterReset()
-
-    # --------------------------------------------------------------- #
-    # populate database
-
-    # original rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('0','TestNode','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','1','Y','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','2','_','string')" )
-
-    # provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('1','TestNode_prov0','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','2','_','string')" )
-
-    # sub1 rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('2','sub1','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','2','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('2','0','sub2','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','2','0','Z','string')" )
-
-    # fact data
-    cursor.execute( "INSERT INTO Fact     VALUES ('3','sub0','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('3','0','a','string')" )
-
-
-    # --------------------------------------------------------------- #
-    # define data
-
-    name          = "sub0"
-    record        = ['a']
-    parsedResults = { "TestNode"       : [ ["a","b"] ], \
-                      "TestNode_prov0" : [ ["a","b","c"], ["a","b","d"] ], \
-                      "sub0"           : [ ["a"] ], \
-                      "sub1"           : [ ["b","c","e"], ["b","c","f"], ["b","d","e"] ]  }
-
-    # --------------------------------------------------------------- #
-    # create node
-
-    new_fact_node = FactNode.FactNode( name          = name, \
-                                       record        = record, \
-                                       parsedResults = parsedResults, \
-                                       cursor        = cursor )
-
-    # --------------------------------------------------------------- #
-    # tests
-
-    # test __str__
-    self.assertTrue( new_fact_node.__str__() == "fact->sub0(['a'])" )
-
-    # --------------------------------------------------------------- #
-    # clean up test
-
-    IRDB.close()
-    os.remove( testDB )
-
-
-  ################################
-  #  RULE NODE CREATION ERROR 2  #
-  ################################
-  # test error in rule node creation
-  # goal is neither edb nor idb
-  #@unittest.skip( "working on different example" )
-  def test_rule_node_creation_error_2( self ) :
-
-    # --------------------------------------------------------------- #
-    # set up test
-
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables( cursor )
-    dedt.globalCounterReset()
-
-    # --------------------------------------------------------------- #
-    # populate database
-
-    # original rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('0','TestNode','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','1','Y','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','1','sub2','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','2','_','string')" )
-
-    # provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('1','TestNode_prov0','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','1','sub2','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','2','_','string')" )
-
-    # sub1 rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('2','sub1','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','2','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('2','0','sub2','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','2','0','Z','string')" )
-
-    # fact data
-    cursor.execute( "INSERT INTO Fact     VALUES ('3','sub0','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('3','0','a','string')" )
-    cursor.execute( "INSERT INTO Fact     VALUES ('4','sub1','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('4','0','a','string')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('4','1','b','string')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('4','2','c','string')" )
-
-
-    # --------------------------------------------------------------- #
-    # define data
-
-    rid           = "1"
-    name          = "TestNode_prov0"
-    record        = ['a','b','c']
-    parsedResults = { "TestNode"       : [ ["a","b"] ], \
-                      "TestNode_prov0" : [ ["a","b","c"], ["a","b","d"] ], \
-                      "sub0"           : [ ["a"] ], \
-                      "sub1"           : [ ["b","c","e"], ["b","c","f"], ["b","d","e"] ], \
-                      "sub2"           : [ ["b","c","e"], ["b","c","f"], ["b","d","e"] ]  }
-
-    # --------------------------------------------------------------- #
-    # create node
-
-    try :
-      new_rule_node = RuleNode.RuleNode( rid           = rid, \
-                                         name          = name, \
-                                         record        = record, \
-                                         parsedResults = parsedResults, \
-                                         cursor        = cursor )
-
-    except SystemExit :
-      actual_error = str( sys.exc_info()[1] )
-
-    # define expected error
-    expected_error = "BREAKPOINT in file derivation.RuleNode at function generate_descendant_meta :\n>>>   FATAL ERROR : subgoal 'sub2' is neither edb nor idb. aborting."
-
-    self.assertEqual( actual_error, expected_error )
-
-    # --------------------------------------------------------------- #
-    # clean up test
-
-    IRDB.close()
-    if os.path.exists( testDB ) :
-      os.remove( testDB )
-
-
-  ################################
-  #  RULE NODE CREATION ERROR 1  #
-  ################################
-  # test error in rule node creation
-  # goal is both edb and idb
-  #@unittest.skip( "working on different example" )
-  def test_rule_node_creation_error_1( self ) :
-
-    # --------------------------------------------------------------- #
-    # set up test
-
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables( cursor )
-    dedt.globalCounterReset()
-
-    # --------------------------------------------------------------- #
-    # populate database
-
-    # original rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('0','TestNode','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','1','Y','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','2','_','string')" )
-
-    # provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('1','TestNode_prov0','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','2','_','string')" )
-
-    # sub1 rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('2','sub1','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','2','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('2','0','sub2','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','2','0','Z','string')" )
-
-    # fact data
-    cursor.execute( "INSERT INTO Fact     VALUES ('3','sub0','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('3','0','a','string')" )
-    cursor.execute( "INSERT INTO Fact     VALUES ('4','sub1','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('4','0','a','string')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('4','1','b','string')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('4','2','c','string')" )
-
-
-    # --------------------------------------------------------------- #
-    # define data
-
-    rid           = "1"
-    name          = "TestNode_prov0"
-    record        = ['a','b','c']
-    parsedResults = { "TestNode"       : [ ["a","b"] ], \
-                      "TestNode_prov0" : [ ["a","b","c"], ["a","b","d"] ], \
-                      "sub0"           : [ ["a"] ], \
-                      "sub1"           : [ ["b","c","e"], ["b","c","f"], ["b","d","e"] ]  }
-
-    # --------------------------------------------------------------- #
-    # create node
-
-    try :
-      new_rule_node = RuleNode.RuleNode( rid           = rid, \
-                                         name          = name, \
-                                         record        = record, \
-                                         parsedResults = parsedResults, \
-                                         cursor        = cursor )
-
-    except SystemExit :
-      actual_error = str( sys.exc_info()[1] )
-
-    # define expected error
-    expected_error = "BREAKPOINT in file derivation.RuleNode at function generate_descendant_meta :\n>>>   FATAL ERROR : subgoal 'sub1' is both edb and idb. ambiguous. aborting."
-
-    self.assertEqual( actual_error, expected_error )
-
-    # --------------------------------------------------------------- #
-    # clean up test
-
-    IRDB.close()
-    if os.path.exists( testDB ) :
-      os.remove( testDB )
-
-
-  ########################
-  #  RULE NODE CREATION  #
-  ########################
-  # test the creation of a rule node with descendants
-  #@unittest.skip( "working on different example" )
-  def test_rule_node_creation( self ) :
-
-    # --------------------------------------------------------------- #
-    # set up test
-
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables( cursor )
-    dedt.globalCounterReset()
-
-    # --------------------------------------------------------------- #
-    # populate database
-
-    # original rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('0','TestNode','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','1','Y','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','2','_','string')" )
-
-    # provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('1','TestNode_prov0','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','1','Z','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','2','_','string')" )
-
-    # sub1 rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('2','sub1','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('2','2','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('2','0','sub2','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('2','2','0','Z','string')" )
-
-    # fact data
-    cursor.execute( "INSERT INTO Fact     VALUES ('3','sub0','')" )
-    cursor.execute( "INSERT INTO FactData VALUES ('3','0','a','string')" )
-
-
-    # --------------------------------------------------------------- #
-    # define data
-
-    rid           = "1"
-    name          = "TestNode_prov0"
-    record        = ['a','b','c']
-    parsedResults = { "TestNode"       : [ ["a","b"] ], \
-                      "TestNode_prov0" : [ ["a","b","c"], ["a","b","d"] ], \
-                      "sub0"           : [ ["a"] ], \
-                      "sub1"           : [ ["b","c","e"], ["b","c","f"], ["b","d","e"] ]  }
-
-    # --------------------------------------------------------------- #
-    # create node
-
-    new_rule_node = RuleNode.RuleNode( rid           = rid, \
-                                       name          = name, \
-                                       record        = record, \
-                                       parsedResults = parsedResults, \
-                                       cursor        = cursor )
-
-    # --------------------------------------------------------------- #
-    # tests
-
-    # test __str__
-    self.assertTrue( new_rule_node.__str__() == "rule->TestNode_prov0(['a', 'b', 'c'])" )
-
-    # test get_trigger_record_for_subgoal
-    gatt_to_data = { "X" : "a", "Y" : "b", "Z" : "c" }
-    satt_list_1  = [ [0,"X"] ]
-    satt_list_2  = [ [0,"Y"], [1,"Z"], [2,"_"] ]
-    self.assertTrue( new_rule_node.get_trigger_record_for_subgoal( gatt_to_data, satt_list_1 ) == [ "a" ] )
-    self.assertTrue( new_rule_node.get_trigger_record_for_subgoal( gatt_to_data, satt_list_2 ) == [ "b", "c", "_" ] )
-
-    # test check_subgoal_type
-    self.assertTrue( new_rule_node.check_subgoal_type( "sub0" ) == [ True, False ] ) # edb
-    self.assertTrue( new_rule_node.check_subgoal_type( "sub1" ) == [ False, True ] ) # idb
-
-    # test generate_descendant_meta
-    self.assertTrue( new_rule_node.descendant_meta == [ {'treeType': 'goal', \
-                                                         'polarity': '', \
-                                                         'triggerRecord': ['b', 'c', '_'], \
-                                                         'node_name': 'sub1'},
-                                                        {'treeType': 'fact', \
-                                                         'polarity': '', \
-                                                         'triggerRecord': ['a'], \
-                                                         'node_name': 'sub0'} ] )
-
-
-    # --------------------------------------------------------------- #
-    # clean up test
-
-    IRDB.close()
-    os.remove( testDB )
-
-
-  ################################
-  #  GOAL NODE CREATION ERROR 1  #
-  ################################
-  # test failure when attempting to create a goal node such that
-  # the corresponding rule has no provenance rules.
-  #@unittest.skip( "working on different example" )
-  def test_goal_node_creation_error_1( self ) :
-
-    # --------------------------------------------------------------- #
-    # set up test
-
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables( cursor )
-    dedt.globalCounterReset()
-
-    # --------------------------------------------------------------- #
-    # populate database
-
-    cursor.execute( "INSERT INTO Rule       VALUES ('0','TestNode','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','1','Y','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','0','Y','string')" )
-
-    # --------------------------------------------------------------- #
-    # define data
-
-    name          = "TestNode"
-    isNeg         = False
-    record        = ['a','b']
-    parsedResults = { "TestNode" : [ ['a','b'] ] }
-
-    # --------------------------------------------------------------- #
-
-    try :
-      new_goal_node = GoalNode.GoalNode( name          = name, \
-                                         isNeg         = isNeg, \
-                                         record        = record, \
-                                         parsedResults = parsedResults, \
-                                         cursor        = cursor )
-
-    except SystemExit :
-      actual_error = str( sys.exc_info()[1] )
-
-    # define expected error
-    expected_error = "BREAKPOINT in file derivation.GoalNode at function get_prov_rid_and_name_list :\n>>>   FATAL ERROR : no provenance rule for 'TestNode'"
-
-    self.assertEqual( actual_error, expected_error )  
-
-    # --------------------------------------------------------------- #
-    # clean up test
-
-    IRDB.close()
-    if os.path.exists( testDB ) :
-      os.remove( testDB )
-
-
-  ########################
-  #  GOAL NODE CREATION  #
-  ########################
-  # test the creation of a positive goal node with descendants
-  #@unittest.skip( "working on different example" )
-  def test_goal_node_creation( self ) :
-
-    # --------------------------------------------------------------- #
-    # set up test
-
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables( cursor )
-    dedt.globalCounterReset()
-
-    # --------------------------------------------------------------- #
-    # populate database
-
-    # original rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('0','TestNode','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('0','1','Y','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('0','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('0','1','1','Z','string')" )
-
-    # provenance rule
-    cursor.execute( "INSERT INTO Rule       VALUES ('1','TestNode_prov0','','')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','0','X','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Y','string')" )
-    cursor.execute( "INSERT INTO GoalAtt    VALUES ('1','1','Z','string')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','0','sub0','','')" )
-    cursor.execute( "INSERT INTO Subgoals   VALUES ('1','1','sub1','','')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','0','0','X','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','0','Y','string')" )
-    cursor.execute( "INSERT INTO SubgoalAtt VALUES ('1','1','1','Z','string')" )
-
-    # --------------------------------------------------------------- #
-    # define data
-
-    name          = "TestNode"
-    isNeg         = False
-    record        = ['a','b']
-    parsedResults = { "TestNode" : [ ['a','b'] ], "TestNode_prov0" : [ ['a','b','c'], ['a','b','d'] ]  }
-
-    # --------------------------------------------------------------- #
-    # create node
-
-    new_goal_node = GoalNode.GoalNode( name          = name, \
-                                       isNeg         = isNeg, \
-                                       record        = record, \
-                                       parsedResults = parsedResults, \
-                                       cursor        = cursor )
-
-    # --------------------------------------------------------------- #
-    # tests
-
-    # test __str__
-    self.assertTrue( new_goal_node.__str__() == "goal->TestNode(['a', 'b'])" )
-
-    # test get_prov_rid_and_name_list
-    self.assertTrue( new_goal_node.get_prov_rid_and_name_list() == [ ['1', 'TestNode_prov0'] ] )
-
-    # test get_valid_prov_records
-    self.assertTrue( new_goal_node.get_valid_prov_records( "TestNode_prov0" ) == [ ['a', 'b', 'c'], ['a','b','d'] ] )
-
-    # test generate_descendant_meta
-    self.assertTrue( new_goal_node.descendant_meta == {'1': {'goalName'    : 'TestNode_prov0', \
-                                                             'triggerData' : [['a', 'b', 'c'],['a','b','d']]}} )
-
-
-    # --------------------------------------------------------------- #
-    # clean up test
-
-    IRDB.close()
-    os.remove( testDB )
-
-
-
-  ##################################
-  #  EMPTY PROV TREE ERROR CASE 2  #
-  ##################################
-  # test error case when generating a ProvTree
-  # no post records for given eot
-  #@unittest.skip( "working on different example" )
-  def test_empty_prov_tree_error_case_2( self ) :
-
-    rootname      = "__KD__TESTNODE__KD__"
-    parsedResults = { "table1":[ ['a','b'],  ] }
-    cursor        = None
-    db_id         = None
-    treeType      = "goal"
-    isNeg         = False
-    provAttMap    = {}
-    record        = []
-    eot           = 0
-    parent        = None
-
-    try :
-      new_tree = ProvTree.ProvTree( rootname      = rootname, \
-                                    parsedResults = parsedResults, \
-                                    treeType      = treeType, \
-                                    isNeg         = isNeg )
-
-    except SystemExit :
-      actual_error = str( sys.exc_info()[1] )
-
-    # define expected error
-    expected_error = "BREAKPOINT in file derivation.ProvTree at function generate_tree :\n>>>   GENERATE TREE : FATAL ERROR : no eot post records. aborting."
-
-    self.assertEqual( actual_error, expected_error )
-
-
-  ##################################
-  #  EMPTY PROV TREE ERROR CASE 1  #
-  ##################################
-  # test error case when generating a ProvTree
-  # trying to create a goal node, but no records exist for the goal/relation name
-  #@unittest.skip( "working on different example" )
-  def test_empty_prov_tree_error_case_1( self ) :
-
-    rootname      = "__KD__TESTNODE__KD__1"
-    parsedResults = { "__KD__TESTNODE__KD__1":[ ['a','b'] ] }
-    cursor        = None
-    db_id         = None
-    treeType      = "goal"
-    isNeg         = False
-    provAttMap    = {}
-    record        = []
-    eot           = 0
-    parent        = None
-
-    try :
-      new_tree = ProvTree.ProvTree( rootname      = rootname, \
-                                    parsedResults = parsedResults, \
-                                    treeType      = treeType, \
-                                    isNeg         = isNeg )
-    except SystemExit :
-      actual_error = str( sys.exc_info()[1] )
-
-    # define expected error
-    expected_error = "BREAKPOINT in file derivation.GoalNode at function __init__ :\n>>>   GOAL CONSTRUCTOR : FATAL ERROR : record '[]' does not appear in the results for relation '__KD__TESTNODE__KD__1' :\n[['a', 'b']]"
-
-    self.assertEqual( actual_error, expected_error )
-
-
-  ##########################
-  #  PROVTREE CONSTRUCTOR  #
-  ##########################
-  # test construction of smallest possible ProvTree
-  #@unittest.skip( "working on different example" )
-  def test_prov_tree_constructor( self ) :
-
-    # --------------------------------------------------------------- #
-    # set up test
-
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
-
-    testDB = "./IR.db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables( cursor )
-    dedt.globalCounterReset()
-
-    # --------------------------------------------------------------- #
-
-    rootname      = "__TestNode__"
-    parsedResults = { "__TestNode__":[ ["a","b"] ] }
-    db_id         = None
-    treeType      = "goal"
-    isNeg         = False
-    provAttMap    = {}
-    record        = [ 'a', 'b' ]
-    eot           = 0
-    parent        = None
-
-    new_tree = ProvTree.ProvTree( rootname = rootname, \
-                                  parsedResults = parsedResults, \
-                                  cursor        = cursor, \
-                                  treeType      = treeType, \
-                                  isNeg         = isNeg, \
-                                  record        = record )
-
-    self.assertTrue( new_tree.rootname      == rootname      )
-    self.assertTrue( new_tree.parsedResults == parsedResults )
-    self.assertTrue( new_tree.cursor        == cursor        )
-    self.assertTrue( new_tree.db_id         == db_id         )
-    self.assertTrue( new_tree.treeType      == treeType      )
-    self.assertTrue( new_tree.isNeg         == isNeg         )
-    self.assertTrue( new_tree.provAttMap    == provAttMap    )
-    self.assertTrue( new_tree.record        == record        )
-    self.assertTrue( new_tree.eot           == eot           )
-    self.assertTrue( new_tree.parents       == [ None ]      )
-
-    # --------------------------------------------------------------- #
-    # clean up test
-
-    IRDB.close()
-    os.remove( testDB )
-
+      logging.info( "removing " + testDB )
 
   # ////////////////////////////// #
   #          HELPER TOOLS          #
@@ -2953,6 +2408,9 @@ class Test_derivation( unittest.TestCase ) :
 
     return argDict
 
+
+if __name__ == "__main__":
+  unittest.main()
 
 #########
 #  EOF  #

@@ -1,0 +1,2 @@
+include "../testFiles/examples_ft/delivery/replog.ded" ;
+include "../testFiles/examples_ft/delivery/deliv_assert.ded" ;
