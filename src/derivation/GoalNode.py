@@ -28,7 +28,7 @@ class GoalNode( Node ) :
   #################
   #  CONSTRUCTOR  #
   #################
-  def __init__( self, name="DEFAULT", isNeg=None, record=[], parsedResults={}, cursor=None ) :
+  def __init__( self, name="DEFAULT", isNeg=None, record=[], parsedResults={}, cursor=None, prev_prov_recs={} ) :
 
     logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
     logging.debug( "in GoalNode.GoalNode : " + name )
@@ -41,6 +41,9 @@ class GoalNode( Node ) :
     self.record          = record
     self.parsedResults   = parsedResults
     self.cursor          = cursor
+    self.prev_prov_recs  = prev_prov_recs
+    logging.debug( "  prev_prov_recs = " + str( self.prev_prov_recs ) )
+    logging.debug( "  ->len(prev_prov_recs) = " + str( len( self.prev_prov_recs ) ) )
 
     # dictionary of metadata for node descendants.
     # { prov_rid : { 'goalName'    : <string>,
@@ -125,7 +128,25 @@ class GoalNode( Node ) :
       valid_records                     = self.get_valid_prov_records( pname )
       prov_rid_to_valid_records[ prid ] = valid_records
 
+    logging.debug( ">>>name="  + self.name + "," + str( self.record ) )
     logging.debug( "  GENERATE DESCENDANT META : prov_rid_to_valid_records = " + str( prov_rid_to_valid_records ) )
+
+#    # -------------------------------- #
+#    # remove duplicates
+#
+#    tmp  = {}
+#    tmp2 = {}
+#    for sid in sid_to_name_and_polarity :
+#      tmp[ str( sid_to_name_and_polarity[ sid ] ) ] = sid
+#    for subgoalInfo in tmp :
+#      array_str = subgoalInfo.translate( None, string.whitespace )
+#      array_str = array_str.replace( "[", "" )
+#      array_str = array_str.replace( "]", "" )
+#      array_str = array_str.replace( "'", "" )
+#      tmp2[ tmp[ subgoalInfo ] ] = array_str.split( "," )
+#
+#    sid_to_name_and_polarity = copy.copy( tmp2 )
+#    logging.debug( "  GENERATE DESCENDANT META : sid_to_name_and_polarity (after de-pulication) = " + str( sid_to_name_and_polarity ) )
 
     # -------------------------------- #
     # generate the descendant metadata
@@ -134,9 +155,9 @@ class GoalNode( Node ) :
 
     for pdata in prov_rid_and_name_list :
 
-      prov_rid                     = pdata[ 0 ]
-      goalName                     = pdata[ 1 ]
-      triggerData                  = prov_rid_to_valid_records[ prov_rid ]
+      prov_rid                         = pdata[ 0 ]
+      goalName                         = pdata[ 1 ]
+      triggerData                      = prov_rid_to_valid_records[ prov_rid ]
       self.descendant_meta[ prov_rid ] = { 'goalName' : goalName, 'triggerData' : triggerData }
 
     logging.debug( "  GENERATE DESCENDANT META : self.descendant_meta = " + str( self.descendant_meta ) )
@@ -174,30 +195,33 @@ class GoalNode( Node ) :
     logging.debug( "  GET VALID PROV RECORDS : running process... " )
     logging.debug( "  GET VALID PROV RECORDS : pname       = " + pname )
     logging.debug( "  GET VALID PROV RECORDS : self.record = " + str( self.record ) )
+    logging.debug( "  GET VALID PROV RECORDS : self.prev_prov_recs = " + str( self.prev_prov_recs ) )
 
     valid_prov_records = []
 
     for prov_record in self.parsedResults[ pname ] :
 
-      logging.debug( "  GET PROV RECORDS : prov_record = " + str( prov_record ) )
+      #logging.debug( "  GET VALID PROV RECORDS : prov_record = " + str( prov_record ) )
 
-      # CASE : the original record contains wildcards
-      if "_" in self.record :
-        flag = True
-        for i in range( 0, len( self.record ) ) :
-          if self.record[ i ] == "_" :
-            pass
-          else :
-            if not prov_record[ i ] == self.record[ i ] :
-              flag = False
+      if not pname in self.prev_prov_recs or ( not prov_record in self.prev_prov_recs[ pname ] ) :
 
-        if flag :
-          valid_prov_records.append( prov_record )
+        # CASE : the original record contains wildcards
+        if "_" in self.record :
+          flag = True
+          for i in range( 0, len( self.record ) ) :
+            if self.record[ i ] == "_" :
+              pass
+            else :
+              if not prov_record[ i ] == self.record[ i ] :
+                flag = False
 
-      # CASE : ther original record contains no wildcards
-      else :
-        if prov_record[ : len( self.record ) ] == self.record :
-          valid_prov_records.append( prov_record )
+          if flag :
+            valid_prov_records.append( prov_record )
+
+        # CASE : ther original record contains no wildcards
+        else :
+          if prov_record[ : len( self.record ) ] == self.record :
+            valid_prov_records.append( prov_record )
 
     return valid_prov_records
 

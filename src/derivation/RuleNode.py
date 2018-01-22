@@ -6,7 +6,7 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import copy, inspect, logging, os, sys
+import copy, inspect, logging, os, string, sys
 from Node import Node
 
 if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
@@ -167,6 +167,23 @@ class RuleNode( Node ) :
     logging.debug( "  GENERATE DESCENDANT META : sid_to_name_and_polarity = " + str( sid_to_name_and_polarity ) )
 
     # -------------------------------- #
+    # remove subgoal duplicates
+
+    tmp  = {}
+    tmp2 = {}
+    for sid in sid_to_name_and_polarity :
+      tmp[ str( sid_to_name_and_polarity[ sid ] ) ] = sid
+    for subgoalInfo in tmp :
+      array_str = subgoalInfo.translate( None, string.whitespace ) 
+      array_str = array_str.replace( "[", "" )
+      array_str = array_str.replace( "]", "" )
+      array_str = array_str.replace( "'", "" )
+      tmp2[ tmp[ subgoalInfo ] ] = array_str.split( "," )
+
+    sid_to_name_and_polarity = copy.copy( tmp2 )
+    logging.debug( "  GENERATE DESCENDANT META : sid_to_name_and_polarity (after de-pulication) = " + str( sid_to_name_and_polarity ) )
+
+    # -------------------------------- #
     # get the attribute list
     # per subgoal
 
@@ -201,59 +218,67 @@ class RuleNode( Node ) :
       subgoalName     = sid_to_name_and_polarity[ sid ][ 0 ]
       subgoalPolarity = sid_to_name_and_polarity[ sid ][ 1 ]
 
-      logging.debug( "  GENERATE DESCENDAT META : subgoalName     = " + subgoalName )
-      logging.debug( "  GENERATE DESCENDAT META : subgoalPolarity = " + subgoalPolarity )
+      logging.debug( "  GENERATE DESCENDANT META : subgoalName     = " + subgoalName )
+      logging.debug( "  GENERATE DESCENDANT META : subgoalPolarity = " + subgoalPolarity )
 
-      subgoal_type_data = self.check_subgoal_type( subgoalName )
-      is_edb            = subgoal_type_data[ 0 ]
-      is_idb            = subgoal_type_data[ 1 ]
-
-      logging.debug( "  GENERATE DESCENDAT META : subgoal_type_data := " + str( subgoal_type_data ) )
-
-      # -------------------------------- #
-      # CASE : subgoal is edb only, 
-      #        so spawn fact
-
-      if is_edb and not is_idb :
-        treeType = "fact"
-
-      # -------------------------------- #
-      # CASE : subgoal is idb only, 
-      #        so spawn goal
-
-      elif not is_edb and is_idb :
-        treeType = "goal"
-
-      # -------------------------------- #
-      # CASE : subgoal is both idb and 
-      #        edb, so break b/c ambiguous
-
-      elif is_edb and is_idb :
-        tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : subgoal '" + subgoalName + "' is both edb and idb. ambiguous. aborting." )
-
-      # -------------------------------- #
-      # CASE : subgoal is neither idb 
-      #        nor edb, so break b/c 
-      #        something's wrogn
-
+      if subgoalName.startswith( "domcomp_" ) :
+        logging.debug( "  GENERATE DESCENDANT META : hit a domcomp_ descendant. pass creation... "  )
+        pass
+      elif subgoalName.startswith( "dom_" ) :
+        logging.debug( "  GENERATE DESCENDANT META : hit a dom_ descendant. pass creation... "  )
+        pass
       else :
-        tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : subgoal '" + subgoalName + "' is neither edb nor idb. aborting." )
+        subgoal_type_data = self.check_subgoal_type( subgoalName )
+        is_edb            = subgoal_type_data[ 0 ]
+        is_idb            = subgoal_type_data[ 1 ]
+
+        logging.debug( "  GENERATE DESCENDAT META : is_edb := " + str( is_edb ) )
+        logging.debug( "  GENERATE DESCENDAT META : is_idb := " + str( is_idb ) )
+
+        # -------------------------------- #
+        # CASE : subgoal is edb only, 
+        #        so spawn fact
+
+        if is_edb and not is_idb :
+          treeType = "fact"
+
+        # -------------------------------- #
+        # CASE : subgoal is idb only, 
+        #        so spawn goal
+
+        elif not is_edb and is_idb :
+          treeType = "goal"
+
+        # -------------------------------- #
+        # CASE : subgoal is both idb and 
+        #        edb, so break b/c ambiguous
+
+        elif is_edb and is_idb :
+          tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : subgoal '" + subgoalName + "' is both edb and idb. ambiguous. aborting." )
+
+        # -------------------------------- #
+        # CASE : subgoal is neither idb 
+        #        nor edb, so break b/c 
+        #        something's wrogn
+
+        else :
+          tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : subgoal '" + subgoalName + "' is neither edb nor idb. aborting." )
 
 
-      # -------------------------------- #
-      # get remaining data
+        # -------------------------------- #
+        # get remaining data
 
-      node_name = subgoalName
-      polarity  = subgoalPolarity
-      record    = self.get_trigger_record_for_subgoal( gatt_to_data, sid_to_subgoal_att_list[ sid ] )
+        node_name = subgoalName
+        polarity  = subgoalPolarity
+        record    = self.get_trigger_record_for_subgoal( gatt_to_data, sid_to_subgoal_att_list[ sid ] )
 
-      d = {}
-      d[ "treeType" ]      = treeType
-      d[ "node_name" ]     = node_name
-      d[ "triggerRecord" ] = record
-      d[ "polarity" ]      = polarity
+        d = {}
+        d[ "treeType" ]      = treeType
+        d[ "node_name" ]     = node_name
+        d[ "triggerRecord" ] = record
+        d[ "polarity" ]      = polarity
 
-      self.descendant_meta.append( d )
+        self.descendant_meta.append( d )
 
 
   ##################

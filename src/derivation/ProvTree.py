@@ -39,8 +39,11 @@ class ProvTree( object ) :
   # record        : array.        a tuple of data from the evaluation results for some 
   #                               relation (hopefully this relation).
   # eot           : integer.      the eot for this execution.
-  # parents       : [ ProvTree ]. the ProvTree object instances connected to
+  # parent        : ProvTree.     the ProvTree object instance connected to
   #                               this tree. None iff root is "FinalState".
+  # argDict       : dictionary.   dictionary of the commandline/execution parameters/inputs.
+  # pre_prov_recs : dictionary.   dictionary of arrays containing all previously considered 
+  #                               provenance records per relation.            
   def __init__( self, rootname        = None, \
                       final_state_ptr = None, \
                       parsedResults   = {},   \
@@ -52,7 +55,8 @@ class ProvTree( object ) :
                       record          = [],   \
                       eot             = 0,    \
                       parent          = None, \
-                      argDict         = {} ) :
+                      argDict         = {},   \
+                      prev_prov_recs  = {} ) :
 
     # dictionary of the execution arguments
     self.argDict = argDict
@@ -88,6 +92,7 @@ class ProvTree( object ) :
     self.provAttMap      = provAttMap
     self.record          = record
     self.eot             = eot
+    self.prev_prov_recs  = prev_prov_recs
 
     if not self.rootname == "FinalState" :
       self.parents.append( parent )
@@ -96,7 +101,7 @@ class ProvTree( object ) :
     logging.debug( "       CREATING NEW PROV TREE" )
     logging.debug( "self.rootname        = " + str( self.rootname ) )
     logging.debug( "self.final_state_ptr = " + str( self.final_state_ptr ) )
-    logging.debug( "self.parsedResults   = " + str( self.parsedResults ) )
+    #logging.debug( "self.parsedResults   = " + str( self.parsedResults ) )
     logging.debug( "self.cursor          = " + str( self.cursor ) )
     logging.debug( "self.db_id           = " + str( self.db_id ) )
     logging.debug( "self.treeType        = " + str( self.treeType ) )
@@ -105,8 +110,10 @@ class ProvTree( object ) :
     logging.debug( "self.record          = " + str( self.record ) )
     logging.debug( "self.eot             = " + str( self.eot ) )
     logging.debug( "self.parents         = " + str( self.parents ) )
-    logging.debug( "self                 = " + str( self        ) )
-    if not self.rootname == "FinalState" and self.final_state_ptr :
+    logging.debug( "self                 = " + str( self ) )
+    #logging.debug( "self.prev_prov_recs  = " + str( self.prev_prov_recs ) )
+    if False :
+    #if not self.rootname == "FinalState" and self.final_state_ptr :
       logging.debug( "self.final_state_ptr.node_str_to_object_map = \n" + str( self.final_state_ptr.node_str_to_object_map ) )
       logging.debug( "==================================" )
     else :
@@ -138,10 +145,15 @@ class ProvTree( object ) :
       self.generate_curr_node()
       if self.final_state_ptr :
         self.final_state_ptr.node_str_to_object_map[ self.__str__() ] = self # add this node to the final state map
+        logging.debug( "  added '" + self.__str__() + "' to final_state_ptr.node_str_to_object_map" )
       self.generate_subtree()
 
     # -------------------------------- #
     if not self.rootname == "__TestNode__" :  # for qa tests
+
+      if self.treeType == "goal" :
+        logging.debug( "+>>>name=" + self.rootname )
+        logging.debug( "self.curr_node.descendant_meta = " +str( self.curr_node.descendant_meta ) )
 
       # generate graph meta data
       self.generate_graph_data()
@@ -198,11 +210,11 @@ class ProvTree( object ) :
     graph_stats[ "num_nodes" ] = len( self.nodeset_pydot )
     graph_stats[ "num_edges" ] = len( self.edgeset_pydot )
 
-    try :
-      if tools.getConfig( self.argDict[ "settings" ], "DEFAULT", "SERIAL_GRAPH", bool ) == True :
-        self.save_serial_graph( fmla_index, iter_count, additional_str )
-    except KeyError :
-      logging.info( "not outputting graph data." )
+    #try :
+    if tools.getConfig( self.argDict[ "settings" ], "DEFAULT", "SERIAL_GRAPH", bool ) == True :
+      self.save_serial_graph( fmla_index, iter_count, additional_str )
+    #except KeyError :
+    #  logging.info( "not outputting graph data." )
 
     return graph_stats
 
@@ -213,7 +225,10 @@ class ProvTree( object ) :
   # save the nodes and edges of the graph to file.
   def save_serial_graph( self, fmla_index, iter_count, additional_str ) :
 
-      serial_path  = IMGSAVEPATH + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + "_" + additional_str + ".txt"
+      if additional_str :
+        serial_path  = IMGSAVEPATH + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + "_" + additional_str + ".txt"
+      else :
+        serial_path  = IMGSAVEPATH + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + ".txt"
       logging.info( "Saving prov tree graph data to " + str( serial_path ), )
 
       fo = open( serial_path, "w" )
@@ -383,6 +398,13 @@ class ProvTree( object ) :
             polarity    = None
             subtreeType = "rule"
 
+            # update list of previously considered provenance records
+            if goalName in self.prev_prov_recs :
+              self.prev_prov_recs[ goalName ].append( trig_rec )
+            else :
+              self.prev_prov_recs[ goalName ] = [ trig_rec ]
+            #logging.debug( "  GENERATE SUBTREE : added '" + str( trig_rec ) + "' to prev_prov_recs:\n" + str( self.prev_prov_recs ) )
+
             # do not create another ProvTree for the descendant if the descendant already exists.
             # just update the existing node's parents.
             # keep the meta data for when generating graph edges, though.
@@ -400,22 +422,24 @@ class ProvTree( object ) :
 
             else :
   
-              goalName    = self.curr_node.descendant_meta[ prov_rid ][ "goalName"    ]
-              triggerData = self.curr_node.descendant_meta[ prov_rid ][ "triggerData" ]
+              #goalName    = self.curr_node.descendant_meta[ prov_rid ][ "goalName"    ]
+              #triggerData = self.curr_node.descendant_meta[ prov_rid ][ "triggerData" ]
   
-              for record in triggerData :
+              #for record in triggerData :
   
-                new_subtree = ProvTree( rootname        = goalName, \
-                                        final_state_ptr = self.final_state_ptr, \
-                                        parsedResults   = self.parsedResults, \
-                                        cursor          = self.cursor, \
-                                        db_id           = prov_rid, \
-                                        treeType        = "rule", \
-                                        record          = record, \
-                                        parent          = self, \
-                                        eot             = self.eot )
-  
-                self.descendants.append( new_subtree )
+              new_subtree = ProvTree( rootname        = goalName, \
+                                      final_state_ptr = self.final_state_ptr, \
+                                      parsedResults   = self.parsedResults, \
+                                      cursor          = self.cursor, \
+                                      db_id           = prov_rid, \
+                                      treeType        = "rule", \
+                                      record          = trig_rec, \
+                                      parent          = self, \
+                                      eot             = self.eot )
+                                      #prev_prov_recs  = self.prev_prov_recs )
+ 
+              self.descendants.append( new_subtree )
+
 
     # -------------------------------- #
     # CASE : this tree is a rule. 
@@ -453,36 +477,32 @@ class ProvTree( object ) :
 
         else :
 
-          treeType      = d_meta[ "treeType" ]
-          node_name     = d_meta[ "node_name" ]
-          triggerRecord = d_meta[ "triggerRecord" ]
-          polarity      = d_meta[ "polarity" ]
-  
           if polarity == "notin" :
             isNeg = True
           else :
             isNeg = False
   
           # CASE : spawn a goal
-          if treeType == "goal" :
-            new_subtree = ProvTree( rootname        = node_name, \
+          if subtreeType == "goal" :
+            new_subtree = ProvTree( rootname        = goalName, \
                                     final_state_ptr = self.final_state_ptr, \
                                     parsedResults   = self.parsedResults, \
                                     cursor          = self.cursor, \
                                     treeType        = "goal", \
-                                    record          = triggerRecord, \
+                                    record          = trig_rec, \
                                     isNeg           = isNeg, \
                                     parent          = self, \
-                                    eot             = self.eot )
+                                    eot             = self.eot, \
+                                    prev_prov_recs  = self.prev_prov_recs )
   
           # CASE : spawn a fact
-          elif treeType == "fact" :
-            new_subtree = ProvTree( rootname        = node_name, \
+          elif subtreeType == "fact" :
+            new_subtree = ProvTree( rootname        = goalName, \
                                     final_state_ptr = self.final_state_ptr, \
                                     parsedResults   = self.parsedResults, \
                                     cursor          = self.cursor, \
                                     treeType        = "fact", \
-                                    record          = triggerRecord, \
+                                    record          = trig_rec, \
                                     isNeg           = isNeg, \
                                     parent          = self, \
                                     eot             = self.eot )
@@ -535,23 +555,26 @@ class ProvTree( object ) :
 
     if subtreeType == "rule" :
       rule_str_to_check = self.get_node_string( goalName, polarity, trig_rec, subtreeType )
+      logging.debug( "  ALREADY INCORPORATED INTO GRAPH : rule_str_to_check = " + rule_str_to_check )
       if rule_str_to_check in self.final_state_ptr.node_str_to_object_map :
         flag = True
 
     elif subtreeType == "goal" :
       goal_str_to_check = self.get_node_string( goalName, polarity, trig_rec, subtreeType )
+      logging.debug( "  ALREADY INCORPORATED INTO GRAPH : goal_str_to_check = " + goal_str_to_check )
       if goal_str_to_check in self.final_state_ptr.node_str_to_object_map :
         flag = True
 
     elif subtreeType == "fact" :
       fact_str_to_check = self.get_node_string( goalName, polarity, trig_rec, subtreeType )
+      logging.debug( "  ALREADY INCORPORATED INTO GRAPH : fact_str_to_check = " + fact_str_to_check )
       if fact_str_to_check in self.final_state_ptr.node_str_to_object_map :
         flag = True
 
     else :
       tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : unrecognized descendant type '" + subtreeType + "'" )
 
-    logging.debug( "  ALREADY INCORPORATED INTO GRAPH : ...done." )
+    logging.debug( "  ALREADY INCORPORATED INTO GRAPH : returning " + str( flag ) )
 
     return flag
 
@@ -599,11 +622,12 @@ class ProvTree( object ) :
     # CASE : goal node
 
     if self.treeType == "goal" :
-      self.curr_node = GoalNode.GoalNode( name          = self.rootname, \
-                                          isNeg         = self.isNeg, \
-                                          record        = self.record, \
-                                          parsedResults = self.parsedResults, \
-                                          cursor        = self.cursor )
+      self.curr_node = GoalNode.GoalNode( name           = self.rootname, \
+                                          isNeg          = self.isNeg, \
+                                          record         = self.record, \
+                                          parsedResults  = self.parsedResults, \
+                                          cursor         = self.cursor, \
+                                          prev_prov_recs = self.prev_prov_recs )
 
     # -------------------------------- #
     # CASE : rule node
@@ -666,7 +690,8 @@ class ProvTree( object ) :
                                          provAttMap      = {},                 \
                                          record          = rec,                 \
                                          eot             = self.eot,           \
-                                         parent          = self ) )
+                                         parent          = self, \
+                                         prev_prov_recs  = self.prev_prov_recs ) )
 
 
   ##################
