@@ -121,7 +121,7 @@ class FactNode( Node ) :
   
         logging.debug( "fact        = " + str( fact ) )
         logging.debug( "self.record = " + str( self.record ) )
-        logging.debug( "fact == self.record is" + str( fact == self.record ) )
+        logging.debug( "fact == self.record is " + str( fact == self.record ) )
   
         #if fact == self.record : # does not handle wildcards
         if self.is_match( fact ) :
@@ -137,8 +137,15 @@ class FactNode( Node ) :
   def is_match( self, fact ) :
 
     for i in range( 0, len( self.record ) ) :
+
       fact_datum   = fact[ i ]
       record_datum = self.record[ i ]
+
+      # remove any quotes
+      if record_datum.startswith( "'" ) and record_datum.endswith( "'" ) :
+        record_datum = record_datum.replace( "'", "" )
+      elif record_datum.startswith( '"' ) and record_datum.endswith( '"' ) :
+        record_datum = record_datum.replace( '"', "" )
 
       if record_datum == "_" :
         pass

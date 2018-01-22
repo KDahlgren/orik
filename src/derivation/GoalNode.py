@@ -57,10 +57,10 @@ class GoalNode( Node ) :
     # make sure record exists in the 
     # eval results for this relation
 
-    if not self.name == "FinalState"                 and \
-       not self.name == "__KD__TESTNODE__KD__"       and \
-       not "_" in self.record                        and \
-       not self.record in parsedResults[ self.name ] and \
+    if not self.name == "FinalState"           and \
+       not self.name == "__KD__TESTNODE__KD__" and \
+       not "_" in self.record                  and \
+       not self.in_results()                   and \
        self.isNeg == False :
 
       tools.bp( __name__, inspect.stack()[0][3], \
@@ -84,6 +84,47 @@ class GoalNode( Node ) :
     if not self.name == "FinalState" and \
        not self.name == "__KD__TESTNODE__KD__" :
       self.generate_descendant_meta()
+
+
+  ################
+  #  IN RESULTS  #
+  ################
+  # check if the record exists in the parsed results.
+  def in_results( self ) :
+
+    for res in self.parsedResults[ self.name ] :
+      if self.is_match( res ) :
+        return True
+
+    return False
+
+
+  ##############
+  #  IS MATCH  #
+  ##############
+  # check if the input result tuple 'matches' any tuple in the evaluation results
+  # for this relation.
+  def is_match( self, res ) :
+
+    for i in range( 0, len( self.record ) ) :
+
+      res_datum    = res[ i ]
+      record_datum = self.record[ i ]
+
+      # remove any quotes
+      if record_datum.startswith( "'" ) and record_datum.endswith( "'" ) :
+        record_datum = record_datum.replace( "'", "" )
+      elif record_datum.startswith( '"' ) and record_datum.endswith( '"' ) :
+        record_datum = record_datum.replace( '"', "" )
+
+      if record_datum == "_" :
+        pass
+
+      else :
+        if not res_datum == record_datum :
+          return False
+
+    return True
 
 
   #############
@@ -168,18 +209,30 @@ class GoalNode( Node ) :
   ################################
   # get the list of rid(s) for rules defining this relation
   # capable of generating the input record.
-  # breaks if user inputs relations with '_prov' in the name.
+  # this code will _NOT_ if the user inputs relations ending with '_prov' or '_vars'.
   def get_prov_rid_and_name_list( self ) :
 
-    self.cursor.execute( "SELECT rid,goalName FROM Rule WHERE goalName LIKE '" + self.name + "%_prov%'" )
-    prov_rid_and_name_list = self.cursor.fetchall()
-    prov_rid_and_name_list = tools.toAscii_multiList( prov_rid_and_name_list )
+    logging.debug( "  GET PROV RID AND NAME LIST : checking self.name = " + self.name )
+
+    # the provenance rule for any _vars rule is the _vars rule.
+    if self.name.endswith( "_vars" ) :
+      self.cursor.execute( "SELECT rid,goalName FROM Rule WHERE goalName LIKE '" + self.name + "'" )
+      rid_and_name_list = self.cursor.fetchall()
+      rid_and_name_list = tools.toAscii_multiList( rid_and_name_list )
+
+    else :
+      # get any associated _prov rules
+      self.cursor.execute( "SELECT rid,goalName FROM Rule WHERE goalName LIKE '" + self.name + "_prov%'" )
+      rid_and_name_list = self.cursor.fetchall()
+      rid_and_name_list = tools.toAscii_multiList( rid_and_name_list )
+
+    logging.debug( "  GET PROV RID AND NAME LIST : rid_and_name_list = " + str( rid_and_name_list ) )
 
     # all rules must have corresponding provenance rules
-    if not len( prov_rid_and_name_list ) > 0 and not self.name == "__TestNode__" :
-      tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : no provenance rule for '" + self.name + "'" )
+    if not len( rid_and_name_list ) > 0 and not self.name == "__TestNode__" :
+      tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : no provenance rules for '" + self.name + "'" )
 
-    return prov_rid_and_name_list
+    return rid_and_name_list
 
 
   ############################

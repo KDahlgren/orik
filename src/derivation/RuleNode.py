@@ -23,7 +23,8 @@ class RuleNode( Node ) :
   #####################
 
   treeType = "rule"
-
+  ops  = [ "+", "-", "*", "/" ]
+  aggs = [ "max<", "min<", "sum<", "count<", "avg<" ]
 
   #################
   #  CONSTRUCTOR  #
@@ -119,7 +120,8 @@ class RuleNode( Node ) :
     for i in range( 0, len( goal_atts ) ) :
       gatt                 = goal_atts[ i ]
 
-      if self.contains_agg( gatt ) :
+      # handle goal attributes containing aggregate operators
+      if self.contains_op( gatt ) :
         op         = self.get_op( gatt )
         lhs        = self.get_lhs( gatt )
         clean_gatt = self.get_clean_gatt( gatt )
@@ -137,6 +139,15 @@ class RuleNode( Node ) :
           tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : unrecognized op '" + op + "'" )
 
         gatt_to_data[ clean_gatt ] = real_data
+
+      # handle goal attributes containing aggregate functions
+      elif self.contains_agg( gatt ) :
+        op         = self.get_op( gatt )
+        lhs        = self.get_lhs( gatt )
+        clean_gatt = self.get_clean_gatt( gatt )
+        raw_data   = self.record[ i ]
+
+        gatt_to_data[ clean_gatt ] = raw_data
 
       else :
         data                 = self.record[ i ]
@@ -281,15 +292,26 @@ class RuleNode( Node ) :
         self.descendant_meta.append( d )
 
 
-  ##################
-  #  CONTAINS AGG  #
-  ##################
+  #################
+  #  CONTAINS OP  #
+  #################
   # check if the input goal attribute
   # contains an aggregate operator.
-  def contains_agg( self, gatt ) :
-    ops = [ "+", "-", "*", "/" ]
-    for op in ops :
+  def contains_op( self, gatt ) :
+    for op in self.ops :
       if op in gatt :
+        return True
+    return False
+
+
+  #################
+  #  CONTAINS OP  #
+  #################
+  # check if the input goal attribute
+  # contains an aggregate function.
+  def contains_agg( self, gatt ) :
+    for agg in self.aggs :
+      if agg in gatt :
         return True
     return False
 
@@ -316,9 +338,8 @@ class RuleNode( Node ) :
   #############
   # grab the lhs from the goal attribute string
   def get_lhs( self, gatt ) :
-    ops = [ "+", "-", "*", "/" ]
     for i in range( 0, len( gatt ) ) :
-      if gatt[ i ] in ops :
+      if gatt[ i ] in self.ops :
         return gatt[ i+1 : ]
     return gatt
 
@@ -327,11 +348,24 @@ class RuleNode( Node ) :
   #  GET CLEAN GATT  #
   ####################
   # grab the goal attribute
+  # remove aggs
+  # remove operators
   def get_clean_gatt( self, gatt ) :
-    ops = [ "+", "-", "*", "/" ]
+
+    logging.debug( "  GET CLEAN GATT : gatt = " + gatt )
+
+    # remove aggs
+    for agg in self.aggs :
+      if gatt.startswith( agg ) and ">" in gatt :
+        gatt = gatt.replace( agg, "" )
+        gatt = gatt.replace( ">", "" )
+
+    # remove operators
     for i in range( 0, len( gatt ) ) :
-      if gatt[ i ] in ops :
+      if gatt[ i ] in self.ops :
         return gatt[ : i ]
+
+    logging.debug( "GET CLEAN GATT : returning gatt = " + gatt )
     return gatt
 
 
@@ -355,7 +389,16 @@ class RuleNode( Node ) :
 
       # keep wildcards
       if satt == "_" :
-        triggerRecord.append( "_" )
+        triggerRecord.append( satt )
+
+      # keep fixed integer data
+      elif satt.isdigit() :
+        triggerRecord.append( satt )
+
+      # keep fixed string data
+      elif ( satt.startswith( "'" ) and satt.endswith( "'" ) ) or \
+           ( satt.startswith( '"' ) and satt.endswith( '"' ) ) :
+        triggerRecord.append( satt )
 
       else :
         triggerRecord.append( gatt_to_data[ satt ] )
