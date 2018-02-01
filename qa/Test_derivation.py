@@ -63,9 +63,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -130,9 +129,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -197,9 +195,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -264,9 +261,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -331,9 +327,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -398,9 +393,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -473,9 +467,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -540,9 +533,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -607,9 +599,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -672,9 +663,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -739,9 +729,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -806,9 +795,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -873,9 +861,8 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
-#    if os.path.exists( "./data/" ) :
-#      os.system( "rm -rf ./data/" )
-#    os.system( "mkdir ./data/" )
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # specify input file paths
@@ -953,6 +940,9 @@ class Test_derivation( unittest.TestCase ) :
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # get argDict
@@ -1094,6 +1084,9 @@ class Test_derivation( unittest.TestCase ) :
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # get argDict
@@ -1259,6 +1252,9 @@ class Test_derivation( unittest.TestCase ) :
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # get argDict
@@ -1463,6 +1459,9 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
 
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
+
     # --------------------------------------------------------------- #
     # get argDict
 
@@ -1644,6 +1643,9 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
 
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
+
     # --------------------------------------------------------------- #
     # get argDict
 
@@ -1810,6 +1812,9 @@ class Test_derivation( unittest.TestCase ) :
 
     dedt.createDedalusIRTables( cursor_3 )
     dedt.globalCounterReset()
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # get argDict
@@ -2054,6 +2059,9 @@ class Test_derivation( unittest.TestCase ) :
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # get argDict
@@ -2328,6 +2336,9 @@ class Test_derivation( unittest.TestCase ) :
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # get argDict
