@@ -47,7 +47,7 @@ class Test_derivation( unittest.TestCase ) :
   #  DM 3 PC  #
   #############
   # tests provenance derivation for 3pc
-  @unittest.skip( "working on different example" )
+  @unittest.skip( "see c4 error." )
   def test_dm_3pc( self ) :
 
     db_append = "_test_dm_3pc_"
@@ -76,9 +76,10 @@ class Test_derivation( unittest.TestCase ) :
     # get argDict
 
     argDict = self.getArgDict( inputfile )
-    argDict[ "EOT" ]      = 2
-    argDict[ "EFF" ]      = 1
-    argDict[ "settings" ] = "./settings_dm.ini"
+    argDict[ "nodes" ]    = [ "a", "b", "C", "d" ]
+    argDict[ "EOT" ]      = 8
+    argDict[ "EFF" ]      = 0
+    argDict[ "settings" ] = "./settings_dm_iedb_rewrites.ini"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -95,9 +96,73 @@ class Test_derivation( unittest.TestCase ) :
     # generate graph visualisation and 
     # examine stats
 
-    graph_stats = provTree.create_pydot_graph( 0, 0, db_append ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == None )
-    self.assertTrue( graph_stats[ "num_edges" ] == None )
+#    graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
+#    self.assertTrue( graph_stats[ "num_nodes" ] == None )
+#    self.assertTrue( graph_stats[ "num_edges" ] == None )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
+
+  ##########
+  #  3 PC  #
+  ##########
+  # tests provenance derivation for 3pc
+  #@unittest.skip( "no eot post records." )
+  def test_3pc( self ) :
+
+    test_id = "_test_3pc"
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
+
+    testDB = "./IR" + test_id + ".db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/3pc_driver.ded"
+    serial_nodes_path = "./testFiles/3pc_expected_nodes.txt"
+    serial_edges_path = "./testFiles/3pc_expected_edges.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "nodes" ]    = [ "a", "b", "C", "d" ]
+    argDict[ "EOT" ]      = 8
+    argDict[ "EFF" ]      = 0
+    argDict[ "settings" ] = "./settings_iedb_rewrites.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       test_id )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+#    graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
+#    self.assertTrue( graph_stats[ "num_nodes" ] == None )
+#    self.assertTrue( graph_stats[ "num_edges" ] == None )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -116,10 +181,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -141,7 +206,7 @@ class Test_derivation( unittest.TestCase ) :
     # get argDict
 
     argDict = self.getArgDict( inputfile )
-    argDict[ "settings" ] = "./settings_dm.ini"
+    argDict[ "settings" ] = "./settings_dm_iedb_rewrites.ini"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -182,10 +247,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -207,7 +272,7 @@ class Test_derivation( unittest.TestCase ) :
     # get argDict
 
     argDict = self.getArgDict( inputfile )
-    argDict[ "settings" ] = "./settings_dm.ini"
+    argDict[ "settings" ] = "./settings_dm_iedb_rewrites.ini"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -238,6 +303,73 @@ class Test_derivation( unittest.TestCase ) :
     os.remove( testDB )
 
 
+  ########################
+  #  SIMPLOG DM CONCISE  #
+  ########################
+  # tests simplog provenance graph generation with dm concise
+  #@unittest.skip( "working on different example." )
+  def test_simplog_dm_concise( self ) :
+
+    test_id = "simplog_dm_concise"
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
+
+    testDB = "./IR*.db*"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./dedalus_drivers/simplog_driver.ded"
+    serial_nodes_path = "./testFiles/" + test_id + "_nodes.txt"
+    serial_edges_path = "./testFiles/" + test_id + "_edges.txt"
+    additional_str    = test_id
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "settings" ] = "./settings_dm_concise.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
+
+    # --------------------------------------------------------------- #
+    # compare the actual and expected tree dimensions
+
+#    tree_height               = 12
+#    total_number_serial_nodes = 80
+#
+#    expected_dimensions = [ tree_height, \
+#                            total_number_serial_nodes ]
+#
+#    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
   ################
   #  SIMPLOG DM  #
   ################
@@ -248,10 +380,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -273,7 +405,7 @@ class Test_derivation( unittest.TestCase ) :
     # get argDict
 
     argDict = self.getArgDict( inputfile )
-    argDict[ "settings" ] = "./settings_dm.ini"
+    argDict[ "settings" ] = "./settings_dm_iedb_rewrites.ini"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -314,10 +446,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -380,10 +512,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -446,10 +578,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -520,10 +652,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -586,10 +718,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -652,10 +784,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -717,10 +849,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -783,10 +915,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -849,10 +981,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -915,10 +1047,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -995,10 +1127,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -1139,10 +1271,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -1307,10 +1439,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -1513,10 +1645,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -1697,10 +1829,10 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR.db" ) :
-      os.remove( "./IR.db" )
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
 
-    testDB = "./IR.db"
+    testDB = "./IR*.db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
