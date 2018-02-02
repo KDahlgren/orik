@@ -34,14 +34,77 @@ from evaluators import c4_evaluator
 class Test_derivation( unittest.TestCase ) :
 
   #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.DEBUG )
-  #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.INFO )
-  logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.WARNING )
+  logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.INFO )
+  #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.WARNING )
 
   PRINT_STOP = False
 
   # //////////////////////////////////// #
   #          FULL EXAMPLE TESTS          #
   # //////////////////////////////////// #
+
+  #############
+  #  DM 3 PC  #
+  #############
+  # tests provenance derivation for 3pc
+  @unittest.skip( "working on different example" )
+  def test_dm_3pc( self ) :
+
+    db_append = "_test_dm_3pc_"
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
+
+    testDB = "./IR" + db_append + ".db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/3pc_driver.ded"
+    serial_nodes_path = "./testFiles/dm_3pc_expected_nodes.txt"
+    serial_edges_path = "./testFiles/dm_3pc_expected_edges.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "EOT" ]      = 2
+    argDict[ "EFF" ]      = 1
+    argDict[ "settings" ] = "./settings_dm.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       db_append )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, db_append ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == None )
+    self.assertTrue( graph_stats[ "num_edges" ] == None )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+
+    IRDB.close()
+    os.remove( testDB )
+
 
   ###############
   #  REPLOG DM  #
@@ -652,6 +715,7 @@ class Test_derivation( unittest.TestCase ) :
     IRDB.close()
     os.remove( testDB )
 
+
   ############
   #  AGGS 1  #
   ############
@@ -707,7 +771,7 @@ class Test_derivation( unittest.TestCase ) :
     # generate graph visualisation and 
     # examine stats
 
-    graph_stats = provTree.create_pydot_graph( 0, 0, "_test_dm_demo_1" ) # redundant
+    graph_stats = provTree.create_pydot_graph( 0, 0, "_test_aggs_1" ) # redundant
     self.assertTrue( graph_stats[ "num_nodes" ] == 16 )
     self.assertTrue( graph_stats[ "num_edges" ] == 16 )
 
