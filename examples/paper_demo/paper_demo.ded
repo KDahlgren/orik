@@ -1,0 +1,88 @@
+
+// ============================================================ //
+// base data
+
+scheduler( "a", "jobscheduler", 2 )@1 ; // job scheduler initially sends jobs to 'a'
+scheduler( Dest, JS, T )@next :- scheduler( Dest, JS, T ) ;
+
+primary( "a" )@1 ;                      // 'a' is the primary
+primary( N )@next :- primary( N ); //, notin primary_failure( N, _ ) ;
+
+job( "a", "job1" )@1 ;                  // need to send job1 to 'a'
+job( N, J )@next :- job( N, J ) ;
+
+connected( "a", "jobscheduler" )@1 ;
+connected( "b", "jobscheduler" )@1 ;
+connected( SRC, DEST )@next :- connected( SRC, DEST ) ;
+
+// the job scheduler has a short attention span and only waits 
+// 2 heartbeats before ditching the primary in favor of the backup.
+threshold( "a", 1 )@1 ;
+threshold( N, THRESH )@next :- threshold( N, THRESH ) ;
+
+// ============================================================ //
+// controls the heartbeat timer. send a heartbeat at every time step.
+
+a_timer( "a", 1 )@1 ;
+a_timer( P, H+1 )@next :- a_timer( P, H ) ;
+
+// ============================================================ //
+
+backup( "a", "b" )@1 ;  // happy case 'b' is the real backup node.
+//backup( "a", "c" )@1 ;  // corrupt case 'c' is not the real backup node?
+backup( SRC, DEST )@next :- backup( SRC, DEST ) ;
+
+// ============================================================ //
+
+// send_to_primary contains the set of all pairs of strings
+// where S:=destination node and J:=the job string
+// such that S maps to J in the jobs table,
+//           S is not listed as a primary_failure according to P,
+//       and S is categorized a primary node.
+
+send_to_primary(S, J)@async :- job(S, J), 
+                               connected( S, JS ),
+                               notin primary_failure(S, JS), 
+                               primary(S) ;
+
+// send_to_backup contains the set of all pairs of strings
+// where B:=destination node and J:=the job string
+// such that S maps to J in the jobs table,
+//           S is a failed primary,
+//           S is a primary,
+//       and B is valid backup for S.
+
+send_to_backup(B, J)@async :- job(S,J), 
+                              primary_failure(S, JS), 
+                              connected( S, JS ),
+                              primary(S), 
+                              backup(S,B) ;
+
+// primary_failure contains the set of all pairs of strings
+// where S:=the identity of the failed primary,
+//   and P:=the job scheduler id
+// such that a //
+// Also, once a primary fails, the primary remains failed
+// for the remainder of the execution.
+
+primary_failure(S, P)@next :- primary_failure(S, P) ;
+primary_failure(S, P)      :- primary(S), 
+                              scheduler( S, P, H ),
+                              notin heartbeat(S, P, H), 
+                              current_time( S, T ),
+                              threshold(S, THRESH), 
+                              T - H > THRESH ;
+
+// heartbeat is the set of all primary/job scheduler id pairs
+// such that P is a primary node, S is a job scheduler connected
+// to P, and P sends heartbeats at every time step.
+
+heartbeat( P, S, H )@async :- primary(P), scheduler(P, S, _), a_timer(P, H) ;
+
+current_time( S, T+1 )@next :- current_time( S, T ) ;
+current_time( "a", 1 )@1 ;
+current_time( "jobscheduler", 1 )@1 ;
+
+
+post( B, J ) :- send_to_backup( B, J ) ;
+pre( B, J ) :- post( B, J ) ;
