@@ -1,4 +1,5 @@
 pydot.Node("fact->clock(['c', 'c', '1', '_'])")
+pydot.Node("fact->fdhr_3(['3'])")
 pydot.Node("fact->p(['c', '\"stuff\"', '1'])")
 pydot.Node("rule->m_prov2(['c', '3', '1'])")
 pydot.Node("goal->m(['c', '3', '1'])")

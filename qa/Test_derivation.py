@@ -8,7 +8,7 @@ Test_derivation.py
 #  IMPORTS  #
 #############
 # standard python packages
-import copy, inspect, logging, os, sqlite3, sys, time, unittest
+import copy, inspect, logging, os, shutil, sqlite3, sys, time, unittest
 
 # ------------------------------------------------------ #
 # import sibling packages HERE!!!
@@ -43,6 +43,130 @@ class Test_derivation( unittest.TestCase ) :
   #          FULL EXAMPLE TESTS          #
   # //////////////////////////////////// #
 
+  #####################
+  #  SMALLER DEMO DM  #
+  #####################
+  #@unittest.skip( "skipping" )
+  def test_smaller_demo_dm( self ) :
+
+    test_id = "_test_smaller_demo_dm"
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
+
+    testDB = "./IR_" + test_id + ".db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./smaller_demo.ded"
+    serial_nodes_path = "./testFiles/smaller_demo_dm_expected_nodes.txt"
+    serial_edges_path = "./testFiles/smaller_demo_dm_expected_edges.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "nodes" ]    = [ "myapp", "noaa", "sunny" ]
+    argDict[ "EOT" ]      = 3
+    argDict[ "EFF" ]      = 1
+    argDict[ "settings" ] = "./settings_smaller_demo_dm.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       test_id )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 46 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 45 )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+    del( provTree )
+    IRDB.close()
+    os.remove( testDB )
+
+  ##################
+  #  SMALLER DEMO  #
+  ##################
+  #@unittest.skip( "skipping" )
+  def test_smaller_demo( self ) :
+
+    test_id = "_test_smaller_demo"
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
+
+    testDB = "./IR_" + test_id + ".db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./smaller_demo.ded"
+    serial_nodes_path = "./testFiles/smaller_demo_expected_nodes.txt"
+    serial_edges_path = "./testFiles/smaller_demo_expected_edges.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "nodes" ]    = [ "myapp", "noaa", "sunny" ]
+    argDict[ "EOT" ]      = 3
+    argDict[ "EFF" ]      = 1
+    argDict[ "settings" ] = "./settings_smaller_demo.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       test_id )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 19 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 18 )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+    del( provTree )
+    IRDB.close()
+    os.remove( testDB )
+
   #############
   #  DM 3 PC  #
   #############
@@ -58,10 +182,12 @@ class Test_derivation( unittest.TestCase ) :
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR" + db_append + ".db"
+    testDB = "./IR_" + db_append + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
+    # clean up test
+    del( new_tree )
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
@@ -102,7 +228,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -122,7 +248,7 @@ class Test_derivation( unittest.TestCase ) :
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR" + test_id + ".db"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -166,7 +292,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -178,13 +304,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example." )
   def test_replog_dm( self ) :
 
+    test_id = "replog_dm"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + "_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -232,7 +360,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -244,13 +372,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example." )
   def test_rdlog_dm( self ) :
 
+    test_id = "rdlog_dm"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -298,7 +428,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -318,7 +448,7 @@ class Test_derivation( unittest.TestCase ) :
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -366,7 +496,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -377,13 +507,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example." )
   def test_simplog_dm( self ) :
 
+    test_id = "simplog_dm"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -431,7 +563,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -443,13 +575,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example.." )
   def test_replog( self ) :
 
+    test_id = "replog"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -497,7 +631,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -509,13 +643,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example." )
   def test_rdlog( self ) :
 
+    test_id = "rdlog"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -563,7 +699,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -575,13 +711,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example." )
   def test_simplog( self ) :
 
+    test_id = "simplog"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -637,7 +775,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -649,13 +787,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example" )
   def test_fixed_data_3( self ) :
 
+    test_id = "fixed_data_3"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id  + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -697,12 +837,12 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_fixed_data_3" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 25 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 26 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 34 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 42 )
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -715,13 +855,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example" )
   def test_fixed_data_2( self ) :
 
+    test_id = "fixed_data_2"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -763,12 +905,12 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_fixed_data_2" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 25 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 26 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 26 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 28 )
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -781,13 +923,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example" )
   def test_fixed_data_1( self ) :
 
+    test_id = "fixed_data_1"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -829,12 +973,12 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_fixed_data_1" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 13 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 13 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 14 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 14 )
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -846,13 +990,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example" )
   def test_aggs_1( self ) :
 
+    test_id = "aggs_1"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -894,12 +1040,12 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_aggs_1" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 16 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 16 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 18 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 18 )
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -912,13 +1058,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example" )
   def test_dm_demo_1( self ) :
 
+    test_id = "dm_demo_1"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -965,7 +1113,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -978,13 +1126,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example" )
   def test_example_2( self ) :
 
+    test_id = "example_2"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -1013,6 +1163,7 @@ class Test_derivation( unittest.TestCase ) :
     # provenance graph
 
     # instantiate tree
+    provTree = None
     try :
       provTree = self.compare_provenance_graph_workflow( argDict, \
                                                          inputfile, \
@@ -1031,7 +1182,8 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    if provTree :
+      del( provTree )
     IRDB.close()
     if os.path.exists( testDB ) :
       os.remove( testDB )
@@ -1044,13 +1196,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example" )
   def test_example_1( self ) :
 
+    test_id = "example_1"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -1107,6 +1261,7 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # clean up test
 
+    del( provTree )
     IRDB.close()
     os.remove( testDB )
 
@@ -1124,13 +1279,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different exampple." )
   def test_prov_tree_8( self ) :
 
+    test_id = "prov_tree_8"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -1235,14 +1392,16 @@ class Test_derivation( unittest.TestCase ) :
     parent        = None
 
     # instantiate tree
+    new_tree = None
     try :
-      new_tree = ProvTree.ProvTree( rootname      = rootname, \
-                                    parsedResults = parsedResults, \
-                                    cursor        = cursor, \
-                                    treeType      = treeType, \
-                                    isNeg         = isNeg, \
-                                    eot           = eot, \
-                                    argDict       = argDict )
+      new_tree = ProvTree.ProvTree( rootname       = rootname, \
+                                    parsedResults  = parsedResults, \
+                                    cursor         = cursor, \
+                                    treeType       = treeType, \
+                                    isNeg          = isNeg, \
+                                    eot            = eot, \
+                                    prev_prov_recs = {}, \
+                                    argDict        = argDict )
 
     except SystemExit :
       actual_error = str( sys.exc_info()[1] )
@@ -1255,6 +1414,8 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # clean up test
 
+    if new_tree :
+      del( new_tree )
     IRDB.close()
     if os.path.exists( testDB ) :
       os.remove( testDB )
@@ -1268,21 +1429,28 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different exampple." )
   def test_prov_tree_7( self ) :
 
+    test_id = "test_prov_tree_7"
+
     # --------------------------------------------------------------- #
     # set up test
 
-    if os.path.exists( "./IR*.db*" ) :
-      os.remove( "./IR*.db*" )
+#    if os.path.exists( "./IR*.db*" ) :
+#      os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
-    IRDB   = sqlite3.connect( testDB )
+    test_dir      = "./" + test_id
+    test_db       = test_dir + "/IR.db"
+    test_data_dir = test_dir + "/data"
+
+    if os.path.isdir( test_dir ) :
+      shutil.rmtree( test_dir )
+    os.system( "mkdir " + test_dir )
+    os.system( "mkdir " + test_data_dir )
+
+    IRDB   = sqlite3.connect( test_db )
     cursor = IRDB.cursor()
 
     dedt.createDedalusIRTables( cursor )
     dedt.globalCounterReset()
-
-    if not os.path.exists( "./data/" ) :
-      os.system( "mkdir ./data/" )
 
     # --------------------------------------------------------------- #
     # get argDict
@@ -1358,6 +1526,13 @@ class Test_derivation( unittest.TestCase ) :
     cursor.execute( "INSERT INTO Fact     VALUES ('9','c','')" )
     cursor.execute( "INSERT INTO FactData VALUES ('9','0','1','int')" )
 
+    IRDB.commit()
+
+    print "look here."
+    for i in IRDB.iterdump() :
+      print i
+    #sys.exit( "blah" )
+
     # ------------------------------------------- #
     # instantiate new tree
 
@@ -1379,24 +1554,28 @@ class Test_derivation( unittest.TestCase ) :
     parent        = None
 
     # instantiate tree
-    new_tree = ProvTree.ProvTree( rootname      = rootname, \
-                                  parsedResults = parsedResults, \
-                                  cursor        = cursor, \
-                                  treeType      = treeType, \
-                                  isNeg         = isNeg, \
-                                  eot           = eot, \
-                                  argDict       = argDict )
+    new_tree = ProvTree.ProvTree( rootname       = rootname, \
+                                  parsedResults  = parsedResults, \
+                                  cursor         = cursor, \
+                                  treeType       = treeType, \
+                                  isNeg          = isNeg, \
+                                  eot            = eot, \
+                                  img_save_path  = test_data_dir, \
+                                  prev_prov_recs = {}, \
+                                  argDict        = argDict )
 
-    self.assertTrue( new_tree.rootname      == rootname      )
-    self.assertTrue( new_tree.parsedResults == parsedResults )
-    self.assertTrue( new_tree.cursor        == cursor        )
-    self.assertTrue( new_tree.db_id         == db_id         )
-    self.assertTrue( new_tree.treeType      == treeType      )
-    self.assertTrue( new_tree.isNeg         == isNeg         )
-    self.assertTrue( new_tree.provAttMap    == provAttMap    )
-    self.assertTrue( new_tree.record        == record        )
-    self.assertTrue( new_tree.eot           == eot           )
-    self.assertTrue( new_tree.parents       == [ ]           )
+    self.assertTrue( new_tree.rootname       == rootname      )
+    self.assertTrue( new_tree.parsedResults  == parsedResults )
+    self.assertTrue( new_tree.cursor         == cursor        )
+    self.assertTrue( new_tree.db_id          == db_id         )
+    self.assertTrue( new_tree.treeType       == treeType      )
+    self.assertTrue( new_tree.isNeg          == isNeg         )
+    self.assertTrue( new_tree.provAttMap     == provAttMap    )
+    self.assertTrue( new_tree.record         == record        )
+    self.assertTrue( new_tree.eot            == eot           )
+    self.assertTrue( new_tree.parents        == [ ]           )
+    #self.assertTrue( new_tree.prev_prov_recs == { }           )
+    print "thing : " + str( new_tree.prev_prov_recs )
 
     # ------------------------------------------- #
     # generate graph visualisation and 
@@ -1418,15 +1597,16 @@ class Test_derivation( unittest.TestCase ) :
     logging.debug( new_tree.edgeset_pydot_str )
     logging.debug( len( new_tree.edgeset_pydot_str ) )
 
-    graph_stats = new_tree.create_pydot_graph( 0, 0, "_test_prov_tree_7" )
+    graph_stats = new_tree.create_pydot_graph( 0, 0, "_" + test_id )
+    #sys.exit( graph_stats[ "num_nodes" ] )
     self.assertTrue( graph_stats[ "num_nodes" ] == 16 )
     self.assertTrue( graph_stats[ "num_edges" ] == 18 )
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( new_tree )
     IRDB.close()
-    os.remove( testDB )
+    #shutil.rmtree( test_dir )
 
 
   #################
@@ -1436,13 +1616,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different exampple." )
   def test_prov_tree_6( self ) :
 
+    test_id = "prov_tree_6"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db*"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -1534,13 +1716,14 @@ class Test_derivation( unittest.TestCase ) :
     parent        = None
 
     # instantiate tree
-    new_tree = ProvTree.ProvTree( rootname      = rootname, \
-                                  parsedResults = parsedResults, \
-                                  cursor        = cursor, \
-                                  treeType      = treeType, \
-                                  isNeg         = isNeg, \
-                                  eot           = eot, \
-                                  argDict       = argDict )
+    new_tree = ProvTree.ProvTree( rootname       = rootname, \
+                                  parsedResults  = parsedResults, \
+                                  cursor         = cursor, \
+                                  treeType       = treeType, \
+                                  isNeg          = isNeg, \
+                                  eot            = eot, \
+                                  prev_prov_recs = {}, \
+                                  argDict        = argDict )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -1629,7 +1812,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( new_tree )
     IRDB.close()
     os.remove( testDB )
 
@@ -1642,13 +1825,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different exampple." )
   def test_prov_tree_5( self ) :
 
+    test_id = "prov_tree_5"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id  + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -1731,13 +1916,14 @@ class Test_derivation( unittest.TestCase ) :
     parent        = None
 
     # instantiate tree
-    new_tree = ProvTree.ProvTree( rootname      = rootname, \
-                                  parsedResults = parsedResults, \
-                                  cursor        = cursor, \
-                                  treeType      = treeType, \
-                                  isNeg         = isNeg, \
-                                  eot           = eot, \
-                                  argDict       = argDict )
+    new_tree = ProvTree.ProvTree( rootname       = rootname, \
+                                  parsedResults  = parsedResults, \
+                                  cursor         = cursor, \
+                                  treeType       = treeType, \
+                                  isNeg          = isNeg, \
+                                  eot            = eot, \
+                                  prev_prov_recs = {}, \
+                                  argDict        = argDict )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -1814,7 +2000,7 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
-
+    del( new_tree )
     IRDB.close()
     os.remove( testDB )
 
@@ -1826,13 +2012,15 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different exampple." )
   def test_prov_tree_4( self ) :
 
+    test_id = "prov_tree_4"
+
     # --------------------------------------------------------------- #
     # set up test
 
     if os.path.exists( "./IR*.db*" ) :
       os.remove( "./IR*.db*" )
 
-    testDB = "./IR*.db*"
+    testDB = "./IR_" + test_id + ".db"
     IRDB   = sqlite3.connect( testDB )
     cursor = IRDB.cursor()
 
@@ -1900,13 +2088,14 @@ class Test_derivation( unittest.TestCase ) :
     parent        = None
 
     # instantiate tree
-    new_tree = ProvTree.ProvTree( rootname      = rootname, \
-                                  parsedResults = parsedResults, \
-                                  cursor        = cursor, \
-                                  treeType      = treeType, \
-                                  isNeg         = isNeg, \
-                                  eot           = eot, \
-                                  argDict       = argDict )
+    new_tree = ProvTree.ProvTree( rootname       = rootname, \
+                                  parsedResults  = parsedResults, \
+                                  cursor         = cursor, \
+                                  treeType       = treeType, \
+                                  isNeg          = isNeg, \
+                                  eot            = eot, \
+                                  prev_prov_recs = {}, \
+                                  argDict        = argDict )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -1978,11 +2167,17 @@ class Test_derivation( unittest.TestCase ) :
     #logging.debug( len( new_tree.edgeset_pydot_str ) )
 
     graph_stats = new_tree.create_pydot_graph( 0, 0, "_test_prov_tree_4" )
+
+    print "check:"
+    print graph_stats[ "num_nodes" ]
+    print graph_stats[ "num_edges" ]
     self.assertTrue( graph_stats[ "num_nodes" ] == 9 )
     self.assertTrue( graph_stats[ "num_edges" ] == 10 )
 
     # --------------------------------------------------------------- #
     # clean up test
+
+    del( new_tree )
 
     IRDB.close()
     os.remove( testDB )
@@ -2115,13 +2310,16 @@ class Test_derivation( unittest.TestCase ) :
     parent        = None
 
     # instantiate tree
-    new_tree = ProvTree.ProvTree( rootname      = rootname, \
-                                  parsedResults = parsedResults, \
-                                  cursor        = cursor_3, \
-                                  treeType      = treeType, \
-                                  isNeg         = isNeg, \
-                                  eot           = eot, \
-                                  argDict       = argDict )
+    new_tree = ProvTree.ProvTree( rootname       = rootname, \
+                                  parsedResults  = parsedResults, \
+                                  cursor         = cursor_3, \
+                                  treeType       = treeType, \
+                                  isNeg          = isNeg, \
+                                  eot            = eot, \
+                                  prev_prov_recs = {}, \
+                                  argDict        = argDict )
+
+    graph_stats = new_tree.create_pydot_graph( 0, 0, "_" + test_name )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -2220,12 +2418,14 @@ class Test_derivation( unittest.TestCase ) :
     #logging.debug( new_tree.edgeset_pydot_str )
     #logging.debug( len( new_tree.edgeset_pydot_str ) )
 
-    graph_stats = new_tree.create_pydot_graph( 0, 0, "_" + test_name )
+    #graph_stats = new_tree.create_pydot_graph( 0, 0, "_" + test_name )
     self.assertTrue( graph_stats[ "num_nodes" ] == 16 )
     self.assertTrue( graph_stats[ "num_edges" ] == 18 )
 
     # --------------------------------------------------------------- #
     # clean up test
+
+    del( new_tree )
 
     IRDB_3.close()
     if os.path.exists( testDB ) :
@@ -2369,13 +2569,14 @@ class Test_derivation( unittest.TestCase ) :
     eot           = 2
     parent        = None
 
-    new_tree = ProvTree.ProvTree( rootname      = rootname, \
-                                  parsedResults = parsedResults, \
-                                  cursor        = cursor, \
-                                  treeType      = treeType, \
-                                  isNeg         = isNeg, \
-                                  eot           = eot, \
-                                  argDict       = argDict )
+    new_tree = ProvTree.ProvTree( rootname       = rootname, \
+                                  parsedResults  = parsedResults, \
+                                  cursor         = cursor, \
+                                  treeType       = treeType, \
+                                  isNeg          = isNeg, \
+                                  eot            = eot, \
+                                  prev_prov_recs = {}, \
+                                  argDict        = argDict )
     IRDB.close()
 
     self.assertTrue( new_tree.rootname      == rootname      )
@@ -2507,6 +2708,8 @@ class Test_derivation( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # clean up test
 
+    del( new_tree )
+
     if os.path.exists( testDB ) :
       os.remove( testDB )
       logging.info( "removing " + testDB )
@@ -2601,13 +2804,14 @@ class Test_derivation( unittest.TestCase ) :
     parent        = None
 
     # instantiate tree
-    new_tree = ProvTree.ProvTree( rootname      = rootname, \
-                                  parsedResults = parsedResults, \
-                                  cursor        = cursor, \
-                                  treeType      = treeType, \
-                                  isNeg         = isNeg, \
-                                  eot           = eot, \
-                                  argDict       = argDict )
+    new_tree = ProvTree.ProvTree( rootname       = rootname, \
+                                  parsedResults  = parsedResults, \
+                                  cursor         = cursor, \
+                                  treeType       = treeType, \
+                                  isNeg          = isNeg, \
+                                  eot            = eot, \
+                                  prev_prov_recs = {}, \
+                                  argDict        = argDict )
 
     self.assertTrue( new_tree.rootname      == rootname      )
     self.assertTrue( new_tree.parsedResults == parsedResults )
@@ -2704,6 +2908,8 @@ class Test_derivation( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
     # clean up test
+
+    del( new_tree )
 
     IRDB.close()
     if os.path.exists( testDB ) :
@@ -2802,13 +3008,14 @@ class Test_derivation( unittest.TestCase ) :
   def get_prov_tree( self, argDict, parsedResults, cursor, additional_str ) :
 
     # initialize provenance tree structure
-    provTreeComplete = ProvTree.ProvTree( rootname      = "FinalState", \
-                                          parsedResults = parsedResults, \
-                                          cursor        = cursor, \
-                                          treeType      = "goal", \
-                                          isNeg         = False, \
-                                          eot           = argDict[ "EOT" ], \
-                                          argDict       = argDict )
+    provTreeComplete = ProvTree.ProvTree( rootname       = "FinalState", \
+                                          parsedResults  = parsedResults, \
+                                          cursor         = cursor, \
+                                          treeType       = "goal", \
+                                          isNeg          = False, \
+                                          eot            = argDict[ "EOT" ], \
+                                          prev_prov_recs = {}, \
+                                          argDict        = argDict )
 
     # create graph
     provTreeComplete.create_pydot_graph( 0, 0, additional_str )
@@ -2825,11 +3032,9 @@ class Test_derivation( unittest.TestCase ) :
 
     # convert dedalus into c4 datalog
     allProgramData = dedt.translateDedalus( argDict, cursor )
-    program_lines  = allProgramData[0]
-    table_array    = allProgramData[1]
 
     # run c4 evaluation
-    results_array = c4_evaluator.runC4_wrapper( allProgramData )
+    results_array = c4_evaluator.runC4_wrapper( allProgramData[0], argDict )
     parsedResults = tools.getEvalResults_dict_c4( results_array )
 
     return parsedResults
@@ -2877,6 +3082,7 @@ class Test_derivation( unittest.TestCase ) :
     argDict[ 'nodes' ]                    = [ "a", "b", "c" ]
     argDict[ 'evaluator' ]                = "c4"
     argDict[ 'EFF' ]                      = 2
+    argDict[ 'data_save_path' ]           = "./data/"
 
     return argDict
 

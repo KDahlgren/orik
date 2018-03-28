@@ -42,6 +42,7 @@ class FactNode( Node ) :
     self.record        = record
     self.parsedResults = parsedResults
     self.cursor        = cursor
+    self.uninteresting = False
 
 
     # -------------------------------- #
@@ -51,6 +52,10 @@ class FactNode( Node ) :
     if not self.is_fact() :
       tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : relation '" + self.name + "' does not reference a fact. aborting." )
 
+    # -------------------------------- #
+    # determine whether this fact is interesting
+
+    self.am_i_interesting()
 
     # -------------------------------- #
     # initialize node object
@@ -75,6 +80,18 @@ class FactNode( Node ) :
 
     else :
       return "fact->" + self.name + "(" + str(self.record) + ")"
+
+
+  ######################
+  #  AM I INTERESTING  #
+  ######################
+  # check if this fact is interesting 
+  # using heuristics
+  def am_i_interesting( self ) :
+
+    # negative facts are not interesting.
+    if self.isNeg :
+      self.uninteresting = True
 
 
   #############

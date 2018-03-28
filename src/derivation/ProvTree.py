@@ -6,7 +6,7 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import inspect, logging, os, string, sys, time
+import ConfigParser, copy, inspect, logging, os, string, sys, time
 import pydot
 
 # ------------------------------------------------------ #
@@ -20,7 +20,6 @@ from utils import tools
 
 # **************************************** #
 
-IMGSAVEPATH = os.path.abspath( os.getcwd() ) + "/data"
 
 # --------------------------------------------------- #
 
@@ -56,7 +55,17 @@ class ProvTree( object ) :
                       eot             = 0,    \
                       parent          = None, \
                       argDict         = {},   \
+                      img_save_path   = os.path.abspath( os.getcwd() ) + "/data", \
                       prev_prov_recs  = {} ) :
+
+    self.img_save_path = img_save_path
+
+    # uninteresting boolean. indicates whether or not 
+    # the provenance tree rooted at this node is interesting.
+    # all provenance trees are initially interesting.
+    # provenance trees become uninteresting if all descendant
+    # provenance trees are uninteresting.
+    self.uninteresting = False
 
     # dictionary of the execution arguments
     self.argDict = argDict
@@ -149,6 +158,20 @@ class ProvTree( object ) :
       self.generate_subtree()
 
     # -------------------------------- #
+    # simplify by pruning uninteresting
+    # branches
+
+    try :
+      TREE_SIMPLIFY = tools.getConfig( self.argDict[ "settings" ], "DEFAULT", "TREE_SIMPLIFY", bool )
+    except ConfigParser.NoOptionError :
+      TREE_SIMPLIFY = False
+      logging.warning( "WARNING : no 'TREE_SIMPLIFY' defined in 'DEFAULT' section of " + \
+                       self.argDict[ "settings" ] + "...running with TREE_SIMPLIFY==False." )
+    logging.debug( "  PROV TREE : using TREE_SIMPLIFY = " + str( TREE_SIMPLIFY ) )
+    if TREE_SIMPLIFY :
+      self.tree_simplify()
+
+    # -------------------------------- #
     if not self.rootname == "__TestNode__" :  # for qa tests
 
       if self.treeType == "goal" :
@@ -156,7 +179,167 @@ class ProvTree( object ) :
         logging.debug( "self.curr_node.descendant_meta = " +str( self.curr_node.descendant_meta ) )
 
       # generate graph meta data
-      self.generate_graph_data()
+      if TREE_SIMPLIFY and not self.uninteresting :
+        self.generate_graph_data()
+      else :
+        self.generate_graph_data()
+
+
+  ###################
+  #  TREE SIMPLIFY  #
+  ###################
+  # removes uninteresting descendants.
+  # if all descendants are uninteresting,
+  # then removes all descendants and sets
+  # self.uninteresting as True.
+  def tree_simplify( self ) :
+
+    logging.debug( "  TREE SIMPLIFY : running process..." )
+    logging.debug( "  TREE SIMPLIFY :  self.curr_node            => " + str( self.curr_node ) )
+    logging.debug( "  TREE SIMPLIFY :  self.descendants()        => " + str( self.descendants ) )
+    logging.debug( "  TREE SIMPLIFY :  len( self.descendants() ) => " + str( len( self.descendants ) ) )
+
+    if self.i_am_uninteresting() :
+      self.wipe_all_descendants()
+      self.uninteresting = True
+    else :
+      self.wipe_uninteresting_descendants()
+
+    logging.debug( "  TREE SIMPLIFY :  self.i_am_uninteresting() => " + str( self.i_am_uninteresting() ) )
+    logging.debug( "  TREE SIMPLIFY :  self.uninteresting()      => " + str( self.uninteresting ) )
+
+    logging.debug( "  TREE SIMPLIFY : ...done." )
+
+
+  ####################################
+  #  WIPE UNINTERESTING DESCENDANTS  #
+  ####################################
+  # delete only uninteresting descendants from 
+  # the descendant list.
+  def wipe_uninteresting_descendants( self ) :
+
+    logging.debug( "  WIPE UNINTERESTING DESCENDANTS : running process..." )
+    logging.debug( "  WIPE UNINTERESTING DESCENDANTS : self.curr_node          = " + str( self.curr_node ) )
+    logging.debug( "  WIPE UNINTERESTING DESCENDANTS : len( self.descendants ) = " + str( len( self.descendants ) ) )
+
+    if len( self.descendants ) < 1 :
+      pass
+
+    else :
+
+      # -------------------------------------------------- #
+      # gather all indexes for uninteresting descendants
+
+      uninteresting_descendant_indexes = []
+      for i in range( 0, len( self.descendants ) ) :
+        if self.descendants[ i ].uninteresting == True :
+          uninteresting_descendant_indexes.append( i )
+
+      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : " + \
+                     "uninteresting_descendant_indexes = " + \
+                     str( uninteresting_descendant_indexes ) )
+
+      # -------------------------------------------------- #
+      # perform descendant deletions
+      # be sure to do the deletes in reverse order!
+
+      if len( uninteresting_descendant_indexes ) >= 1 :
+        deleted_descendant_meta = []
+        for index in uninteresting_descendant_indexes[::-1] :
+          if self.treeType == "goal" :
+            logging.debug( "  WIPE UNINTERESTING : deleting descendant : " + \
+                           str( self.descendants[ index ] ) + \
+                           ", rid = " + str( self.descendants[ index ].curr_node.rid ) )
+            deleted_descendant_meta.append( [ self.descendants[ index ].curr_node.rid, self.descendants[ index ].curr_node.record ] )
+          else :
+            logging.debug( "  WIPE UNINTERESTING : deleting descendant : " + \
+                           str( self.descendants[ index ] ) )
+          del self.descendants[ index ]
+
+        # -------------------------------------------------- #
+        # perform descendant meta deletions
+
+        logging.debug( "  WIPE UNINTERESTING DESCENDANTS : self.curr_node.descendant_meta = " + \
+                       str( self.curr_node.descendant_meta ) )
+        logging.debug( "  WIPE UNINTERESTING DESCENDANTS : deleted_descendant_meta = " + str( deleted_descendant_meta ) )
+
+        if self.treeType == "goal" :
+          for ddm in deleted_descendant_meta :
+            rid    = ddm[ 0 ]
+            record = ddm[ 1 ]
+            for cndm in self.curr_node.descendant_meta :
+              logging.debug( "  WIPE UNINTERESTING DESCENDANTS : considering " + \
+                             "self.curr_node.descendant_meta[ " + \
+                             str( cndm ) + " ] = " + \
+                             str( self.curr_node.descendant_meta[ cndm ] ) )
+              logging.debug( "  WIPE UNINTERESTING DESCENDANTS : " + str( cndm ) + \
+                             " == " + str( rid ) + " = " + str( cndm == rid ) )
+              if cndm == rid :
+                tmp_meta        = copy.deepcopy( self.curr_node.descendant_meta[ cndm ] )
+                tmp_triggerData = tmp_meta[ "triggerData" ]
+                new_triggerData = []
+                for trig in tmp_triggerData :
+                  if not trig == record :
+                    new_triggerData.append( trig )
+                tmp_meta[ "triggerData" ] = new_triggerData
+                self.curr_node.descendant_meta[ cndm ] = copy.deepcopy( tmp_meta )
+
+      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : deleted " + \
+                     str( len( uninteresting_descendant_indexes ) ) + " descendants" )
+      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : remaining len( self.descendants ) = " + \
+                     str( len( self.descendants ) ) )
+      for d in self.descendants :
+        logging.debug( "  WIPE UNINTERESTING DESCENDANTS : d = " + str( d ) )
+
+    logging.debug( "  WIPE UNINTERESTING DESCENDANTS : ...done." )
+
+
+  ##########################
+  #  WIPE ALL DESCENDANTS  #
+  ##########################
+  # set descendant list to empty
+  def wipe_all_descendants( self ) :
+    logging.debug( "  WIPE ALL DESCENDANTS : running process..." )
+
+    logging.debug( "  WIPE ALL DESCENDANTS : len( self.descendants ) = " + str( len( self.descendants ) ) )
+    self.descendants               = copy.deepcopy( [] )
+    logging.debug( "  WIPE ALL DESCENDANTS : len( self.descendants ) = " + str( len( self.descendants ) ) )
+
+    if not self.treeType == "fact" :
+      logging.debug( "  WIPE ALL DESCENDANTS : len( self.curr_node.descendant_meta ) = " + \
+                     str( len( self.curr_node.descendant_meta ) ) )
+      self.curr_node.descendant_meta = copy.deepcopy( [] )
+      logging.debug( "  WIPE ALL DESCENDANTS : len( self.curr_node.descendant_meta ) = " + \
+                     str( len( self.curr_node.descendant_meta ) ) )
+
+    logging.debug( "  WIPE ALL DESCENDANTS : ...done." )
+
+
+
+  ########################
+  #  I AM UNINTERESTING  #
+  ########################
+  # a prov tree is uninteresting if all immediate descendants
+  # are uninteresting.
+  def i_am_uninteresting( self ) :
+
+    logging.debug( "  I AM UNINTERESTING : running process..." )
+
+    if len( self.descendants ) < 1 :
+      return self.uninteresting
+
+    else :
+      num_uninteresting_descendants = 0 # optimism!
+      for d in self.descendants :
+        if d.uninteresting :
+          num_uninteresting_descendants += 1
+      logging.debug( "  I AM UNINTERESTING : num_uninteresting_descendants = " + str( num_uninteresting_descendants ) )
+      if num_uninteresting_descendants == len( self.descendants ) :
+        logging.debug( "  I AM UNINTERESTING : returning True" )
+        return True
+      else :
+        logging.debug( "  I AM UNINTERESTING : returning False" )
+        return False
 
 
   #########
@@ -189,14 +372,16 @@ class ProvTree( object ) :
 
     #graph           = pydot.Dot( graph_type = 'digraph', strict=True ) # strict => ignore duplicate edges
     graph           = pydot.Dot( graph_type = 'digraph' ) # strict => ignore duplicate edges
-    graph_save_path = IMGSAVEPATH + "/provtree_render_fmla" + str( fmla_index ) + "_iter" + str(iter_count)
+    graph_save_path = self.img_save_path + "/provtree_render_fmla" + str( fmla_index ) + "_iter" + str(iter_count)
     if additional_str :
       graph_save_path += additional_str
 
     for n in self.nodeset_pydot :
+      logging.debug( "  CREATE PYDOT GRAPH : adding node " + n.get_name() + " to nodeset"  )
       graph.add_node( n )
 
     for e in self.edgeset_pydot :
+      logging.debug( "  CREATE PYDOT GRAPH : adding edge (" + e.get_source() + ", " + e.get_destination() + ") to nodeset"  )
       graph.add_edge( e )
 
     logging.info( "Saving prov tree render to " + str( graph_save_path + ".png" ), )
@@ -226,9 +411,9 @@ class ProvTree( object ) :
   def save_serial_graph( self, fmla_index, iter_count, additional_str ) :
 
       if additional_str :
-        serial_path  = IMGSAVEPATH + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + "_" + additional_str + ".txt"
+        serial_path  = self.img_save_path + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + "_" + additional_str + ".txt"
       else :
-        serial_path  = IMGSAVEPATH + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + ".txt"
+        serial_path  = self.img_save_path + "/provtree_graph_data_fmla" + str( fmla_index ) + "_iter" + str(iter_count) + ".txt"
       logging.info( "Saving prov tree graph data to " + str( serial_path ), )
 
       fo = open( serial_path, "w" )
@@ -254,6 +439,7 @@ class ProvTree( object ) :
   def generate_graph_data( self ) :
 
     logging.debug( "  GENERATE GRAPH DATA : running process..." )
+    logging.debug( "  GENERATE GRAPH DATA : self          = " + str( self ) )
     logging.debug( "  GENERATE GRAPH DATA : self.rootname = " + self.rootname )
     logging.debug( "  GENERATE GRAPH DATA : self.treeType = " + self.treeType )
 
@@ -435,6 +621,8 @@ class ProvTree( object ) :
                                       treeType        = "rule", \
                                       record          = trig_rec, \
                                       parent          = self, \
+                                      argDict         = self.argDict, \
+                                      prev_prov_recs  = {}, \
                                       eot             = self.eot )
                                       #prev_prov_recs  = self.prev_prov_recs )
  
@@ -492,6 +680,7 @@ class ProvTree( object ) :
                                     record          = trig_rec, \
                                     isNeg           = isNeg, \
                                     parent          = self, \
+                                    argDict         = self.argDict, \
                                     eot             = self.eot, \
                                     prev_prov_recs  = self.prev_prov_recs )
   
@@ -505,6 +694,8 @@ class ProvTree( object ) :
                                     record          = trig_rec, \
                                     isNeg           = isNeg, \
                                     parent          = self, \
+                                    argDict         = self.argDict, \
+                                    prev_prov_recs  = {}, \
                                     eot             = self.eot )
   
           # CASE : wtf??? 
@@ -548,8 +739,8 @@ class ProvTree( object ) :
     logging.debug( "  ALREADY INCORPORATED INTO GRAPH : polarity    = " + str( polarity ) )
     logging.debug( "  ALREADY INCORPORATED INTO GRAPH : trig_rec    = " + str( trig_rec ) )
     logging.debug( "  ALREADY INCORPORATED INTO GRAPH : subtreeType = " + subtreeType )
-    logging.debug( "  ALREADY INCORPORATED INTO GRAPH : self.final_state_ptr.node_str_to_object_map = " + \
-                      str( self.final_state_ptr.node_str_to_object_map ) )
+    #logging.debug( "  ALREADY INCORPORATED INTO GRAPH : self.final_state_ptr.node_str_to_object_map = " + \
+    #                  str( self.final_state_ptr.node_str_to_object_map ) )
 
     flag = False
 
@@ -647,6 +838,9 @@ class ProvTree( object ) :
                                           record        = self.record, \
                                           parsedResults = self.parsedResults, \
                                           cursor        = self.cursor )
+      logging.debug( "+>>> self.curr_node.uninteresting = " + str( self.curr_node.uninteresting ) )
+      if self.curr_node.uninteresting == True :
+        self.uninteresting = True
 
     # -------------------------------- #
     else :
@@ -691,6 +885,7 @@ class ProvTree( object ) :
                                          record          = rec,                 \
                                          eot             = self.eot,           \
                                          parent          = self, \
+                                         argDict         = self.argDict, \
                                          prev_prov_recs  = self.prev_prov_recs ) )
 
 

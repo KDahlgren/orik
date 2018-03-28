@@ -905,6 +905,8 @@ class Test_derivation_functionality( unittest.TestCase ) :
 
     # --------------------------------------------------------------- #
 
+    argDict = self.getArgDict( "" )
+
     rootname      = "__TestNode__"
     parsedResults = { "__TestNode__":[ ["a","b"] ] }
     db_id         = None
@@ -920,6 +922,7 @@ class Test_derivation_functionality( unittest.TestCase ) :
                                   cursor        = cursor, \
                                   treeType      = treeType, \
                                   isNeg         = isNeg, \
+                                  argDict       = argDict, \
                                   record        = record )
 
     self.assertTrue( new_tree.rootname      == rootname      )
@@ -1107,6 +1110,7 @@ class Test_derivation_functionality( unittest.TestCase ) :
     argDict[ 'nodes' ]                    = [ "a", "b", "c" ]
     argDict[ 'evaluator' ]                = "c4"
     argDict[ 'EFF' ]                      = 2
+    argDict[ 'data_save_path' ]           = "./data/"
 
     return argDict
 
