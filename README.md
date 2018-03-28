@@ -17,7 +17,7 @@ python unittests_driver.py
 ```
 To run tests individually, use commands of the format :
 ```
-python -m unittest Test_derivation.Test_derivation.example1
+python -m unittest Test_derivation.Test_derivation.test_example_1
 ```
 
 # Examples
