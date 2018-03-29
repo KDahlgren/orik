@@ -255,6 +255,9 @@ class Test_derivation( unittest.TestCase ) :
     dedt.createDedalusIRTables(cursor)
     dedt.globalCounterReset()
 
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
+
     # --------------------------------------------------------------- #
     # specify input file paths
 
