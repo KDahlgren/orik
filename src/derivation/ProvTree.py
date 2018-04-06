@@ -59,6 +59,8 @@ class ProvTree( object ) :
                       prev_prov_recs  = {} ) :
 
     self.img_save_path = img_save_path
+    if not os.path.isdir( self.img_save_path ) :
+      raise Exception( "Image save path '" + self.img_save_path + "' does not exist. aborting." )
 
     # uninteresting boolean. indicates whether or not 
     # the provenance tree rooted at this node is interesting.
