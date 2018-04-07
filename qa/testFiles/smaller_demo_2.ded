@@ -1,0 +1,36 @@
+// Suppose you build an app responsible for reporting the weather.
+// The app takes data from a client which skims weather data from
+// a remote authority.
+// What could go wrong?
+
+post( A, Weather ) :- client( A, Weather ), A=="myapp" ;
+pre( A, Weather )  :- true_weather( A, Weather ) ;
+true_weather( "myapp", "sunny" )@3 ;
+
+client( AppID, Weather )@async :- auth_data( AuthID, Weather ), 
+                                  auth_conn( AppID, AuthID ) ;
+
+auth_conn( AppID, AuthID )@async :- node( AppID ), 
+                                    srcs( AuthID ),
+                                    notin conn_failed( AppID, AuthID ) ;
+
+conn_failed( AppID, AuthID )@async :- node( AuthID ), 
+                                      node( AppID ), 
+                                      notin conn( AuthID, AppID ) ; 
+
+conn( "noaa", "myapp" )@2 ;
+//tcp_conn( AuthID, AppID )@async :- syn( AppID, AuthID ),
+//                                   syn_ack( AuthID, AppID ),
+//                                   ack( AppID, AuthID ) ;
+
+auth_data( AuthID, Weather )@async :- auth_data( AuthID, Weather ) ;
+auth_data( "noaa", "sunny" )@1 ;
+
+srcs( "noaa" )@1 ;
+
+syn( "myapp", "noaa" )@1 ;
+syn_ack( "noaa", "myapp" )@1 ;
+ack( "myapp", "noaa" )@1 ;
+
+node( "myapp" )@1 ;
+node( "noaa" )@1 ;

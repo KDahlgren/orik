@@ -8,28 +8,28 @@ pre( A, Weather )  :- true_weather( A, Weather ) ;
 true_weather( "myapp", "sunny" )@3 ;
 
 client( AppID, Weather )@async :- auth_data( AuthID, Weather ), 
-                                  auth_conn( AppID, AuthID ) ;
+                                  auth_conn_flip( AuthID, AppID ) ;
 
-auth_conn( AppID, AuthID )@async :- node( AppID ), 
-                                    srcs( AuthID ),
-                                    notin tcp_failed( AppID, AuthID ) ;
+auth_conn_flip( AuthID, AppID ) :- auth_conn( AppID, AuthID ) ;
+auth_conn( AppID, AuthID )@next  :- srcs( AppID, AuthID ),
+                                    notin conn_failed( AppID, AuthID ) ;
 
-tcp_failed( AppID, AuthID )@async :- node( AuthID ), 
-                                     node( AppID ), 
-                                     notin tcp_conn( AuthID, AppID ) ; 
+conn_failed( AppID, AuthID )@async :- node_topo( AuthID, AppID ), 
+                                      notin conn( AuthID, AppID ) ; 
 
-tcp_conn( AuthID, AppID )@async :- syn( AppID, AuthID ),
-                                   syn_ack( AuthID, AppID ),
-                                   ack( AppID, AuthID ) ;
+conn( AuthID, AppID )@async :- syn( AppID, AuthID ),
+                               syn_ack( AppID, AuthID ),
+                               ack( AppID, AuthID ) ;
 
-auth_data( AuthID, Weather )@async :- auth_data( AuthID, Weather ) ;
+auth_data( AuthID, Weather )@next :- auth_data( AuthID, Weather ) ;
 auth_data( "noaa", "sunny" )@1 ;
 
-srcs( "noaa" )@1 ;
+srcs( "myapp", "noaa" )@1 ;
 
-syn( "myapp", "noaa" )@1 ;
-syn_ack( "noaa", "myapp" )@1 ;
-ack( "myapp", "noaa" )@1 ;
+syn( "myapp", "noaa" )@1 ;     // myapp sent a syn to noaa
+syn_ack( "myapp", "noaa" )@1 ; // myapp received a syn_ack from noaa
+ack( "myapp", "noaa" )@1 ;     // myapp sent an ack to noaa
 
+node_topo( AuthID, AppID ) :- node( AuthID ), node( AppID ) ;
 node( "myapp" )@1 ;
 node( "noaa" )@1 ;

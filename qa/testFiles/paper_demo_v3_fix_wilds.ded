@@ -1,0 +1,96 @@
+
+// ================================================================== //
+// the protocol succeeds if the job hits the backup
+// these don't work b/c job1 is not a communicating entity appearing in clock
+//post( J ) :- a_job_is_done_nowilds(J);
+//a_job_is_done_nowilds(J) :- a_job_is_done(_, J);
+
+post( J ) :- a_job_is_done(_,J);
+pre( J )  :- job( _, J )@3 ;
+
+//post( X, J ) :- a_job_is_done( X, J );
+//pre( X, J )  :- job( X, J )@3 ;
+
+a_job_is_done(P, J) :- send_to_primary(P, J);
+a_job_is_done(B, J) :- send_to_backup(B, J);
+a_job_is_done(N, X)@next :- a_job_is_done(N, X);
+
+// ================================================================== //
+// scheduler sends jobs to the primary unless the primary fails.
+
+send_to_primary( P, J )@async :- job( S, J ), notin primary_failure( S, P ), primary(S, P ) ;
+
+// ================================================================== //
+// scheduler sends jobs to the backup if the primary fails.
+
+send_to_backup( B, J )@async :- job( S, J ),
+                                primary_failure( S, P ),
+                                primary(S, P ),
+                                backups(S, B ) ;
+
+backups(S, B )@next :- backups(S, B ) ;
+//backups( "b" )@1 ;  // the correct backup identifier. appears in clock.
+backups("jobscheduler", "c" )@1 ;  // the corrupt backup identifier. does not appear in clock.
+
+// ================================================================== //
+// scheduler decides a primary fails if the scheduler doesn't
+// recieve a heartbeat from the primary after some THRESH number
+// of time steps.
+
+primary_failure( Scheduler, Primary )@next :- primary_failure( Scheduler, Primary ) ;
+
+primary_failure( Scheduler, Primary )      :- primary(Scheduler, Primary ),
+                                              //notin heartbeat( Scheduler, Primary, _ ),
+                                              notin heartbeat_nowilds( Scheduler, Primary ),
+                                              /// ???
+                                              //all_times( _, Heartbeat ),
+                                              current_time( Scheduler, _ ),
+                                              threshold( Scheduler, _ ),
+                                              absent_init(Scheduler);
+                                              //Time - Heartbeat > THRESH ;
+
+heartbeat_nowilds( S, P ) :- heartbeat( S, P, _ ) ;
+
+// major hack, fix later
+absent_init(S)@next :- absent_init(S);
+absent_init(S)@next :- init(S);
+init("jobscheduler")@1;
+
+// makes Heartbeat att safe in primary_failure
+//all_times( AString, Time+1 )@next :- all_times( AString, Time ) ;
+//all_times( "astring", 1 )@1 ;
+
+current_time( Scheduler, Time+1 )@next :- current_time( Scheduler, Time ) ;
+current_time( "jobscheduler", 1 )@1 ;
+
+threshold( Scheduler, THRESH )@next :- threshold( Scheduler, THRESH ) ;
+threshold( "jobscheduler", 1 )@1 ; // scheduler has very little patience.
+
+// ================================================================== //
+// primary sends a heartbeat to the scheduler according to some time
+// interval.
+
+heartbeat( Scheduler, Primary, Time )@async :- primary(Primary, Primary ),
+                                               scheduler( Primary, Scheduler, Time ),
+                                               a_timer( Primary, Time ) ;
+
+scheduler( Primary, Scheduler, Time+1 )@next :- scheduler( Primary, Scheduler, Time ) ;
+scheduler( "a", "jobscheduler", 1 )@1 ;
+
+a_timer( Primary, Time+1 )@next :- a_timer( Primary, Time ) ;
+a_timer( "a", 1 )@1 ;
+
+// ================================================================== //
+// edbs and persistence rules.
+
+primary(S, P )@next :- primary(S, P ) ;
+primary("jobscheduler", "a" )@1 ;
+primary("a", "a" )@1 ;
+
+job( "jobscheduler", "job1" )@3 ;
+job(S, J)@next :- job(S, J);
+
+// ======= //
+//   EOF   //
+// ======= //
+

@@ -43,6 +43,258 @@ class Test_derivation( unittest.TestCase ) :
   #          FULL EXAMPLE TESTS          #
   # //////////////////////////////////// #
 
+  #######################
+  #  SMALLER DEMO 2 DM  #
+  #######################
+  #@unittest.skip( "skipping" )
+  def test_smaller_demo_2_dm( self ) :
+
+    test_id = "_test_smaller_demo_2_dm"
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
+
+    testDB = "./IR_" + test_id + ".db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/smaller_demo_2.ded"
+    serial_nodes_path = "./testFiles/smaller_demo_2_dm_expected_nodes.txt"
+    serial_edges_path = "./testFiles/smaller_demo_2_dm_expected_edges.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "nodes" ]    = [ "noaa", "myapp", "sunny" ]
+    argDict[ "EOT" ]      = 3
+    argDict[ "EFF" ]      = 2
+    argDict[ "settings" ] = "./settings_smaller_demo_dm_tree_simplify.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       test_id )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 33 ) # fix after updating TREE_SIMPLIFY HANDLING!!!
+    self.assertTrue( graph_stats[ "num_edges" ] == 20 )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+    del( provTree )
+    IRDB.close()
+    os.remove( testDB )
+
+  ####################
+  #  SMALLER DEMO 2  #
+  ####################
+  #@unittest.skip( "skipping" )
+  def test_smaller_demo_2( self ) :
+
+    test_id = "_test_smaller_demo_2"
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
+
+    testDB = "./IR_" + test_id + ".db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/smaller_demo_2.ded"
+    serial_nodes_path = "./testFiles/smaller_demo_2_expected_nodes.txt"
+    serial_edges_path = "./testFiles/smaller_demo_2_expected_edges.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "nodes" ]    = [ "noaa", "myapp", "sunny" ]
+    argDict[ "EOT" ]      = 3
+    argDict[ "EFF" ]      = 2
+    argDict[ "settings" ] = "./settings_smaller_demo.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       test_id )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 19 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 18 )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+    del( provTree )
+    IRDB.close()
+    os.remove( testDB )
+
+  ######################
+  #  PAPER DEMO V3 DM  #
+  ######################
+  #@unittest.skip( "skipping" )
+  def test_paper_demo_v3_dm( self ) :
+
+    test_id = "_test_paper_demo_v3_dm"
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
+
+    testDB = "./IR_" + test_id + ".db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/paper_demo_v3_fix_wilds.ded"
+    serial_nodes_path = "./testFiles/paper_demo_v3_dm_expected_nodes.txt"
+    serial_edges_path = "./testFiles/paper_demo_v3_dm_expected_edges.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    #argDict[ "nodes" ]    = [ "a", "c", "job1", "jobscheduler" ] # failure-free case
+    argDict[ "nodes" ]    = [ "a", "job1", "jobscheduler" ]  # fail case Set(MessageLoss(a,jobscheduler,1))
+    argDict[ "EOT" ]      = 5
+    argDict[ "EFF" ]      = 4
+    argDict[ "settings" ] = "./settings_smaller_demo_dm_tree_simplify.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       test_id )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 772 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 1637 ) # ????
+
+    # --------------------------------------------------------------- #
+    # clean up test
+    del( provTree )
+    IRDB.close()
+    os.remove( testDB )
+
+  ###################
+  #  PAPER DEMO V3  #
+  ###################
+  #@unittest.skip( "skipping" )
+  def test_paper_demo_v3( self ) :
+
+    test_id = "_test_paper_demo_v3"
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
+
+    testDB = "./IR_" + test_id + ".db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./testFiles/paper_demo_v3_fix_wilds.ded"
+    #inputfile         = "./testFiles/paper_demo_v3.ded"
+    serial_nodes_path = "./testFiles/paper_demo_v3_expected_nodes.txt"
+    serial_edges_path = "./testFiles/paper_demo_v3_expected_edges.txt"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    #argDict[ "nodes" ]    = [ "a", "c", "job1", "jobscheduler" ] # failure-free case
+    argDict[ "nodes" ]    = [ "a", "job1", "jobscheduler" ]  # fail case Set(MessageLoss(a,jobscheduler,1))
+    argDict[ "EOT" ]      = 5
+    argDict[ "EFF" ]      = 4
+    argDict[ "settings" ] = "./settings_smaller_demo.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       test_id )
+
+    # ------------------------------------------- #
+    # generate graph visualisation and 
+    # examine stats
+
+    graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
+    self.assertTrue( graph_stats[ "num_nodes" ] == 37 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 39 )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+    del( provTree )
+    IRDB.close()
+    os.remove( testDB )
+
+
   #####################
   #  SMALLER DEMO DM  #
   #####################
@@ -78,7 +330,7 @@ class Test_derivation( unittest.TestCase ) :
     argDict[ "nodes" ]    = [ "myapp", "noaa", "sunny" ]
     argDict[ "EOT" ]      = 3
     argDict[ "EFF" ]      = 1
-    argDict[ "settings" ] = "./settings_smaller_demo_dm.ini"
+    argDict[ "settings" ] = "./settings_smaller_demo_dm_tree_simplify.ini"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -96,8 +348,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 46 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 45 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 46 ) # this will need updating after the TREE_SIMPLIFY fixes
+    self.assertTrue( graph_stats[ "num_edges" ] == 27 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -158,8 +410,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 19 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 18 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 21 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 20 )
 
     # --------------------------------------------------------------- #
     # clean up test
