@@ -73,6 +73,9 @@ class ProvTree( object ) :
     # list of descendant ProvTree objects
     self.descendants = []
 
+    # list of all descendant ProvTree objects
+    self.all_descendant_objs = []
+
     # list of parent ProvTree objects
     self.parents = []
 
@@ -576,7 +579,7 @@ class ProvTree( object ) :
 
           # CASE : yes wildcards in the trigger record
           if self.is_wildcard_record( trig_rec ) :
-            sys.exit( "blah" )
+            raise Exception( "Holy shit, you've got wildcards in the trigger record. aborting." )
 
           # CASE : no wildcards in the trigger record
           else :
@@ -599,6 +602,12 @@ class ProvTree( object ) :
               # get descendant meta
               descendant_node_str = self.get_node_string( goalName, polarity, trig_rec, subtreeType )
               existing_descendant = self.final_state_ptr.node_str_to_object_map[ descendant_node_str ]
+
+              # add to all descendants
+              self.all_descendant_objs.append( self.get_already_incorporated_ptr( goalName, \
+                                                                                  polarity, \
+                                                                                  trig_rec, \
+                                                                                  subtreeType ) )
 
               # update parents of existing descendant
               if existing_descendant.treeType == "rule" :
@@ -626,6 +635,7 @@ class ProvTree( object ) :
                                       eot             = self.eot )
                                       #prev_prov_recs  = self.prev_prov_recs )
  
+              self.all_descendant_objs.append( new_subtree )
               self.descendants.append( new_subtree )
 
 
@@ -662,6 +672,12 @@ class ProvTree( object ) :
 
           # update parents of existing descendant
           existing_descendant.parents.append( self )
+
+          # add the pointer to the set of actual_descendants
+          self.all_descendant_objs.append( self.get_already_incorporated_ptr( goalName, \
+                                                                              polarity, \
+                                                                              trig_rec, \
+                                                                              subtreeType ) )
 
         else :
 
@@ -702,6 +718,7 @@ class ProvTree( object ) :
           else :
             tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : treeType not recognized '" + treeType + "'" )
   
+          self.all_descendant_objs.append( new_subtree )
           self.descendants.append( new_subtree )
 
     # -------------------------------- #
@@ -768,6 +785,27 @@ class ProvTree( object ) :
     logging.debug( "  ALREADY INCORPORATED INTO GRAPH : returning " + str( flag ) )
 
     return flag
+
+
+  ##################################
+  #  GET ALREADY INCORPORATED PTR  #
+  ##################################
+  # check if the descendant node already exists in the graph
+  def get_already_incorporated_ptr( self, goalName, polarity, trig_rec, subtreeType ) :
+
+    logging.debug( "  ALREADY INCORPORATED PTR : running process..." )
+    logging.debug( "  ALREADY INCORPORATED PTR : goalName    = " + goalName )
+    logging.debug( "  ALREADY INCORPORATED PTR : polarity    = " + str( polarity ) )
+    logging.debug( "  ALREADY INCORPORATED PTR : trig_rec    = " + str( trig_rec ) )
+    logging.debug( "  ALREADY INCORPORATED PTR : subtreeType = " + subtreeType )
+
+    if subtreeType == "goal" or subtreeType == "rule" or subtreeType == "fact" :
+      existing_str = self.get_node_string( goalName, polarity, trig_rec, subtreeType )
+      logging.debug( "  ALREADY INCORPORATED PTR : existing_str = " + existing_str )
+      return self.final_state_ptr.node_str_to_object_map[ existing_str ]
+
+    else :
+      tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : unrecognized descendant type '" + subtreeType + "'" )
 
 
   #####################
