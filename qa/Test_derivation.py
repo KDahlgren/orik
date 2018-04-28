@@ -33,8 +33,8 @@ from evaluators import c4_evaluator
 #####################
 class Test_derivation( unittest.TestCase ) :
 
-  #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.DEBUG )
-  logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.INFO )
+  logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.DEBUG )
+  #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.INFO )
   #logging.basicConfig( format='%(levelname)s:%(message)s', level=logging.WARNING )
 
   PRINT_STOP = False
@@ -96,14 +96,15 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 33 ) # fix after updating TREE_SIMPLIFY HANDLING!!!
-    self.assertTrue( graph_stats[ "num_edges" ] == 20 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 13 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 12 )
 
     # --------------------------------------------------------------- #
     # clean up test
     del( provTree )
     IRDB.close()
     os.remove( testDB )
+
 
   ####################
   #  SMALLER DEMO 2  #
@@ -221,8 +222,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 772 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 1637 ) # ????
+    self.assertTrue( graph_stats[ "num_nodes" ] == 71 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 87 ) # includes recursive edges
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -348,8 +349,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 46 ) # this will need updating after the TREE_SIMPLIFY fixes
-    self.assertTrue( graph_stats[ "num_edges" ] == 27 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 21 ) # this will need updating after the TREE_SIMPLIFY fixes
+    self.assertTrue( graph_stats[ "num_edges" ] == 20 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -418,6 +419,7 @@ class Test_derivation( unittest.TestCase ) :
     del( provTree )
     IRDB.close()
     os.remove( testDB )
+
 
   #############
   #  DM 3 PC  #
@@ -755,6 +757,7 @@ class Test_derivation( unittest.TestCase ) :
     IRDB.close()
     os.remove( testDB )
 
+
   ################
   #  SIMPLOG DM  #
   ################
@@ -792,7 +795,7 @@ class Test_derivation( unittest.TestCase ) :
     # get argDict
 
     argDict = self.getArgDict( inputfile )
-    argDict[ "settings" ] = "./settings_dm_iedb_rewrites.ini"
+    argDict[ "settings" ] = "./settings_dm_iedb_rewrites_tree_simplify.ini"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -3209,6 +3212,9 @@ class Test_derivation( unittest.TestCase ) :
   def compare_provenance_graph_workflow( self, argDict, inputfile, serial_nodes_path, serial_edges_path, cursor, additional_str ) :
 
     logging.debug( "  COMPARE PROVENANCE GRAPH WORKFLOW : running process..." )
+
+    if not os.path.exists( argDict[ "data_save_path" ] ) :
+      os.system( "mkdir " + argDict[ "data_save_path" ] )
 
     # --------------------------------------------------------------- #
     # convert dedalus into c4 datalog and evaluate
