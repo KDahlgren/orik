@@ -183,9 +183,12 @@ class ProvTree( object ) :
         logging.debug( "+>>>name=" + self.rootname )
         logging.debug( "self.curr_node.descendant_meta = " +str( self.curr_node.descendant_meta ) )
 
-      # generate graph meta data
+      # generate graph meta data for interesing nodes only
       if TREE_SIMPLIFY and not self.uninteresting :
+        print "><><><>< HERERE"
         self.generate_graph_data()
+      elif TREE_SIMPLIFY and self.uninteresting :
+        logging.debug( "skipping generate_graph_data." )
       else :
         self.generate_graph_data()
 
@@ -203,6 +206,13 @@ class ProvTree( object ) :
     logging.debug( "  TREE SIMPLIFY :  self.curr_node            => " + str( self.curr_node ) )
     logging.debug( "  TREE SIMPLIFY :  self.descendants()        => " + str( self.descendants ) )
     logging.debug( "  TREE SIMPLIFY :  len( self.descendants() ) => " + str( len( self.descendants ) ) )
+    for d in self.descendants :
+      logging.debug( "  TREE SIMPLIFY :   d = " + str( d ) )
+    if not self.treeType == "fact" :
+      logging.debug( "  TREE SIMPLIFY :  self.curr_node.descendant_meta() => " + str( self.curr_node.descendant_meta ) )
+      logging.debug( "  TREE SIMPLIFY :  len( self.curr_node.descendant_meta() ) => " + str( len( self.curr_node.descendant_meta ) ) )
+      for d in self.curr_node.descendant_meta :
+        logging.debug( "  TREE SIMPLIFY :   d = " + str( d ) )
 
     if self.i_am_uninteresting() :
       self.wipe_all_descendants()
@@ -226,6 +236,9 @@ class ProvTree( object ) :
     logging.debug( "  WIPE UNINTERESTING DESCENDANTS : running process..." )
     logging.debug( "  WIPE UNINTERESTING DESCENDANTS : self.curr_node          = " + str( self.curr_node ) )
     logging.debug( "  WIPE UNINTERESTING DESCENDANTS : len( self.descendants ) = " + str( len( self.descendants ) ) )
+    logging.debug( "  WIPE UNINTERESTING DESCENDANTS : self.descendants        : " )
+    for d in self.descendants :
+      logging.debug( d )
 
     if len( self.descendants ) < 1 :
       pass
@@ -252,14 +265,18 @@ class ProvTree( object ) :
         deleted_descendant_meta = []
         for index in uninteresting_descendant_indexes[::-1] :
           if self.treeType == "goal" :
-            logging.debug( "  WIPE UNINTERESTING : deleting descendant : " + \
+            logging.debug( "  WIPE UNINTERESTING : deleting descendant (1) : " + \
                            str( self.descendants[ index ] ) + \
                            ", rid = " + str( self.descendants[ index ].curr_node.rid ) )
             deleted_descendant_meta.append( [ self.descendants[ index ].curr_node.rid, self.descendants[ index ].curr_node.record ] )
           else :
-            logging.debug( "  WIPE UNINTERESTING : deleting descendant : " + \
+            logging.debug( "  WIPE UNINTERESTING : deleting descendant (2) : " + \
                            str( self.descendants[ index ] ) )
+            deleted_descendant_meta.append( [ self.descendants[ index ].curr_node.treeType, self.descendants[ index ].curr_node.isNeg, self.descendants[ index ].curr_node.record, self.descendants[ index ].curr_node.name ] )
           del self.descendants[ index ]
+          logging.debug( "  WIPE UNINTERESTING : self.descendants:" )
+          for d in self.descendants :
+            logging.debug( "    " + str( d ) )
 
         # -------------------------------------------------- #
         # perform descendant meta deletions
@@ -288,6 +305,18 @@ class ProvTree( object ) :
                     new_triggerData.append( trig )
                 tmp_meta[ "triggerData" ] = new_triggerData
                 self.curr_node.descendant_meta[ cndm ] = copy.deepcopy( tmp_meta )
+        else :
+          tmp_descendant_meta = []
+          for cndm in self.curr_node.descendant_meta :
+            flag = False
+            for ddm in deleted_descendant_meta :
+              if self.structures_are_equal( cndm, ddm ) :
+                flag = True
+            if not flag : # cndm does not appear in ddm list
+              tmp_descendant_meta.append( cndm )
+              logging.debug( "  WIPE ALL UNINTERESTING DESCENDANTS : added " + str( cndm ) + " to tmp_descendant_meta"  )
+
+          self.curr_node.descendant_meta = copy.deepcopy( tmp_descendant_meta )
 
       logging.debug( "  WIPE UNINTERESTING DESCENDANTS : deleted " + \
                      str( len( uninteresting_descendant_indexes ) ) + " descendants" )
@@ -295,8 +324,47 @@ class ProvTree( object ) :
                      str( len( self.descendants ) ) )
       for d in self.descendants :
         logging.debug( "  WIPE UNINTERESTING DESCENDANTS : d = " + str( d ) )
+      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : remaining len( self.curr_node.descendant_meta ) = " + \
+                     str( len( self.curr_node.descendant_meta ) ) )
+      for d in self.curr_node.descendant_meta :
+        logging.debug( "  WIPE UNINTERESTING DESCENDANTS : d = " + str( d ) )
 
     logging.debug( "  WIPE UNINTERESTING DESCENDANTS : ...done." )
+
+
+  ##########################
+  #  STRUCTURES ARE EQUAL  #
+  ##########################
+  def structures_are_equal( self, cndm, ddm ) :
+
+    cndm_treeType = cndm[ "treeType" ]
+    if cndm[ "polarity" ] == "" :
+      cndm_isNeg = False
+    else :
+      cndm_isNeg = True
+    cndm_record   = cndm[ "triggerRecord" ]
+    cndm_name     = cndm[ "node_name" ]
+    logging.debug( "  STRUCTURES ARE EQUAL : cndm_treeType = " + cndm_treeType )
+    logging.debug( "  STRUCTURES ARE EQUAL : cndm_isNeg    = " + str( cndm_isNeg ) )
+    logging.debug( "  STRUCTURES ARE EQUAL : cndm_record   = " + str( cndm_record ) )
+    logging.debug( "  STRUCTURES ARE EQUAL : cndm_name     = " + cndm_name )
+
+    ddm_treeType = ddm[ 0 ]
+    ddm_isNeg    = ddm[ 1 ]
+    ddm_record   = ddm[ 2 ]
+    ddm_name     = ddm[ 3 ]
+    logging.debug( "  STRUCTURES ARE EQUAL : ddm_treeType = " + ddm_treeType )
+    logging.debug( "  STRUCTURES ARE EQUAL : ddm_isNeg    = " + str( ddm_isNeg ) )
+    logging.debug( "  STRUCTURES ARE EQUAL : ddm_record   = " + str( ddm_record ) )
+    logging.debug( "  STRUCTURES ARE EQUAL : ddm_name     = " + ddm_name )
+
+    if cndm_treeType == ddm_treeType and \
+       cndm_isNeg    == ddm_isNeg    and \
+       cndm_record   == ddm_record   and \
+       cndm_name     == ddm_name :
+      return True
+    else :
+      return False
 
 
   ##########################
@@ -330,8 +398,16 @@ class ProvTree( object ) :
 
     logging.debug( "  I AM UNINTERESTING : running process..." )
 
-    if len( self.descendants ) < 1 :
+    # facts are only as interesting as they are uninteresting.
+    if self.treeType == "fact" :
+      logging.debug( "  I AM UNINTERESTING : fact, returning " + str( self.uninteresting ) )
       return self.uninteresting
+
+    # goals and rules are uninteresting if they have no descendants
+    elif len( self.descendants ) < 1 :
+      logging.debug( "  I AM UNINTERESTING : len( self.descendants ) < 1 is true:" + str( len( self.descendants ) ) )
+      logging.debug( "  I AM UNINTERESTING : returning True" )
+      return True
 
     else :
       num_uninteresting_descendants = 0 # optimism!
@@ -492,6 +568,14 @@ class ProvTree( object ) :
       #        spawn rules only.
       if self.treeType == "goal" :
 
+        logging.debug( "-------------------------------------------------------------------------------" )
+        logging.debug( "  GENERATE GRAPH DATA : not a final state. using curr_node.descendant_meta:" )
+        for prov_id in self.curr_node.descendant_meta :
+          d_meta = self.curr_node.descendant_meta[ prov_id ]
+          logging.debug( "  GENERATE GRAPH DATA : d_meta = " + str( d_meta ) )
+        logging.debug( "-------------------------------------------------------------------------------" )
+
+
         for prov_id in self.curr_node.descendant_meta :
           d_meta = self.curr_node.descendant_meta[ prov_id ]
           logging.debug( "  GENERATE GRAPH DATA : d_meta = " + str( d_meta ) )
@@ -515,6 +599,12 @@ class ProvTree( object ) :
       # CASE : this is a rule node
       #        spawn goals or facts only.
       elif self.treeType == "rule" :
+
+        logging.debug( "-------------------------------------------------------------------------------" )
+        logging.debug( "  GENERATE GRAPH DATA : not a final state. using curr_node.descendant_meta:" )
+        for d_meta in self.curr_node.descendant_meta :
+          logging.debug( "  GENERATE GRAPH DATA : d_meta = " + str( d_meta ) )
+        logging.debug( "-------------------------------------------------------------------------------" )
 
         for d_meta in self.curr_node.descendant_meta :
           logging.debug( "  GENERATE GRAPH DATA : d_meta = " + str( d_meta ) )
@@ -654,6 +744,9 @@ class ProvTree( object ) :
 
     elif self.treeType == "rule" :
 
+      logging.debug( "  GENERATE SUBTREE : self.rootname = " + self.rootname )
+
+      tmp_curr_node_descendant_meta = []
       for d_meta in self.curr_node.descendant_meta :
 
         logging.debug( "  GENERATE SUBTREE : d_meta = " + str( d_meta ) )
@@ -722,6 +815,11 @@ class ProvTree( object ) :
   
           self.all_descendant_objs.append( new_subtree )
           self.descendants.append( new_subtree )
+          tmp_curr_node_descendant_meta.append( d_meta ) # collects all not already incorporated nodes
+
+      # remove already incorporated nodes from curr_node meta data, too
+      # removes recursive paths.
+      #self.curr_node.descendant_meta = copy.deepcopy( tmp_curr_node_descendant_meta )
 
     # -------------------------------- #
     # CASE : this tree is a fact. 
@@ -729,6 +827,7 @@ class ProvTree( object ) :
 
     else :
       pass
+
 
 
   ########################
@@ -868,7 +967,8 @@ class ProvTree( object ) :
                                           name          = self.rootname, \
                                           record        = self.record, \
                                           parsedResults = self.parsedResults, \
-                                          cursor        = self.cursor )
+                                          cursor        = self.cursor, \
+                                          argDict       = self.argDict )
 
     # -------------------------------- #
     # CASE : fact node

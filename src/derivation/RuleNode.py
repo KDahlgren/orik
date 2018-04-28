@@ -6,7 +6,7 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import copy, inspect, logging, os, string, sys
+import ConfigParser, copy, inspect, logging, os, string, sys
 from Node import Node
 
 if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
@@ -29,7 +29,7 @@ class RuleNode( Node ) :
   #################
   #  CONSTRUCTOR  #
   #################
-  def __init__( self, rid=None, name="DEFAULT", record=[], parsedResults={}, cursor=None ) :
+  def __init__( self, rid=None, name="DEFAULT", record=[], parsedResults={}, cursor=None, argDict={} ) :
 
     logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
     logging.debug( "in RuleNode.RuleNode : " + name )
@@ -37,11 +37,14 @@ class RuleNode( Node ) :
     logging.debug( "  record = " + str( record ) )
     logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
 
+    self.argDict = {}
+
     self.rid             = rid
     self.name            = name
     self.record          = record
     self.parsedResults   = parsedResults
     self.cursor          = cursor
+    self.argDict         = argDict
 
     # array of metadata for node descendants.
     # [ { 'treeType'      : "goal" | "fact",
@@ -289,7 +292,28 @@ class RuleNode( Node ) :
         d[ "triggerRecord" ] = record
         d[ "polarity" ]      = polarity
 
-        self.descendant_meta.append( d )
+        try :
+          TREE_SIMPLIFY = tools.getConfig( self.argDict[ "settings" ], "DEFAULT", "TREE_SIMPLIFY", bool )
+        except ConfigParser.NoOptionError :
+          TREE_SIMPLIFY = False
+          logging.warning( "WARNING : no 'TREE_SIMPLIFY' defined in 'DEFAULT' section of " + \
+                           self.argDict[ "settings" ] + "...running with TREE_SIMPLIFY==False." )
+        logging.debug( "  PROV TREE : using TREE_SIMPLIFY = " + str( TREE_SIMPLIFY ) )
+
+        if TREE_SIMPLIFY and self.is_interesting( d ) :
+          self.descendant_meta.append( d )
+        else :
+          self.descendant_meta.append( d )
+
+
+  ####################
+  #  IS INTERESTING  #
+  ####################
+  def is_interesting( self, d ) :
+    if d[ "treeType" ] == "fact" and not d[ "node_name" ] == "clock" :
+      return False
+    else :
+      return True
 
 
   #################

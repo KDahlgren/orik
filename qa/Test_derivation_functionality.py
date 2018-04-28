@@ -607,11 +607,15 @@ class Test_derivation_functionality( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # create node
 
+    argDict = {}
+    argDict[ "settings" ] = "./settings_files/settings.ini"
+
     new_rule_node = RuleNode.RuleNode( rid           = rid, \
                                        name          = name, \
                                        record        = record, \
                                        parsedResults = parsedResults, \
-                                       cursor        = cursor )
+                                       cursor        = cursor, \
+                                       argDict       = argDict )
 
     # --------------------------------------------------------------- #
     # tests
@@ -806,6 +810,9 @@ class Test_derivation_functionality( unittest.TestCase ) :
   #@unittest.skip( "working on different example" )
   def test_empty_prov_tree_error_case_2( self ) :
 
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
+
     rootname      = "__KD__TESTNODE__KD__"
     parsedResults = { "table1":[ ['a','b'],  ] }
     cursor        = None
@@ -847,6 +854,9 @@ class Test_derivation_functionality( unittest.TestCase ) :
 
     if os.path.exists( "./IR.db" ) :
       os.remove( "./IR.db" )
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     testDB = "./IR.db"
     IRDB   = sqlite3.connect( testDB )
@@ -895,6 +905,9 @@ class Test_derivation_functionality( unittest.TestCase ) :
 
     if os.path.exists( "./IR.db" ) :
       os.remove( "./IR.db" )
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
 
     testDB = "./IR.db"
     IRDB   = sqlite3.connect( testDB )

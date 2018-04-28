@@ -89,9 +89,13 @@ class FactNode( Node ) :
   # using heuristics
   def am_i_interesting( self ) :
 
-    # negative facts are not interesting.
-    if self.isNeg :
+    # only clock facts are interesting
+    if self.isNeg or not self.name.startswith( "clock" ) :
       self.uninteresting = True
+
+#    # negative facts are not interesting.
+#    if self.isNeg :
+#      self.uninteresting = True
 
 
   #############
