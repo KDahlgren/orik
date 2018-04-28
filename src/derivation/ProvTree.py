@@ -977,7 +977,8 @@ class ProvTree( object ) :
                                           isNeg         = self.isNeg, \
                                           record        = self.record, \
                                           parsedResults = self.parsedResults, \
-                                          cursor        = self.cursor )
+                                          cursor        = self.cursor, \
+                                          argDict       = self.argDict )
       logging.debug( "+>>> self.curr_node.uninteresting = " + str( self.curr_node.uninteresting ) )
       if self.curr_node.uninteresting == True :
         self.uninteresting = True

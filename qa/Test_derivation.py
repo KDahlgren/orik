@@ -826,6 +826,73 @@ class Test_derivation( unittest.TestCase ) :
     os.remove( testDB )
 
 
+  ###########################
+  #  SIMPLOG TREE SIMPLIFY  #
+  ###########################
+  # tests simplog provenance graph generation without dm
+  #@unittest.skip( "working on different example." )
+  def test_simplog_tree_simplify( self ) :
+
+    test_id = "simplog_tree_simplify"
+
+    # --------------------------------------------------------------- #
+    # set up test
+
+    if os.path.exists( "./IR*.db*" ) :
+      os.remove( "./IR*.db*" )
+
+    testDB = "./IR_" + test_id + ".db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
+
+    # --------------------------------------------------------------- #
+    # specify input file paths
+
+    inputfile         = "./dedalus_drivers/simplog_driver.ded"
+    serial_nodes_path = "./testFiles/simplog_tree_simplify_nodes.txt"
+    serial_edges_path = "./testFiles/simplog_tree_simplify_edges.txt"
+    additional_str    = "_test_simplog_tree_simplify"
+
+    # --------------------------------------------------------------- #
+    # get argDict
+
+    argDict = self.getArgDict( inputfile )
+    argDict[ "settings" ] = "./settings_iedb_rewrites_tree_simplify.ini"
+
+    # --------------------------------------------------------------- #
+    # compare the actual provenance graph with the expected 
+    # provenance graph
+
+    provTree = self.compare_provenance_graph_workflow( argDict, \
+                                                       inputfile, \
+                                                       serial_nodes_path, \
+                                                       serial_edges_path, \
+                                                       cursor, \
+                                                       additional_str )
+
+    # --------------------------------------------------------------- #
+    # compare the actual and expected tree dimensions
+
+#    tree_height               = 12
+#    total_number_serial_nodes = 80
+#
+#    expected_dimensions = [ tree_height, \
+#                            total_number_serial_nodes ]
+#
+#    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+
+    # --------------------------------------------------------------- #
+    # clean up test
+    del( provTree )
+    IRDB.close()
+    os.remove( testDB )
+
   ############
   #  REPLOG  #
   ############

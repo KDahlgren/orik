@@ -114,11 +114,15 @@ class Test_derivation_functionality( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # create node
 
+    argDict = {}
+    argDict[ "settings" ] = "./settings_files/settings.ini"
+
     try :
       new_fact_node = FactNode.FactNode( name          = name, \
                                          record        = record, \
                                          parsedResults = parsedResults, \
-                                         cursor        = cursor )
+                                         cursor        = cursor, \
+                                         argDict       = argDict )
 
     except SystemExit :
       actual_error = str( sys.exc_info()[1] )
@@ -211,11 +215,15 @@ class Test_derivation_functionality( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # create node
 
+    argDict = {}
+    argDict[ "settings" ] = "./settings_files/settings.ini"
+
     try :
       new_fact_node = FactNode.FactNode( name          = name, \
                                          record        = record, \
                                          parsedResults = parsedResults, \
-                                         cursor        = cursor )
+                                         cursor        = cursor, \
+                                         argDict       = argDict )
 
     except SystemExit :
       actual_error = str( sys.exc_info()[1] )
@@ -307,10 +315,14 @@ class Test_derivation_functionality( unittest.TestCase ) :
     # --------------------------------------------------------------- #
     # create node
 
+    argDict = {}
+    argDict[ "settings" ] = "./settings_files/settings.ini"
+
     new_fact_node = FactNode.FactNode( name          = name, \
                                        record        = record, \
                                        parsedResults = parsedResults, \
-                                       cursor        = cursor )
+                                       cursor        = cursor, \
+                                       argDict       = argDict )
 
     # --------------------------------------------------------------- #
     # tests

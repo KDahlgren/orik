@@ -6,7 +6,7 @@
 #  IMPORTS  #
 #############
 # standard python packages
-import copy, inspect, logging, os, sys
+import ConfigParser, copy, inspect, logging, os, sys
 from Node import Node
 
 if not os.path.abspath( __file__ + "/../../../lib/iapyx/src" ) in sys.path :
@@ -28,7 +28,7 @@ class FactNode( Node ) :
   #################
   #  CONSTRUCTOR  #
   #################
-  def __init__( self, name="DEFAULT", isNeg=None, record=[], parsedResults={}, cursor=None ) :
+  def __init__( self, name="DEFAULT", isNeg=None, record=[], parsedResults={}, cursor=None, argDict = {} ) :
 
     logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
     logging.debug( "in FactNode.FactNode : " + name )
@@ -37,6 +37,9 @@ class FactNode( Node ) :
     logging.debug( "  record = " + str( record ) )
     logging.debug( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" )
 
+    self.argDict = {}
+    self.argDict = argDict
+
     self.name          = name
     self.isNeg         = isNeg
     self.record        = record
@@ -44,6 +47,13 @@ class FactNode( Node ) :
     self.cursor        = cursor
     self.uninteresting = False
 
+    try :
+      self.TREE_SIMPLIFY = tools.getConfig( self.argDict[ "settings" ], "DEFAULT", "TREE_SIMPLIFY", bool )
+    except ConfigParser.NoOptionError :
+      self.TREE_SIMPLIFY = False
+      logging.warning( "WARNING : no 'TREE_SIMPLIFY' defined in 'DEFAULT' section of " + \
+                       self.argDict[ "settings" ] + "...running with TREE_SIMPLIFY==False." )
+    logging.debug( "  FACT NODE : using TREE_SIMPLIFY = " + str( self.TREE_SIMPLIFY ) )
 
     # -------------------------------- #
     # make sure this is actually a 
@@ -76,10 +86,16 @@ class FactNode( Node ) :
 
     if self.isNeg :
       negStr = "_NOT_"
-      return "fact->" + negStr + self.name + "(" + str(self.record) + ")"
+      if self.TREE_SIMPLIFY == True and self.uninteresting == True :
+        return "fact->__UNINTERESTING__" + negStr + self.name + "(" + str(self.record) + ")"
+      else :
+        return "fact->" + negStr + self.name + "(" + str(self.record) + ")"
 
     else :
-      return "fact->" + self.name + "(" + str(self.record) + ")"
+      if self.TREE_SIMPLIFY == True and self.uninteresting == True :
+        return "fact->__UNINTERESTING__" + self.name + "(" + str(self.record) + ")"
+      else :
+        return "fact->" + self.name + "(" + str(self.record) + ")"
 
 
   ######################
