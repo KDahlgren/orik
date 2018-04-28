@@ -824,13 +824,17 @@ class Test_derivation_functionality( unittest.TestCase ) :
     eot           = 0
     parent        = None
 
+    argDict = {}
+    argDict[ "data_save_path" ] = "./data"
+
     # --------------------------------------------------------------- #
 
     try :
       new_tree = ProvTree.ProvTree( rootname      = rootname, \
                                     parsedResults = parsedResults, \
                                     treeType      = treeType, \
-                                    isNeg         = isNeg )
+                                    isNeg         = isNeg, \
+                                    argDict       = argDict )
 
     except SystemExit :
       actual_error = str( sys.exc_info()[1] )
@@ -875,6 +879,9 @@ class Test_derivation_functionality( unittest.TestCase ) :
     eot           = 0
     parent        = None
 
+    argDict = {}
+    argDict[ "data_save_path" ] = "./data"
+
     # --------------------------------------------------------------- #
 
     try :
@@ -882,7 +889,8 @@ class Test_derivation_functionality( unittest.TestCase ) :
                                     parsedResults = parsedResults, \
                                     treeType      = treeType, \
                                     cursor        = cursor, \
-                                    isNeg         = isNeg )
+                                    isNeg         = isNeg, \
+                                    argDict       = argDict )
 
     except SystemExit :
       actual_error = str( sys.exc_info()[1] )

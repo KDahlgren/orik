@@ -1818,7 +1818,6 @@ class Test_derivation( unittest.TestCase ) :
                                   treeType       = treeType, \
                                   isNeg          = isNeg, \
                                   eot            = eot, \
-                                  img_save_path  = test_data_dir, \
                                   prev_prov_recs = {}, \
                                   argDict        = argDict )
 
