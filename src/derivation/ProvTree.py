@@ -55,10 +55,10 @@ class ProvTree( object ) :
                       eot             = 0,    \
                       parent          = None, \
                       argDict         = {},   \
-                      img_save_path   = os.path.abspath( os.getcwd() ) + "/data", \
+                      img_save_path   = os.path.abspath( os.getcwd() ) + "/" , \
                       prev_prov_recs  = {} ) :
 
-    self.img_save_path = img_save_path
+    self.img_save_path = img_save_path + argDict[ "data_save_path" ]
     if not os.path.isdir( self.img_save_path ) :
       raise Exception( "Image save path '" + self.img_save_path + "' does not exist. aborting." )
 
