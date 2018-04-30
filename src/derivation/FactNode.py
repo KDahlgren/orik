@@ -45,7 +45,7 @@ class FactNode( Node ) :
     self.record        = record
     self.parsedResults = parsedResults
     self.cursor        = cursor
-    self.uninteresting = False
+    self.interesting   = False
 
     try :
       self.TREE_SIMPLIFY = tools.getConfig( self.argDict[ "settings" ], "DEFAULT", "TREE_SIMPLIFY", bool )
@@ -86,16 +86,10 @@ class FactNode( Node ) :
 
     if self.isNeg :
       negStr = "_NOT_"
-      if self.TREE_SIMPLIFY == True and self.uninteresting == True :
-        return "fact->__UNINTERESTING__" + negStr + self.name + "(" + str(self.record) + ")"
-      else :
-        return "fact->" + negStr + self.name + "(" + str(self.record) + ")"
+      return "fact->" + negStr + self.name + "(" + str(self.record) + ")"
 
     else :
-      if self.TREE_SIMPLIFY == True and self.uninteresting == True :
-        return "fact->__UNINTERESTING__" + self.name + "(" + str(self.record) + ")"
-      else :
-        return "fact->" + self.name + "(" + str(self.record) + ")"
+      return "fact->" + self.name + "(" + str(self.record) + ")"
 
 
   ######################
@@ -106,13 +100,43 @@ class FactNode( Node ) :
   def am_i_interesting( self ) :
 
     # only clock facts are interesting
-    if self.isNeg or not self.name.startswith( "clock" ) :
-      self.uninteresting = True
+    if self.name.startswith( "clock" ) :
+      if not self.isNeg : # _NOT_ facts are not interesting (yet)
+        if not self.is_self_comm() and not self.is_node_crash() :
+          self.interesting = True
+
+    logging.debug( "  AM I INTERESTING : self.name = " + self.name )
+    logging.debug( "  AM I INTERESTING : conclusion : " + str( self.interesting ) )
 
 #    # negative facts are not interesting.
 #    if self.isNeg :
 #      self.uninteresting = True
 
+
+  ##################
+  #  IS SELF COMM  #
+  ##################
+  def is_self_comm( self ) :
+    if not self.name == "clock" :
+      return False
+    else :
+      if self.record[ 0 ] == self.record[ 1 ] :
+        return True
+      else :
+        return False
+
+
+  ###################
+  #  IS NODE CRASH  #
+  ###################
+  def is_node_crash( self ) :
+    if not self.name == "clock" :
+      return False
+    else :
+      if self.record[ 1 ] == "_" :
+        return True
+      else :
+        return False
 
   #############
   #  IS FACT  #

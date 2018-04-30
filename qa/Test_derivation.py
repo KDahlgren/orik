@@ -96,8 +96,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 13 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 12 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 6 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 5 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -222,8 +222,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 71 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 87 ) # includes recursive edges
+    self.assertTrue( graph_stats[ "num_nodes" ] == 86 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 133 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -349,8 +349,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 21 ) # this will need updating after the TREE_SIMPLIFY fixes
-    self.assertTrue( graph_stats[ "num_edges" ] == 20 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 15 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 14 )
 
     # --------------------------------------------------------------- #
     # clean up test

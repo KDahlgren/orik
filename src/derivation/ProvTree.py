@@ -62,12 +62,12 @@ class ProvTree( object ) :
     if not os.path.isdir( self.img_save_path ) :
       raise Exception( "Image save path '" + self.img_save_path + "' does not exist. aborting." )
 
-    # uninteresting boolean. indicates whether or not 
+    # interesting boolean. indicates whether or not 
     # the provenance tree rooted at this node is interesting.
     # all provenance trees are initially interesting.
-    # provenance trees become uninteresting if all descendant
-    # provenance trees are uninteresting.
-    self.uninteresting = False
+    # provenance trees are interesting if at least one descendant
+    # provenance tree is interesting.
+    self.interesting = False
 
     # dictionary of the execution arguments
     self.argDict = argDict
@@ -180,14 +180,12 @@ class ProvTree( object ) :
     if not self.rootname == "__TestNode__" :  # for qa tests
 
       if self.treeType == "goal" :
-        logging.debug( "+>>>name=" + self.rootname )
         logging.debug( "self.curr_node.descendant_meta = " +str( self.curr_node.descendant_meta ) )
 
-      # generate graph meta data for interesing nodes only
-      if TREE_SIMPLIFY and not self.uninteresting :
-        print "><><><>< HERERE"
+      # generate graph meta data for interesting nodes only
+      if TREE_SIMPLIFY and self.interesting :
         self.generate_graph_data()
-      elif TREE_SIMPLIFY and self.uninteresting :
+      elif TREE_SIMPLIFY and not self.interesting :
         logging.debug( "skipping generate_graph_data." )
       else :
         self.generate_graph_data()
@@ -199,7 +197,7 @@ class ProvTree( object ) :
   # removes uninteresting descendants.
   # if all descendants are uninteresting,
   # then removes all descendants and sets
-  # self.uninteresting as True.
+  # self.interesting as False.
   def tree_simplify( self ) :
 
     logging.debug( "  TREE SIMPLIFY : running process..." )
@@ -214,14 +212,24 @@ class ProvTree( object ) :
       for d in self.curr_node.descendant_meta :
         logging.debug( "  TREE SIMPLIFY :   d = " + str( d ) )
 
-    if self.i_am_uninteresting() :
+    if not self.i_am_interesting() :
       self.wipe_all_descendants()
-      self.uninteresting = True
+      self.interesting = False
     else :
+      self.interesting = self.i_am_interesting()
       self.wipe_uninteresting_descendants()
 
-    logging.debug( "  TREE SIMPLIFY :  self.i_am_uninteresting() => " + str( self.i_am_uninteresting() ) )
-    logging.debug( "  TREE SIMPLIFY :  self.uninteresting()      => " + str( self.uninteresting ) )
+    logging.debug( "  TREE SIMPLIFY :  self.i_am_interesting() => " + str( self.i_am_interesting() ) )
+    logging.debug( "  TREE SIMPLIFY :  self.interesting        => " + str( self.interesting ) )
+    assert( self.i_am_interesting() == self.interesting )
+
+    logging.debug( "  TREE SIMPLIFY : self.decendants :" )
+    for d in self.descendants :
+      logging.debug( "  " + str( d ) )
+    if not self.treeType == "fact" :
+      logging.debug( "  TREE SIMPLIFY : self.curr_node.decendant_meta :" )
+      for d in self.curr_node.descendant_meta :
+        logging.debug( "  " + str( d ) )
 
     logging.debug( "  TREE SIMPLIFY : ...done." )
 
@@ -233,98 +241,118 @@ class ProvTree( object ) :
   # the descendant list.
   def wipe_uninteresting_descendants( self ) :
 
+    # -------------------------------------------------- #
     logging.debug( "  WIPE UNINTERESTING DESCENDANTS : running process..." )
     logging.debug( "  WIPE UNINTERESTING DESCENDANTS : self.curr_node          = " + str( self.curr_node ) )
     logging.debug( "  WIPE UNINTERESTING DESCENDANTS : len( self.descendants ) = " + str( len( self.descendants ) ) )
     logging.debug( "  WIPE UNINTERESTING DESCENDANTS : self.descendants        : " )
     for d in self.descendants :
       logging.debug( d )
+    # -------------------------------------------------- #
 
-    if len( self.descendants ) < 1 :
+    # all finalstate descendants are interesting
+    if self.rootname == "FinalState" :
       pass
 
+    # no descendants => nothing to wipe
+    elif self.treeType == "fact" :
+      pass
+
+#    elif len( self.descendants ) < 1 :
+#      pass
+#
+    # yes descendants => may need to wipe stuff
     else :
 
       # -------------------------------------------------- #
-      # gather all indexes for uninteresting descendants
+      # gather all indexes for interesting descendants
 
-      uninteresting_descendant_indexes = []
+      interesting_descendant_indexes = []
       for i in range( 0, len( self.descendants ) ) :
-        if self.descendants[ i ].uninteresting == True :
-          uninteresting_descendant_indexes.append( i )
+        logging.debug( "  WIPE UNINTERESTING DESCENDANTS : considering " + str( self.descendants[ i ] ) ) 
+        logging.debug( "  WIPE UNINTERESTING DESCENDANTS :   interesting = " + str( self.descendants[ i ].interesting ) ) 
+        if self.descendants[ i ].interesting == True :
+          interesting_descendant_indexes.append( i )
 
       logging.debug( "  WIPE UNINTERESTING DESCENDANTS : " + \
-                     "uninteresting_descendant_indexes = " + \
-                     str( uninteresting_descendant_indexes ) )
+                     "interesting_descendant_indexes = " + \
+                     str( interesting_descendant_indexes ) )
+
+      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : self.curr_node.descendant_meta :" )
+      for d in self.curr_node.descendant_meta :
+        logging.debug( "  " + str( d ) )
+
+      interesting_descendant_meta_rids_recs_map = {}
+      interesting_descendant_meta_indexes       = []
+      if self.treeType == "goal" :
+        for rid in self.curr_node.descendant_meta :
+          if self.treeType == "goal" and self.meta_is_interesting( self.curr_node.descendant_meta[ rid ], "rule" ) :
+            extracted_interesting_records = self.extract_interesting_records( rid )
+            interesting_descendant_meta_rids_recs_map[ rid ] = extracted_interesting_records
+      else :
+        for i in range( 0, len( self.curr_node.descendant_meta ) ) :
+          if self.meta_is_interesting( self.curr_node.descendant_meta[ i ], "other" ) :
+            interesting_descendant_meta_indexes.append( i )
+
+      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : interesting_descendant_meta_rids_recs_map = " )
+      for d in interesting_descendant_meta_rids_recs_map :
+        logging.debug( "  " + str( d ) )
+      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : interesting_descendant_meta_indexes = " )
+      for d in interesting_descendant_meta_indexes :
+        logging.debug( "  " + str( d ) )
 
       # -------------------------------------------------- #
-      # perform descendant deletions
-      # be sure to do the deletes in reverse order!
+      # if the node has no interesting descendants,
+      # wipe them all.
 
-      if len( uninteresting_descendant_indexes ) >= 1 :
-        deleted_descendant_meta = []
-        for index in uninteresting_descendant_indexes[::-1] :
-          if self.treeType == "goal" :
-            logging.debug( "  WIPE UNINTERESTING : deleting descendant (1) : " + \
-                           str( self.descendants[ index ] ) + \
-                           ", rid = " + str( self.descendants[ index ].curr_node.rid ) )
-            deleted_descendant_meta.append( [ self.descendants[ index ].curr_node.rid, self.descendants[ index ].curr_node.record ] )
-          else :
-            logging.debug( "  WIPE UNINTERESTING : deleting descendant (2) : " + \
-                           str( self.descendants[ index ] ) )
-            deleted_descendant_meta.append( [ self.descendants[ index ].curr_node.treeType, self.descendants[ index ].curr_node.isNeg, self.descendants[ index ].curr_node.record, self.descendants[ index ].curr_node.name ] )
-          del self.descendants[ index ]
-          logging.debug( "  WIPE UNINTERESTING : self.descendants:" )
-          for d in self.descendants :
-            logging.debug( "    " + str( d ) )
+      if len( interesting_descendant_indexes )       < 1 and \
+         len( interesting_descendant_meta_rids_recs_map ) < 1 and \
+         len( interesting_descendant_meta_indexes )  < 1 :
+        self.wipe_all_descendants()
+
+      # -------------------------------------------------- #
+      # if all descendants are interesting, nothing to do
+
+      # not doing this is slow at the deepcopy for some reason
+#      elif len( interesting_descendant_indexes ) == len( self.descendants ) :
+#        pass
+
+      # -------------------------------------------------- #
+      # otherwise, keep only the interesting descendants
+
+      else :
 
         # -------------------------------------------------- #
-        # perform descendant meta deletions
+        # perform descendant saves
 
-        logging.debug( "  WIPE UNINTERESTING DESCENDANTS : self.curr_node.descendant_meta = " + \
-                       str( self.curr_node.descendant_meta ) )
-        logging.debug( "  WIPE UNINTERESTING DESCENDANTS : deleted_descendant_meta = " + str( deleted_descendant_meta ) )
+        # get the set of all uninteresing indexes
+        all_indexes = [ i for i in range( 0, len( self.descendants ) ) ]
+        uninteresting_descendant_indexes = list( set( all_indexes ) - \
+                                                 set( interesting_descendant_indexes ) )
 
-        if self.treeType == "goal" :
-          for ddm in deleted_descendant_meta :
-            rid    = ddm[ 0 ]
-            record = ddm[ 1 ]
-            for cndm in self.curr_node.descendant_meta :
-              logging.debug( "  WIPE UNINTERESTING DESCENDANTS : considering " + \
-                             "self.curr_node.descendant_meta[ " + \
-                             str( cndm ) + " ] = " + \
-                             str( self.curr_node.descendant_meta[ cndm ] ) )
-              logging.debug( "  WIPE UNINTERESTING DESCENDANTS : " + str( cndm ) + \
-                             " == " + str( rid ) + " = " + str( cndm == rid ) )
-              if cndm == rid :
-                tmp_meta        = copy.deepcopy( self.curr_node.descendant_meta[ cndm ] )
-                tmp_triggerData = tmp_meta[ "triggerData" ]
-                new_triggerData = []
-                for trig in tmp_triggerData :
-                  if not trig == record :
-                    new_triggerData.append( trig )
-                tmp_meta[ "triggerData" ] = new_triggerData
-                self.curr_node.descendant_meta[ cndm ] = copy.deepcopy( tmp_meta )
-        else :
-          tmp_descendant_meta = []
-          for cndm in self.curr_node.descendant_meta :
-            flag = False
-            for ddm in deleted_descendant_meta :
-              if self.structures_are_equal( cndm, ddm ) :
-                flag = True
-            if not flag : # cndm does not appear in ddm list
-              tmp_descendant_meta.append( cndm )
-              logging.debug( "  WIPE ALL UNINTERESTING DESCENDANTS : added " + str( cndm ) + " to tmp_descendant_meta"  )
+        logging.debug( "  all_indexes                      = " + \
+                          str( all_indexes ) )
+        logging.debug( "  interesting_descendant_indexes   = " + \
+                          str( interesting_descendant_indexes ) )
+        logging.debug( "  uninteresting_descendant_indexes = " + \
+                          str( uninteresting_descendant_indexes ) )
 
-          self.curr_node.descendant_meta = copy.deepcopy( tmp_descendant_meta )
+        # delete uninteresing descendants
+        for index in uninteresting_descendant_indexes[::-1] :
+          logging.debug( "  WIPE UNINTERESTING DESCENDANTS : deleting " + str( self.descendants[ index ] ) )
+          del self.descendants[ index ]
 
-      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : deleted " + \
-                     str( len( uninteresting_descendant_indexes ) ) + " descendants" )
-      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : remaining len( self.descendants ) = " + \
-                     str( len( self.descendants ) ) )
+        # delete uninteresting descendant metadata
+        self.clean_descendant_meta( interesting_descendant_meta_rids_recs_map, \
+                                    interesting_descendant_meta_indexes )
+
+        # -------------------------------------------------- #
+
+      logging.debug( "  WIPE UNINTERESTING : self.descendants:" )
       for d in self.descendants :
         logging.debug( "  WIPE UNINTERESTING DESCENDANTS : d = " + str( d ) )
-      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : remaining len( self.curr_node.descendant_meta ) = " + \
+
+      logging.debug( "  WIPE UNINTERESTING DESCENDANTS : self.curr_node.descendant_meta:" + \
                      str( len( self.curr_node.descendant_meta ) ) )
       for d in self.curr_node.descendant_meta :
         logging.debug( "  WIPE UNINTERESTING DESCENDANTS : d = " + str( d ) )
@@ -332,10 +360,171 @@ class ProvTree( object ) :
     logging.debug( "  WIPE UNINTERESTING DESCENDANTS : ...done." )
 
 
+  #################################
+  #  EXTRACT INTERESTING RECORDS  #
+  #################################
+  def extract_interesting_records( self, rid ) :
+    interesting_recs = []
+    interesting_dict = self.curr_node.descendant_meta[ rid ]
+    for rec in interesting_dict[ "triggerData" ] :
+      node_id = self.get_node_string( interesting_dict[ "goalName" ], "", rec, "rule" )
+      if self.final_state_ptr.node_str_to_object_map[ node_id ].interesting :
+        interesting_recs.append( rec )
+    return interesting_recs
+
+
+  #########################
+  #  META IS INTERESTING  #
+  #########################
+  def meta_is_interesting( self, cndm, node_type ) :
+
+    logging.debug( "  META IS INTERESTING : cndm      = " + str( cndm ) )
+    logging.debug( "  META IS INTERESTING : node_type = " + str( node_type ) )
+
+    if node_type == "rule" :
+      goalName    = cndm[ "goalName" ]
+      triggerData = cndm[ "triggerData" ]
+      for rec in triggerData :
+        node_id = self.get_node_string( goalName, "", rec, "rule" )
+        if self.final_state_ptr.node_str_to_object_map[ node_id ].interesting :
+          logging.debug( "  META IS INTERESTING : returning True." )
+          return True
+
+    else :
+      goalName = cndm[ "node_name" ]
+      polarity = cndm[ "polarity" ]
+      rec      = cndm[ "triggerRecord" ]
+      treeType = cndm[ "treeType" ]
+      node_id  = self.get_node_string( goalName, polarity, rec, treeType )
+      if self.final_state_ptr.node_str_to_object_map[ node_id ].interesting :
+        logging.debug( "  META IS INTERESTING : returning True." )
+        return True
+
+    logging.debug( "  META IS INTERESTING : returning False." )
+    return False
+
+
+  ###########################
+  #  CLEAN DESCENDANT META  #
+  ###########################
+  #
+  # cndm structure for goals :
+  #   {'11': {'goalName': 'node_prov3', 
+  #            'triggerData': []}, 
+  #    '15': {'goalName': 'node_prov7', 'triggerData': [['a', 'b', '1']]}}
+  #
+  # cndm structure for rules:
+  #   {'treeType': 'fact', 
+  #    'polarity': '', 
+  #    'triggerRecord': ['a', 'b', '1'], 
+  #    'node_name': 'node_edb'}
+  #
+  def clean_descendant_meta( self, interesting_descendant_meta_rids_recs_map, \
+                                   interesting_descendant_meta_indexes ) :
+
+    logging.debug( "  CLEAN DESCENDANT META : self =  " + str( self )  )
+    logging.debug( "  CLEAN DESCENDANT META : self.curr_node.descendant_meta = " )
+    for c in self.curr_node.descendant_meta :
+      logging.debug( "  " + str( c ) )
+    logging.debug( "  CLEAN DESCENDANT META : interesting_descendant_meta_rids_recs_map:" )
+    for d in interesting_descendant_meta_rids_recs_map :
+      logging.debug( "  " + str( d ) ) 
+    logging.debug( "  CLEAN DESCENDANT META : interesting_descendant_meta_indexes:" )
+    for d in interesting_descendant_meta_indexes :
+      logging.debug( "  " + str( d ) ) 
+
+    # ------------------------------------------------------------------ #
+    # work over un/interesting metadata indexes
+    # (this is an empty list if meta rids is non-empty)
+
+    if len( interesting_descendant_meta_indexes  ) > 0 :
+
+      # get the list of uninteresting meta indexes
+      uninteresting_descendant_meta_indexes = []
+      for ind in range( 0, len( self.curr_node.descendant_meta ) ) :
+        if not ind in interesting_descendant_meta_indexes :
+          uninteresting_descendant_meta_indexes.append( ind )
+
+      logging.debug( "  CLEAN DESCENDANT META : uninteresting_descendant_meta_indexes = " + str( uninteresting_descendant_meta_indexes ) )
+
+      # delete all uninteresting descendant meta
+      for index in uninteresting_descendant_meta_indexes[::-1] :
+        logging.debug( "  CLEAN DESCENDANT META : deleting " + str( self.curr_node.descendant_meta[ index ] ) )
+        del self.curr_node.descendant_meta[ index ]
+
+    # ------------------------------------------------------------------ #
+    # work over un/interesting  metadata rids
+    # (this is an empty list if meta indexes is non-empty)
+
+    else :
+
+      # get the list of uninteresting meta rids
+      interesting_rids_only   = [ x for x in interesting_descendant_meta_rids_recs_map ]
+      uninteresting_rids_only = []
+      for rid in self.curr_node.descendant_meta :
+        if not rid in interesting_rids_only :
+          uninteresting_rids_only.append( rid )
+
+      logging.debug( "  CLEAN DESCENDANT META : uninteresting_rids_only = " + str( uninteresting_rids_only ) )
+
+      # delete all uninteresting descendant meta
+      for rid in uninteresting_rids_only :
+        logging.debug( "  CLEAN DESCENDANT META : deleting " + str( self.curr_node.descendant_meta[ rid ] ) )
+        self.curr_node.descendant_meta.pop( rid, None )
+
+      # delete all uninteresting records from interesting rids
+      for rid in interesting_rids_only :
+        logging.debug( "  CLEAN DESCENDANT META : examining dict at '" + str( rid ) + " : " + str( self.curr_node.descendant_meta[ rid ] ) )
+        interesting_records = interesting_descendant_meta_rids_recs_map[ rid ]
+        logging.debug( "  CLEAN DESCENDANT META : interesting records = '" + str( interesting_records ) )
+        logging.debug( "  CLEAN DESCENDANT META : self.curr_node.descendant_meta[ rid ][ 'triggerData' ] " + str( self.curr_node.descendant_meta[ rid ][ "triggerData" ] ) )
+        for rec in self.curr_node.descendant_meta[ rid ][ "triggerData" ] : 
+          logging.debug( "  rec = " + str( rec ) )
+        tmp = []
+        for rec in self.curr_node.descendant_meta[ rid ][ "triggerData" ] :
+          logging.debug( "  CLEAN DESCENDANT META : considering record " + str( rec ) )
+          if not self.list_containment( rec, interesting_records ) :
+            logging.debug( "  CLEAN DESCENDANT META : prep record delete " + str( rec ) )
+            tmp.append( rec )
+          else :
+            logging.debug( "  CLEAN DESCENDANT META : keeping record " + str( rec ) )
+        for rec in tmp :
+          logging.debug( "  CLEAN DESCENDANT META : deleting rec " + str( rec ) )
+          self.curr_node.descendant_meta[ rid ][ "triggerData" ].remove( rec )
+
+    logging.debug( "  CLEAN DESCENDANT META : self.descendants = " )
+    for d in self.descendants :
+      logging.debug( "  " + str( d ) )
+    logging.debug( "  CLEAN DESCENDANT META : self.curr_node.descendant_meta = " )
+    for d in self.curr_node.descendant_meta :
+      if self.treeType == "goal" :
+        logging.debug( "  " + str( d ) + ", " + str( self.curr_node.descendant_meta[d] ) )
+      else :
+        logging.debug( "  " + str( d ) )
+
+
+  ######################
+  #  LIST CONTAINMENT  #
+  ######################
+  def list_containment( self, record, record_list ) :
+    unique_rec_str = "".join( record )
+    record_list_unique_strs = [ "".join( x ) for x in record_list ]
+
+    logging.debug( "  LIST CONTAINMENT : unique_rec_str          = " + unique_rec_str )
+    logging.debug( "  LIST CONTAINMENT : record_list_unique_strs = " + str( record_list_unique_strs ) )
+
+    if unique_rec_str in record_list_unique_strs :
+      logging.debug( "  LIST CONTAINMENT : returning True." )
+      return True
+    else :
+      logging.debug( "  LIST CONTAINMENT : returning False." )
+      return False
+
+
   ##########################
   #  STRUCTURES ARE EQUAL  #
   ##########################
-  def structures_are_equal( self, cndm, ddm ) :
+  def structures_are_equal( self, cndm, sdm ) :
 
     cndm_treeType = cndm[ "treeType" ]
     if cndm[ "polarity" ] == "" :
@@ -349,21 +538,26 @@ class ProvTree( object ) :
     logging.debug( "  STRUCTURES ARE EQUAL : cndm_record   = " + str( cndm_record ) )
     logging.debug( "  STRUCTURES ARE EQUAL : cndm_name     = " + cndm_name )
 
-    ddm_treeType = ddm[ 0 ]
-    ddm_isNeg    = ddm[ 1 ]
-    ddm_record   = ddm[ 2 ]
-    ddm_name     = ddm[ 3 ]
-    logging.debug( "  STRUCTURES ARE EQUAL : ddm_treeType = " + ddm_treeType )
-    logging.debug( "  STRUCTURES ARE EQUAL : ddm_isNeg    = " + str( ddm_isNeg ) )
-    logging.debug( "  STRUCTURES ARE EQUAL : ddm_record   = " + str( ddm_record ) )
-    logging.debug( "  STRUCTURES ARE EQUAL : ddm_name     = " + ddm_name )
+    sdm_treeType = sdm[ 0 ]
+    sdm_isNeg    = sdm[ 1 ]
+    sdm_record   = sdm[ 2 ]
+    logging.debug( "  STRUCTURES ARE EQUAL : sdm_treeType = " + sdm_treeType )
+    logging.debug( "  STRUCTURES ARE EQUAL : sdm_isNeg    = " + str( sdm_isNeg ) )
+    logging.debug( "  STRUCTURES ARE EQUAL : sdm_record   = " + str( sdm_record ) )
 
-    if cndm_treeType == ddm_treeType and \
-       cndm_isNeg    == ddm_isNeg    and \
-       cndm_record   == ddm_record   and \
-       cndm_name     == ddm_name :
+    sdm_name     = sdm[ 3 ]
+    logging.debug( "  STRUCTURES ARE EQUAL : sdm_name (orig) = " + sdm_name )
+    sdm_name     = sdm_name.replace( "__UNINTERESTING__", "" )
+    logging.debug( "  STRUCTURES ARE EQUAL : sdm_name        = " + sdm_name )
+
+    if cndm_treeType == sdm_treeType and \
+       cndm_isNeg    == sdm_isNeg    and \
+       cndm_record   == sdm_record   and \
+       cndm_name     == sdm_name :
+      logging.debug( "  STRUCTURES ARE EQUAL : returning True" )
       return True
     else :
+      logging.debug( "  STRUCTURES ARE EQUAL : returning False" )
       return False
 
 
@@ -389,37 +583,57 @@ class ProvTree( object ) :
 
 
 
-  ########################
-  #  I AM UNINTERESTING  #
-  ########################
-  # a prov tree is uninteresting if all immediate descendants
-  # are uninteresting.
-  def i_am_uninteresting( self ) :
+  ######################
+  #  I AM INTERESTING  #
+  ######################
+  # a prov tree is interesting if at least on immediate descendant
+  # is interesting.
+  def i_am_interesting( self ) :
 
-    logging.debug( "  I AM UNINTERESTING : running process..." )
+    logging.debug( "  I AM INTERESTING : running process..." )
+    logging.debug( "  I AM INTERESTING : self = " + str( self ) )
 
-    # facts are only as interesting as they are uninteresting.
+    # facts are only as interesting as they are interesting.
     if self.treeType == "fact" :
-      logging.debug( "  I AM UNINTERESTING : fact, returning " + str( self.uninteresting ) )
-      return self.uninteresting
+      logging.debug( "  I AM INTERESTING : fact, returning " + str( self.curr_node.interesting ) )
+      return self.curr_node.interesting
 
-    # goals and rules are uninteresting if they have no descendants
-    elif len( self.descendants ) < 1 :
-      logging.debug( "  I AM UNINTERESTING : len( self.descendants ) < 1 is true:" + str( len( self.descendants ) ) )
-      logging.debug( "  I AM UNINTERESTING : returning True" )
-      return True
-
+    # goals and rules are interesting if they have at least one interesting descendant
     else :
-      num_uninteresting_descendants = 0 # optimism!
+      num_interesting_descendants = 0
+
+      # check self.descendants
       for d in self.descendants :
-        if d.uninteresting :
-          num_uninteresting_descendants += 1
-      logging.debug( "  I AM UNINTERESTING : num_uninteresting_descendants = " + str( num_uninteresting_descendants ) )
-      if num_uninteresting_descendants == len( self.descendants ) :
-        logging.debug( "  I AM UNINTERESTING : returning True" )
+        logging.debug( "  I AM INTERESTING : d = " + str( d ) + ", " + str( d.interesting ) )
+        if d.interesting :
+          logging.debug( "  I AM INTERESTING : (1) this is interesting -> " + str( d ) )
+          num_interesting_descendants += 1
+
+      # check self.curr_node.descendant_meta
+      for d in self.curr_node.descendant_meta :
+        if self.treeType == "goal" :
+          cndm = self.curr_node.descendant_meta[ d ]
+          for record in cndm[ "triggerData" ] :
+            if self.final_state_ptr.node_str_to_object_map[ self.get_node_string( cndm[ "goalName" ], "", record, "rule" ) ].interesting :
+              logging.debug( "  I AM INTERESTING : (2) this is interesting -> " + str( self.get_node_string( cndm[ "goalName" ], "", record, "rule" ) ) )
+              num_interesting_descendants += 1
+        else :
+          if self.final_state_ptr.node_str_to_object_map[ self.get_node_string( d[ "node_name" ], \
+                                                                                d[ "polarity" ], \
+                                                                                d[ "triggerRecord" ], \
+                                                                                d[ "treeType" ] ) ].interesting :
+            logging.debug( "  I AM INTERESTING : (3) this is interesting -> " + str( self.get_node_string( d[ "node_name" ], \
+                                                                                                           d[ "polarity" ], \
+                                                                                                           d[ "triggerRecord" ], \
+                                                                                                           d[ "treeType" ] ) ) )
+            num_interesting_descendants += 1
+
+      logging.debug( "  I AM INTERESTING : num_interesting_descendants = " + str( num_interesting_descendants ) )
+      if num_interesting_descendants >= 1 :
+        logging.debug( "  I AM INTERESTING : returning True" )
         return True
       else :
-        logging.debug( "  I AM UNINTERESTING : returning False" )
+        logging.debug( "  I AM INTERESTING : returning False" )
         return False
 
 
@@ -563,6 +777,7 @@ class ProvTree( object ) :
       # between the current node and descendant nodes 
       # w/o requiring the generation of ProvTree objects 
       # for the descendants.
+      # huh? why?
 
       # CASE : this is a goal node
       #        spawn rules only.
@@ -575,14 +790,12 @@ class ProvTree( object ) :
           logging.debug( "  GENERATE GRAPH DATA : d_meta = " + str( d_meta ) )
         logging.debug( "-------------------------------------------------------------------------------" )
 
-
         for prov_id in self.curr_node.descendant_meta :
           d_meta = self.curr_node.descendant_meta[ prov_id ]
           logging.debug( "  GENERATE GRAPH DATA : d_meta = " + str( d_meta ) )
 
           goalName    = d_meta[ "goalName" ]
           triggerData = d_meta[ "triggerData" ]
-
           # need one rule descendant per provenance trigger
           for rec in triggerData :
 
@@ -829,7 +1042,6 @@ class ProvTree( object ) :
       pass
 
 
-
   ########################
   #  IS WILDCARD RECORD  #
   ########################
@@ -979,9 +1191,9 @@ class ProvTree( object ) :
                                           parsedResults = self.parsedResults, \
                                           cursor        = self.cursor, \
                                           argDict       = self.argDict )
-      logging.debug( "+>>> self.curr_node.uninteresting = " + str( self.curr_node.uninteresting ) )
-      if self.curr_node.uninteresting == True :
-        self.uninteresting = True
+      logging.debug( "+>>> self.curr_node.interesting = " + str( self.curr_node.interesting ) )
+      if self.curr_node.interesting == True :
+        self.interesting = True
 
     # -------------------------------- #
     else :
