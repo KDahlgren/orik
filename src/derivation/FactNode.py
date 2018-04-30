@@ -47,13 +47,76 @@ class FactNode( Node ) :
     self.cursor        = cursor
     self.interesting   = False
 
+
+    # -------------------------------- #
+    # grab settings configs
+
+    # +++++++++++++++ #
+    #  TREE SIMPLIFY  #
+    # +++++++++++++++ #
     try :
-      self.TREE_SIMPLIFY = tools.getConfig( self.argDict[ "settings" ], "DEFAULT", "TREE_SIMPLIFY", bool )
+      self.TREE_SIMPLIFY = tools.getConfig( self.argDict[ "settings" ], \
+                                                          "DEFAULT", \
+                                                          "TREE_SIMPLIFY", \
+                                                          bool )
     except ConfigParser.NoOptionError :
       self.TREE_SIMPLIFY = False
       logging.warning( "WARNING : no 'TREE_SIMPLIFY' defined in 'DEFAULT' section of " + \
                        self.argDict[ "settings" ] + "...running with TREE_SIMPLIFY==False." )
     logging.debug( "  FACT NODE : using TREE_SIMPLIFY = " + str( self.TREE_SIMPLIFY ) )
+
+    # +++++++++++++ #
+    #  CLOCKS_ONLY  #
+    # +++++++++++++ #
+    try :
+      self.CLOCKS_ONLY = tools.getConfig( self.argDict[ "settings" ], \
+                                          "DEFAULT", \
+                                          "CLOCKS_ONLY", \
+                                          bool )
+    except ConfigParser.NoOptionError :
+      self.CLOCKS_ONLY = False
+      logging.warning( "WARNING : no 'CLOCKS_ONLY' defined in 'DEFAULT' section of " + \
+                     self.argDict[ "settings" ] + "...running with CLOCKS_ONLY==False." )
+
+    # ++++++++++++++++ #
+    #  POS_FACTS_ONLY  #
+    # ++++++++++++++++ #
+    try :
+      self.POS_FACTS_ONLY = tools.getConfig( self.argDict[ "settings" ], \
+                                             "DEFAULT", \
+                                             "POS_FACTS_ONLY", \
+                                             bool )
+    except ConfigParser.NoOptionError :
+      self.POS_FACTS_ONLY = False
+      logging.warning( "WARNING : no 'POS_FACTS_ONLY' defined in 'DEFAULT' section of " + \
+                     self.argDict[ "settings" ] + "...running with POS_FACTS_ONLY==False." )
+
+    # ++++++++++++++++++++ #
+    #  EXCLUDE_SELF_COMMS  #
+    # ++++++++++++++++++++ #
+    try :
+      self.EXCLUDE_SELF_COMMS = tools.getConfig( self.argDict[ "settings" ], \
+                                                 "DEFAULT", \
+                                                 "EXCLUDE_SELF_COMMS", \
+                                                 bool )
+    except ConfigParser.NoOptionError :
+      self.EXCLUDE_SELF_COMMS = False
+      logging.warning( "WARNING : no 'EXCLUDE_SELF_COMMS' defined in 'DEFAULT' section of " + \
+                     self.argDict[ "settings" ] + "...running with EXCLUDE_SELF_COMMS==False." )
+
+    # ++++++++++++++++++++++ #
+    #  EXCLUDE_NODE_CRASHES  #
+    # ++++++++++++++++++++++ #
+    try :
+      self.EXCLUDE_NODE_CRASHES = tools.getConfig( self.argDict[ "settings" ], \
+                                                   "DEFAULT", \
+                                                   "EXCLUDE_NODE_CRASHES", \
+                                                   bool )
+    except ConfigParser.NoOptionError :
+      self.EXCLUDE_NODE_CRASHES = False
+      logging.warning( "WARNING : no 'EXCLUDE_NODE_CRASHES' defined in 'DEFAULT' section of " + \
+                     self.argDict[ "settings" ] + "...running with EXCLUDE_NODE_CRASHES==False." )
+
 
     # -------------------------------- #
     # make sure this is actually a 
@@ -99,18 +162,25 @@ class FactNode( Node ) :
   # using heuristics
   def am_i_interesting( self ) :
 
-    # only clock facts are interesting
-    if self.name.startswith( "clock" ) :
-      if not self.isNeg : # _NOT_ facts are not interesting (yet)
-        if not self.is_self_comm() and not self.is_node_crash() :
-          self.interesting = True
+    flag = 0
+
+    if self.CLOCKS_ONLY and self.name.startswith( "clock" ) :
+      flag += 1
+
+    if self.POS_FACTS_ONLY and not self.isNeg :
+      flag += 1
+
+    if self.EXCLUDE_SELF_COMMS and not self.is_self_comm() :
+      flag += 1
+
+    if self.EXCLUDE_NODE_CRASHES and not self.is_node_crash() :
+      flag += 1
+
+    if flag >= 4 :
+      self.interesting = True
 
     logging.debug( "  AM I INTERESTING : self.name = " + self.name )
     logging.debug( "  AM I INTERESTING : conclusion : " + str( self.interesting ) )
-
-#    # negative facts are not interesting.
-#    if self.isNeg :
-#      self.uninteresting = True
 
 
   ##################
