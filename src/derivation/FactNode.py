@@ -51,6 +51,8 @@ class FactNode( Node ) :
     # -------------------------------- #
     # grab settings configs
 
+    self.num_filtering_configs = 0
+
     # +++++++++++++++ #
     #  TREE SIMPLIFY  #
     # +++++++++++++++ #
@@ -73,6 +75,8 @@ class FactNode( Node ) :
                                           "DEFAULT", \
                                           "CLOCKS_ONLY", \
                                           bool )
+      if self.CLOCKS_ONLY :
+        self.num_filtering_configs += 1
     except ConfigParser.NoOptionError :
       self.CLOCKS_ONLY = False
       logging.warning( "WARNING : no 'CLOCKS_ONLY' defined in 'DEFAULT' section of " + \
@@ -86,6 +90,8 @@ class FactNode( Node ) :
                                              "DEFAULT", \
                                              "POS_FACTS_ONLY", \
                                              bool )
+      if self.POS_FACTS_ONLY :
+        self.num_filtering_configs += 1
     except ConfigParser.NoOptionError :
       self.POS_FACTS_ONLY = False
       logging.warning( "WARNING : no 'POS_FACTS_ONLY' defined in 'DEFAULT' section of " + \
@@ -99,6 +105,8 @@ class FactNode( Node ) :
                                                  "DEFAULT", \
                                                  "EXCLUDE_SELF_COMMS", \
                                                  bool )
+      if self.EXCLUDE_SELF_COMMS :
+        self.num_filtering_configs += 1
     except ConfigParser.NoOptionError :
       self.EXCLUDE_SELF_COMMS = False
       logging.warning( "WARNING : no 'EXCLUDE_SELF_COMMS' defined in 'DEFAULT' section of " + \
@@ -112,6 +120,8 @@ class FactNode( Node ) :
                                                    "DEFAULT", \
                                                    "EXCLUDE_NODE_CRASHES", \
                                                    bool )
+      if self.EXCLUDE_NODE_CRASHES :
+        self.num_filtering_configs += 1
     except ConfigParser.NoOptionError :
       self.EXCLUDE_NODE_CRASHES = False
       logging.warning( "WARNING : no 'EXCLUDE_NODE_CRASHES' defined in 'DEFAULT' section of " + \
@@ -176,7 +186,11 @@ class FactNode( Node ) :
     if self.EXCLUDE_NODE_CRASHES and not self.is_node_crash() :
       flag += 1
 
-    if flag >= 4 :
+    logging.debug( "  AM I INTERESTING : flag                       = " + str( flag ) )
+    logging.debug( "  AM I INTERESTING : self.num_filtering_configs = " + str( self.num_filtering_configs ) )
+    logging.debug( "  AM I INTERESTING : flag == self.num_filtering_configs = " + str( flag == self.num_filtering_configs ) )
+
+    if flag >= self.num_filtering_configs :
       self.interesting = True
 
     logging.debug( "  AM I INTERESTING : self.name = " + self.name )
