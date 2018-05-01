@@ -190,6 +190,41 @@ class ProvTree( object ) :
       else :
         self.generate_graph_data()
 
+      self.get_all_descendant_objs()
+
+
+  ############################
+  # GET ALL DESCENDANT OBJS  #
+  ############################
+  def get_all_descendant_objs( self ) :
+
+    if self.treeType == "fact" :
+      pass
+
+    else :
+
+      logging.debug( "  GET ALL DESCENDANT OBJS : descendant_meta : " )
+      for d in self.curr_node.descendant_meta :
+        logging.debug( "  " + str( d ) )
+ 
+      if self.treeType == "goal" :
+        for rid in self.curr_node.descendant_meta :
+          cndm = self.curr_node.descendant_meta[ rid ]
+          goalName    = cndm[ "goalName" ]
+          triggerData = cndm[ "triggerData" ]
+          for rec in triggerData :
+            node_id = self.get_node_string( goalName, "", rec, "rule" )
+            self.all_descendant_objs.append( self.final_state_ptr.node_str_to_object_map[ node_id ] )
+    
+      else :
+        for cndm in self.curr_node.descendant_meta :
+          goalName = cndm[ "node_name" ]
+          polarity = cndm[ "polarity" ]
+          rec      = cndm[ "triggerRecord" ]
+          treeType = cndm[ "treeType" ]
+          node_id  = self.get_node_string( goalName, polarity, rec, treeType )
+          self.all_descendant_objs.append( self.final_state_ptr.node_str_to_object_map[ node_id ] )
+
 
   ###################
   #  TREE SIMPLIFY  #
@@ -909,10 +944,10 @@ class ProvTree( object ) :
               existing_descendant = self.final_state_ptr.node_str_to_object_map[ descendant_node_str ]
 
               # add to all descendants
-              self.all_descendant_objs.append( self.get_already_incorporated_ptr( goalName, \
-                                                                                  polarity, \
-                                                                                  trig_rec, \
-                                                                                  subtreeType ) )
+              #self.all_descendant_objs.append( self.get_already_incorporated_ptr( goalName, \
+              #                                                                    polarity, \
+              #                                                                    trig_rec, \
+              #                                                                    subtreeType ) )
 
               # update parents of existing descendant
               if existing_descendant.treeType == "rule" :
@@ -940,7 +975,7 @@ class ProvTree( object ) :
                                       eot             = self.eot )
                                       #prev_prov_recs  = self.prev_prov_recs )
  
-              self.all_descendant_objs.append( new_subtree )
+              #self.all_descendant_objs.append( new_subtree )
               self.descendants.append( new_subtree )
 
 
@@ -982,10 +1017,10 @@ class ProvTree( object ) :
           existing_descendant.parents.append( self )
 
           # add the pointer to the set of actual_descendants
-          self.all_descendant_objs.append( self.get_already_incorporated_ptr( goalName, \
-                                                                              polarity, \
-                                                                              trig_rec, \
-                                                                              subtreeType ) )
+          #self.all_descendant_objs.append( self.get_already_incorporated_ptr( goalName, \
+          #                                                                    polarity, \
+          #                                                                    trig_rec, \
+          #                                                                    subtreeType ) )
 
         else :
 
@@ -1026,7 +1061,7 @@ class ProvTree( object ) :
           else :
             tools.bp( __name__, inspect.stack()[0][3], "  FATAL ERROR : treeType not recognized '" + treeType + "'" )
   
-          self.all_descendant_objs.append( new_subtree )
+          #self.all_descendant_objs.append( new_subtree )
           self.descendants.append( new_subtree )
           tmp_curr_node_descendant_meta.append( d_meta ) # collects all not already incorporated nodes
 
