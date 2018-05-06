@@ -159,8 +159,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 19 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 18 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 18 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 17 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -286,8 +286,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 37 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 39 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 34 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 36 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -411,8 +411,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, test_id ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 21 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 20 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 19 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 18 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -660,74 +660,6 @@ class Test_derivation( unittest.TestCase ) :
 
     argDict = self.getArgDict( inputfile )
     argDict[ "settings" ] = "./settings_dm_iedb_rewrites.ini"
-
-    # --------------------------------------------------------------- #
-    # compare the actual provenance graph with the expected 
-    # provenance graph
-
-    provTree = self.compare_provenance_graph_workflow( argDict, \
-                                                       inputfile, \
-                                                       serial_nodes_path, \
-                                                       serial_edges_path, \
-                                                       cursor, \
-                                                       additional_str )
-
-    # --------------------------------------------------------------- #
-    # compare the actual and expected tree dimensions
-
-#    tree_height               = 12
-#    total_number_serial_nodes = 80
-#
-#    expected_dimensions = [ tree_height, \
-#                            total_number_serial_nodes ]
-#
-#    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
-
-    # --------------------------------------------------------------- #
-    # clean up test
-    del( provTree )
-    IRDB.close()
-    os.remove( testDB )
-
-
-  ########################
-  #  SIMPLOG DM CONCISE  #
-  ########################
-  # tests simplog provenance graph generation with dm concise
-  #@unittest.skip( "working on different example." )
-  def test_simplog_dm_concise( self ) :
-
-    test_id = "simplog_dm_concise"
-
-    # --------------------------------------------------------------- #
-    # set up test
-
-    if os.path.exists( "./IR*.db*" ) :
-      os.remove( "./IR*.db*" )
-
-    testDB = "./IR_" + test_id + ".db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
-
-    dedt.createDedalusIRTables(cursor)
-    dedt.globalCounterReset()
-
-    if not os.path.exists( "./data/" ) :
-      os.system( "mkdir ./data/" )
-
-    # --------------------------------------------------------------- #
-    # specify input file paths
-
-    inputfile         = "./dedalus_drivers/simplog_driver.ded"
-    serial_nodes_path = "./testFiles/" + test_id + "_nodes.txt"
-    serial_edges_path = "./testFiles/" + test_id + "_edges.txt"
-    additional_str    = test_id
-
-    # --------------------------------------------------------------- #
-    # get argDict
-
-    argDict = self.getArgDict( inputfile )
-    argDict[ "settings" ] = "./settings_dm_concise.ini"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -1084,8 +1016,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_simplog" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 48 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 51 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 44 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 47 )
 
     # --------------------------------------------------------------- #
     # compare the actual and expected tree dimensions
@@ -1162,8 +1094,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_fixed_data_3" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 34 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 42 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 30 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 32 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -1230,8 +1162,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_fixed_data_2" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 26 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 28 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 22 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 22 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -1298,8 +1230,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_fixed_data_1" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 14 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 14 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 12 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 11 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -1365,8 +1297,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_aggs_1" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 18 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 18 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 16 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 15 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -1433,8 +1365,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_dm_demo_1" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 18 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 19 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 15 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 14 )
 
     # --------------------------------------------------------------- #
     # clean up test
@@ -1569,8 +1501,8 @@ class Test_derivation( unittest.TestCase ) :
     # examine stats
 
     graph_stats = provTree.create_pydot_graph( 0, 0, "_test_example_1" ) # redundant
-    self.assertTrue( graph_stats[ "num_nodes" ] == 16 )
-    self.assertTrue( graph_stats[ "num_edges" ] == 18 )
+    self.assertTrue( graph_stats[ "num_nodes" ] == 13 )
+    self.assertTrue( graph_stats[ "num_edges" ] == 14 )
 
     # --------------------------------------------------------------- #
     # compare the actual and expected tree dimensions
