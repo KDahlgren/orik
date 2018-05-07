@@ -364,6 +364,7 @@ class ProvTree( object ) :
         all_indexes = [ i for i in range( 0, len( self.descendants ) ) ]
         uninteresting_descendant_indexes = list( set( all_indexes ) - \
                                                  set( interesting_descendant_indexes ) )
+        uninteresting_descendant_indexes.sort(key=int)
 
         logging.debug( "  all_indexes                      = " + \
                           str( all_indexes ) )
