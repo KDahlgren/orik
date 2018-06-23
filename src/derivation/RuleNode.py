@@ -235,11 +235,12 @@ class RuleNode( Node ) :
       logging.debug( "  GENERATE DESCENDANT META : subgoalName     = " + subgoalName )
       logging.debug( "  GENERATE DESCENDANT META : subgoalPolarity = " + subgoalPolarity )
 
-      if subgoalName.startswith( "domcomp_" ) :
-        logging.debug( "  GENERATE DESCENDANT META : hit a domcomp_ descendant. pass creation... "  )
-        pass
-      elif subgoalName.startswith( "dom_" ) :
-        logging.debug( "  GENERATE DESCENDANT META : hit a dom_ descendant. pass creation... "  )
+      if subgoalName.startswith( "domcomp_" ) or \
+         subgoalName.startswith( "dom_" )     or \
+         subgoalName.startswith( "unidom_" )  or \
+         subgoalName.startswith( "exidom_" )  or \
+         subgoalName.startswith( "orig_" ) :
+        logging.debug( "  GENERATE DESCENDANT META : hit a " + subgoalName + " descendant. skipping creation... "  )
         pass
       else :
         subgoal_type_data = self.check_subgoal_type( subgoalName )
