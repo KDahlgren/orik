@@ -1,0 +1,74 @@
+//path( S, X, Y ) :- link( S, X, Y ) ;
+//path( S, X, Y ) :- path( S, X, Z ), link( S, Z, Y ) ;
+//post( S, X, Y ) :- a( S, X, Y ), notin path( S, X, Y ) ;
+//
+//a( "a", 1, 6 )@1 ;
+//
+//link( "a", 1, 2 )@1 ;
+//link( "a", 2, 3 )@1 ;
+//link( "a", 4, 5 )@1 ;
+//link( "a", 5, 6 )@1 ;
+
+adom_not_path_string("a")@constant ;
+adom_not_path_int(1)@constant ;
+adom_not_path_int(2)@constant ;
+adom_not_path_int(3)@constant ;
+adom_not_path_int(4)@constant ;
+adom_not_path_int(5)@constant ;
+adom_not_path_int(6)@constant ;
+domcomp_not_path( S, X, Y, T )@datalog :- 
+adom_not_path_string(S), 
+adom_not_path_int(X), 
+adom_not_path_int(Y), 
+adom_not_path_int(T), 
+notin path(S,X,Y,T),
+X<Y ;
+
+adom_not_link_string("a")@constant ;
+adom_not_link_int(1)@constant ;
+adom_not_link_int(2)@constant ;
+adom_not_link_int(3)@constant ;
+adom_not_link_int(4)@constant ;
+adom_not_link_int(5)@constant ;
+adom_not_link_int(6)@constant ;
+adom_not_link_int(21)@constant ;
+adom_not_link_int(23)@constant ;
+
+domcomp_not_link( S, X, Y, Z, T )@datalog :- 
+adom_not_link_string(S), 
+adom_not_link_int(X), 
+adom_not_link_int(Y), 
+adom_not_link_int(Z), 
+adom_not_link_int(T), 
+notin link(S,X,Y,Z,T),
+X<Y,X<10,Y<10,Z>10 ;
+
+path( S, X, Y ) :- link( S, X, Y, Z ), f( S, Y, Z ) ;
+path( S, X, Y ) :- path( S, X, Z ), link( S, Z, Y, _ ) ;
+post( S, X, Y ) :- a( S, X, Y ), notin path( S, X, Y ) ;
+link(S,X,Y,D) :- b(S,X,Z), c(S,Z,Y),d(S,Z),e(S,D);
+
+a( "a", 1, 6 )@1 ;
+
+f( "a", 2, 21 )@1 ;
+f( "a", 3, 21 )@1 ;
+f( "a", 5, 23 )@1 ;
+f( "a", 6, 23 )@1 ;
+
+b("a",1,11)@1 ;
+b("a",2,12)@1 ;
+b("a",4,13)@1 ;
+b("a",5,14)@1 ;
+
+c("a",11,2)@1 ;
+c("a",12,3)@1 ;
+c("a",13,5)@1 ;
+c("a",14,6)@1 ;
+
+d("a",11)@1 ;
+d("a",12)@1 ;
+d("a",13)@1 ;
+d("a",14)@1 ;
+
+e("a",21)@1 ;
+e("a",23)@1 ;

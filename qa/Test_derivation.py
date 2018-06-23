@@ -79,6 +79,7 @@ class Test_derivation( unittest.TestCase ) :
     argDict[ "EOT" ]      = 3
     argDict[ "EFF" ]      = 2
     argDict[ "settings" ] = "./settings_smaller_demo_dm_tree_simplify.ini"
+    argDict[ "neg_writes" ] = "dm"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -205,6 +206,7 @@ class Test_derivation( unittest.TestCase ) :
     argDict[ "EOT" ]      = 5
     argDict[ "EFF" ]      = 4
     argDict[ "settings" ] = "./settings_smaller_demo_dm_tree_simplify.ini"
+    argDict[ "neg_writes" ] = "dm"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -332,6 +334,7 @@ class Test_derivation( unittest.TestCase ) :
     argDict[ "EOT" ]      = 3
     argDict[ "EFF" ]      = 1
     argDict[ "settings" ] = "./settings_smaller_demo_dm_tree_simplify.ini"
+    argDict[ "neg_writes" ] = "dm"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -592,6 +595,7 @@ class Test_derivation( unittest.TestCase ) :
 
     argDict = self.getArgDict( inputfile )
     argDict[ "settings" ] = "./settings_dm_iedb_rewrites.ini"
+    argDict[ "neg_writes" ] = "dm"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -629,66 +633,45 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example." )
   def test_rdlog_dm( self ) :
 
-    test_id = "rdlog_dm"
-
     # --------------------------------------------------------------- #
-    # set up test
+    # get argDict and set up test
 
-    if os.path.exists( "./IR*.db*" ) :
-      os.remove( "./IR*.db*" )
+    test_id        = "rdlog_dm"
+    test_file_name = "rdlog_driver"
 
-    testDB = "./IR_" + test_id + ".db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
+    print " >>> RUNNING " + test_id + " <<<"
 
-    dedt.createDedalusIRTables(cursor)
-    dedt.globalCounterReset()
+    test_id           = "derivation_" + test_id
+    serial_nodes_path = "./testFiles/" + test_id + "_expected_nodes.txt"
+    serial_edges_path = "./testFiles/" + test_id + "_expected_edges.txt"
 
-    if not os.path.exists( "./data/" ) :
-      os.system( "mkdir ./data/" )
+    input_file                  = "./dedalus_drivers/" + test_file_name + ".ded"
+    argDict                     = self.getArgDict( input_file )
+    argDict[ 'data_save_path' ] = "./data/" + test_id + "/"
+    argDict[ 'EOT' ]            = 6
+    argDict[ 'nodes' ]          = [ "a", "b", "c" ]
+    argDict[ "settings" ]       = "./settingsFiles/settings_dm_iedb_rewrites.ini"
+    argDict[ "neg_writes" ]     = "dm"
 
-    # --------------------------------------------------------------- #
-    # specify input file paths
-
-    inputfile         = "./dedalus_drivers/rdlog_driver.ded"
-    serial_nodes_path = "./testFiles/rdlog_dm_nodes.txt"
-    serial_edges_path = "./testFiles/rdlog_dm_edges.txt"
-    additional_str    = "_test_rdlog_dm"
-
-    # --------------------------------------------------------------- #
-    # get argDict
-
-    argDict = self.getArgDict( inputfile )
-    argDict[ "settings" ] = "./settings_dm_iedb_rewrites.ini"
+    cursor, IRDB, testDB = self.set_up_test( test_id, argDict )
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
     # provenance graph
 
     provTree = self.compare_provenance_graph_workflow( argDict, \
-                                                       inputfile, \
+                                                       input_file, \
                                                        serial_nodes_path, \
                                                        serial_edges_path, \
                                                        cursor, \
-                                                       additional_str )
-
-    # --------------------------------------------------------------- #
-    # compare the actual and expected tree dimensions
-
-#    tree_height               = 12
-#    total_number_serial_nodes = 80
-#
-#    expected_dimensions = [ tree_height, \
-#                            total_number_serial_nodes ]
-#
-#    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+                                                       test_id )
 
     # --------------------------------------------------------------- #
     # clean up test
+
     del( provTree )
     IRDB.close()
     os.remove( testDB )
-
 
   ################
   #  SIMPLOG DM  #
@@ -697,62 +680,42 @@ class Test_derivation( unittest.TestCase ) :
   #@unittest.skip( "working on different example." )
   def test_simplog_dm( self ) :
 
-    test_id = "simplog_dm"
-
     # --------------------------------------------------------------- #
-    # set up test
+    # get argDict and set up test
 
-    if os.path.exists( "./IR*.db*" ) :
-      os.remove( "./IR*.db*" )
+    test_id        = "simplog_dm"
+    test_file_name = "simplog_driver"
 
-    testDB = "./IR_" + test_id + ".db"
-    IRDB   = sqlite3.connect( testDB )
-    cursor = IRDB.cursor()
+    print " >>> RUNNING " + test_id + " <<<"
 
-    dedt.createDedalusIRTables(cursor)
-    dedt.globalCounterReset()
+    test_id           = "derivation_" + test_id
+    serial_nodes_path = "./testFiles/" + test_id + "_expected_nodes.txt"
+    serial_edges_path = "./testFiles/" + test_id + "_expected_edges.txt"
 
-    if not os.path.exists( "./data/" ) :
-      os.system( "mkdir ./data/" )
+    input_file                  = "./dedalus_drivers/" + test_file_name + ".ded"
+    argDict                     = self.getArgDict( input_file )
+    argDict[ 'data_save_path' ] = "./data/" + test_id + "/"
+    argDict[ 'EOT' ]            = 6
+    argDict[ 'nodes' ]          = [ "a", "b", "c" ]
+    argDict[ "settings" ]       = "./settingsFiles/settings_dm_iedb_rewrites_tree_simplify.ini"
+    argDict[ "neg_writes" ]     = "dm"
 
-    # --------------------------------------------------------------- #
-    # specify input file paths
-
-    inputfile         = "./dedalus_drivers/simplog_driver.ded"
-    serial_nodes_path = "./testFiles/simplog_dm_nodes.txt"
-    serial_edges_path = "./testFiles/simplog_dm_edges.txt"
-    additional_str    = "_test_simplog_dm"
-
-    # --------------------------------------------------------------- #
-    # get argDict
-
-    argDict = self.getArgDict( inputfile )
-    argDict[ "settings" ] = "./settings_dm_iedb_rewrites_tree_simplify.ini"
+    cursor, IRDB, testDB = self.set_up_test( test_id, argDict )
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
     # provenance graph
 
     provTree = self.compare_provenance_graph_workflow( argDict, \
-                                                       inputfile, \
+                                                       input_file, \
                                                        serial_nodes_path, \
                                                        serial_edges_path, \
                                                        cursor, \
-                                                       additional_str )
-
-    # --------------------------------------------------------------- #
-    # compare the actual and expected tree dimensions
-
-#    tree_height               = 12
-#    total_number_serial_nodes = 80
-#
-#    expected_dimensions = [ tree_height, \
-#                            total_number_serial_nodes ]
-#
-#    self.compare_provenance_tree_dimensions( provTree, expected_dimensions )
+                                                       test_id )
 
     # --------------------------------------------------------------- #
     # clean up test
+
     del( provTree )
     IRDB.close()
     os.remove( testDB )
@@ -1280,6 +1243,7 @@ class Test_derivation( unittest.TestCase ) :
     argDict[ "EOT" ]      = 2
     argDict[ "EFF" ]      = 1
     argDict[ "settings" ] = "./settings_dm.ini"
+    argDict[ "neg_writes" ] = "dm"
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -1348,6 +1312,7 @@ class Test_derivation( unittest.TestCase ) :
     argDict[ "EOT" ]      = 2
     argDict[ "EFF" ]      = 1
     argDict[ "settings" ] = "./settings_dm.ini"
+    argDict[ "neg_writes" ] = "dm" 
 
     # --------------------------------------------------------------- #
     # compare the actual provenance graph with the expected 
@@ -3207,7 +3172,13 @@ class Test_derivation( unittest.TestCase ) :
   # specifies the steps for generating and comparing the provenance graphs of
   # input specs with expected results.
   # returns the actual provenance tree instance.
-  def compare_provenance_graph_workflow( self, argDict, inputfile, serial_nodes_path, serial_edges_path, cursor, additional_str ) :
+  def compare_provenance_graph_workflow( self, \
+                                         argDict, \
+                                         inputfile, \
+                                         serial_nodes_path, \
+                                         serial_edges_path, \
+                                         cursor, \
+                                         additional_str ) :
 
     logging.debug( "  COMPARE PROVENANCE GRAPH WORKFLOW : running process..." )
 
@@ -3342,8 +3313,33 @@ class Test_derivation( unittest.TestCase ) :
     argDict[ 'evaluator' ]                = "c4"
     argDict[ 'EFF' ]                      = 2
     argDict[ 'data_save_path' ]           = "./data/"
+    argDict[ 'neg_writes' ]               = ""
 
     return argDict
+
+
+  #################
+  #  SET UP TEST  #
+  #################
+  def set_up_test( self, test_id, argDict ) :
+
+    if not os.path.exists( "./data/" ) :
+      os.system( "mkdir ./data/" )
+
+    if os.path.isdir( "./data/" + test_id + "/" ) :
+      os.system( "rm -rf ./data/" + test_id + "/" )
+
+    print "mkdir " + test_id
+    os.system( "mkdir ./data/" + test_id + "/" )
+
+    testDB = "./data/" + test_id + "/IR_" + test_id + ".db"
+    IRDB   = sqlite3.connect( testDB )
+    cursor = IRDB.cursor()
+
+    dedt.createDedalusIRTables(cursor)
+    dedt.globalCounterReset()
+
+    return cursor, IRDB, testDB
 
 
 if __name__ == "__main__":
